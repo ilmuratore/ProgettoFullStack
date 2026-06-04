@@ -11,7 +11,9 @@ const findAll = () =>
                 righe_ricezione.quantita_ricevuta,
                 righe_ricezione.ubicazione_id,
                 ubicazioni.codice AS ubicazione,
-                magazzini.nome AS magazzino
+                magazzini.nome AS magazzino,
+                righe_ricezione.created_at,
+                righe_ricezione.updated_at
      FROM righe_ricezione
      JOIN prodotti ON righe_ricezione.prodotto_id = prodotti.id
      JOIN ubicazioni ON righe_ricezione.ubicazione_id = ubicazioni.id
@@ -30,7 +32,9 @@ const findById = (id) =>
                 righe_ricezione.quantita_ricevuta,
                 righe_ricezione.ubicazione_id,
                 ubicazioni.codice AS ubicazione,
-                magazzini.nome AS magazzino
+                magazzini.nome AS magazzino,
+                righe_ricezione.created_at,
+                righe_ricezione.updated_at
      FROM righe_ricezione
      JOIN prodotti ON righe_ricezione.prodotto_id = prodotti.id
      JOIN ubicazioni ON righe_ricezione.ubicazione_id = ubicazioni.id
@@ -49,7 +53,9 @@ const findByRicezioneId = (ricezione_id) =>
                 righe_ricezione.quantita_ricevuta,
                 righe_ricezione.ubicazione_id,
                 ubicazioni.codice AS ubicazione,
-                magazzini.nome AS magazzino
+                magazzini.nome AS magazzino,
+                righe_ricezione.created_at,
+                righe_ricezione.updated_at
      FROM righe_ricezione
      JOIN prodotti ON righe_ricezione.prodotto_id = prodotti.id
      JOIN ubicazioni ON righe_ricezione.ubicazione_id = ubicazioni.id
@@ -61,7 +67,7 @@ const findByRicezioneId = (ricezione_id) =>
 
 const findByProdottoId = (prodotto_id) =>
     pool.query(
-        `SELECT id, ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id
+        `SELECT id, ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id, created_at, updated_at
      FROM righe_ricezione
      WHERE prodotto_id = $1
      ORDER BY id`,
@@ -73,7 +79,7 @@ const create = ({ ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id })
     pool.query(
         `INSERT INTO righe_ricezione (ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id)
      VALUES ($1, $2, $3, $4)
-     RETURNING id, ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id`,
+     RETURNING id, ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id, created_at, updated_at`,
         [ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id]
     );
 
@@ -86,7 +92,7 @@ const update = (id, { ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_i
          ubicazione_id = COALESCE($4, ubicazione_id),
          updated_at = CURRENT_TIMESTAMP
      WHERE id = $5
-     RETURNING id, ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id`,
+     RETURNING id, ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id, created_at, updated_at`,
         [ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id, id]
     );
 
