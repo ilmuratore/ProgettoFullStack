@@ -12,7 +12,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
 
-const cors = require('cors');// per risolvere problemi con il frontend
+const cors = require('cors');
 
 const app = express();
 const port = process.env.PORT;
@@ -20,8 +20,7 @@ const port = process.env.PORT;
 
 
 // ── Middleware Globali ────────────────────────────────────────
-// express.json() legge il body JSON delle richieste (POST, PATCH)
-// e lo rende disponibile come req.body
+
 app.use(express.json());
 // helmet aggiunge header HTTP di sicurezza (anti-XSS, clickjacking, ecc.)
 app.use(helmet());
@@ -51,14 +50,11 @@ app.use((req, res, next) => {
     next();
 });
 
-// Importiamo i model SOLO per inizializzare le tabelle all'avvio.
-// Non li usiamo direttamente qui: ci servono solo per chiamare .init()
 
 
 
-// Importiamo i router: ogni file routes gestisce un gruppo di endpoint
 
-// const authRoutes = require('./src/routes/authRoutes');
+
 
 // ── Route di test ─────────────────────────────────────────────
 // Endpoint rapido per verificare che il server sia raggiungibile
@@ -72,7 +68,7 @@ app.get('/', (req, res) => {
 });
 
 
-// Montiamo le rotte con il prefisso /api
+
 
 
 
@@ -87,19 +83,12 @@ app.use((req, res) => {
         });
 });
 
-// ── Error Handler globale ─────────────────────────────────────
-// Deve essere l'ULTIMO middleware: riceve tutti gli errori
-// passati con next(err) da controller e middleware
 
 
 
-// ── Avvio asincrono del server ────────────────────────────────
-// Aspettiamo che il DB sia pronto prima di ascoltare le richieste.
-// L'ordine di init() è obbligatorio
 
 const start = async () => {
     try {
-
 
 
         printConsoleSuccess();
