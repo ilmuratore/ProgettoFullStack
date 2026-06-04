@@ -3,9 +3,9 @@ const db = require('../config/db');
 module.exports = {
     findAll() {
         return db.query(`
-      SELECT id, nome, categoria_padre_id
-      FROM categorie
-      ORDER BY nome ASC
+            SELECT id, nome, categoria_padre_id
+            FROM categorie
+            ORDER BY nome ASC
     `);
     },
 
@@ -19,8 +19,8 @@ module.exports = {
     create({ nome, categoria_padre_id }) {
         return db.query(
             `INSERT INTO categorie (nome, categoria_padre_id)
-       VALUES ($1, $2)
-       RETURNING *`,
+            VALUES ($1, $2)
+            RETURNING *`,
             [nome, categoria_padre_id]
         );
     },
@@ -28,11 +28,11 @@ module.exports = {
     update(id, { nome, categoria_padre_id }) {
         return db.query(
             `UPDATE categorie
-       SET nome = $1,
-           categoria_padre_id = $2,
-           updated_at = NOW()
-       WHERE id = $3
-       RETURNING *`,
+                SET nome = $1,
+                categoria_padre_id = $2,
+                updated_at = NOW()
+            WHERE id = $3
+            RETURNING *`,
             [nome, categoria_padre_id, id]
         );
     },
