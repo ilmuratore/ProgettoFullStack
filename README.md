@@ -11,7 +11,7 @@ Applicazione full stack realizzata con React per il frontend e Node.js per il ba
 | Ruolo | Nome |
 |-------|------|
 | Responsabile progetto | Simone Iengo |
-| Sviluppatore | Giorgio Gambelli |
+| Sviluppatore | Giorgio Gay |
 | Sviluppatore | Cristina Buffone |
 | Sviluppatore | Emma Santi Andrea |
 | Sviluppatore | Agostino Schiattarella |

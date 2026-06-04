@@ -1,0 +1,122 @@
+services:
+
+  # ─────────────────────────────────────────
+  # DATABASE
+  # ─────────────────────────────────────────
+  postgres:
+    image: postgres:latest
+    container_name: dev_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    networks:
+      - dev_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────
+  # DBMS UI → Adminer
+  # http://localhost:8080
+  # Sistema: PostgreSQL | Server: postgres
+  # ─────────────────────────────────────────
+  adminer:
+    image: adminer:latest
+    container_name: dev_adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - dev_network
+
+
+  # ─────────────────────────────────────────
+  # BACKEND — Express.js
+  # ─────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dev_backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: ${BACKEND_PORT:-3000}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-postgres}
+      DATABASE_URL: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-postgres}
+      JWT_SECRET: ${JWT_SECRET:-changeme_in_production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+    ports:
+      - "3000:3000"  
+    volumes:
+      - ./backend:/app
+      - backend_nm:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - dev_network
+
+  # ─────────────────────────────────────────
+  # FRONTEND — React + Vite
+  # http://localhost:5173
+  # Le chiamate /api vengono proxate internamente a backend:3000
+  # ─────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dev_frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_nm:/app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - dev_network
+
+  # ─────────────────────────────────────────
+  # TUNNEL — Cloudflare
+  # Espone solo il frontend (porta 5173) verso internet
+  # Richiede CLOUDFLARE_TUNNEL_TOKEN nel .env
+  # Genera il token su: https://one.dash.cloudflare.com/
+  # ─────────────────────────────────────────
+  #cloudflared:
+  #  image: cloudflare/cloudflared:latest
+  #  container_name: dev_tunnel
+  #  restart: unless-stopped
+  #  command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+  #  depends_on:
+  #    - frontend
+  #  networks:
+  #    - dev_network
+  #  profiles:
+  #    - tunnel   
+
+# ─────────────────────────────────────────
+volumes:
+  postgres_data:
+  backend_nm:
+  frontend_nm:
+
+networks:
+  dev_network:
+    driver: bridge

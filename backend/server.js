@@ -38,13 +38,6 @@ app.use((req, res, next) => {
 });
 
 
-
-
-
-
-
-// ── Route di test ─────────────────────────────────────────────
-// Endpoint rapido per verificare che il server sia raggiungibile
 app.get('/', (req, res) => {
     res
         .status(200)
@@ -55,12 +48,6 @@ app.get('/', (req, res) => {
 });
 
 
-
-
-
-
-// ── Catch-all 404 ────────────────────────────────────────────
-// Se nessuna route sopra ha risposto, l'endpoint richiesto non esiste.
 app.use((req, res) => {
     res
         .status(404)
@@ -85,7 +72,7 @@ const start = async () => {
         );
     } catch (err) {
         console.error('❌ Errore di avvio backend:', err);
-        process.exit(1); // Usciamo con codice errore se qualcosa va storto
+        process.exit(1);
     }
 };
 
