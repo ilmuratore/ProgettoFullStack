@@ -2,7 +2,11 @@ const pool = require('../config/db');
 
 const findAll = () =>
     pool.query(
-        `SELECT ruoli_permessi.ruolo_id, ruoli.nome AS ruolo, ruoli_permessi.permesso_id, permessi.codice AS permesso
+        `SELECT
+                ruoli_permessi.ruolo_id,
+                ruoli.nome AS ruolo,
+                ruoli_permessi.permesso_id,
+                permessi.codice AS permesso
      FROM ruoli_permessi
      JOIN ruoli ON ruoli_permessi.ruolo_id = ruoli.id
      JOIN permessi ON ruoli_permessi.permesso_id = permessi.id
@@ -12,7 +16,11 @@ const findAll = () =>
 
 const findByRuoloId = (ruolo_id) =>
     pool.query(
-        `SELECT ruoli_permessi.ruolo_id, ruoli.nome AS ruolo, ruoli_permessi.permesso_id, permessi.codice AS permesso
+        `SELECT
+                ruoli_permessi.ruolo_id,
+                ruoli.nome AS ruolo,
+                ruoli_permessi.permesso_id,
+                permessi.codice AS permesso
      FROM ruoli_permessi
      JOIN ruoli ON ruoli_permessi.ruolo_id = ruoli.id
      JOIN permessi ON ruoli_permessi.permesso_id = permessi.id
@@ -23,7 +31,11 @@ const findByRuoloId = (ruolo_id) =>
 
 const findByPermessoId = (permesso_id) =>
     pool.query(
-        `SELECT ruoli_permessi.ruolo_id, ruoli.nome AS ruolo, ruoli_permessi.permesso_id, permessi.codice AS permesso
+        `SELECT
+                ruoli_permessi.ruolo_id,
+                ruoli.nome AS ruolo,
+                ruoli_permessi.permesso_id,
+                permessi.codice AS permesso
      FROM ruoli_permessi
      JOIN ruoli ON ruoli_permessi.ruolo_id = ruoli.id
      JOIN permessi ON ruoli_permessi.permesso_id = permessi.id
