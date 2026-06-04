@@ -8,10 +8,10 @@ exports.up = (pgm) => {
         },
         `
         BEGIN
-      NEW.updated_at = NOW();
-      RETURN NEW;
-    END;
-    `
+            NEW.updated_at = NOW();
+            RETURN NEW;
+        END;
+        `
     );
 };
 

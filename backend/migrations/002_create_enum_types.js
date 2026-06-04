@@ -1,5 +1,5 @@
 exports.up = (pgm) => {
-
+    // purchase_order_state
     pgm.createType("purchase_order_state", [
         "BOZZA",
         "INVIATO",
@@ -9,7 +9,7 @@ exports.up = (pgm) => {
         "ANNULLATO"
     ]);
 
-
+    // sales_order_state
     pgm.createType("sales_order_state", [
         "BOZZA",
         "CONFERMATO",
@@ -17,13 +17,14 @@ exports.up = (pgm) => {
         "ANNULLATO"
     ]);
 
+    // sales_order_picking_state
     pgm.createType("sales_order_picking_state", [
         "NON_AVVIATO",
         "IN_PICKING",
         "PICKING_COMPLETATO"
     ]);
 
-
+    // shipping_state
     pgm.createType("shipping_state", [
         "IN_PREPARAZIONE",
         "SPEDITA",
@@ -31,6 +32,7 @@ exports.up = (pgm) => {
         "PROBLEMA"
     ]);
 
+    // movimento_tipo
     pgm.createType("movimento_tipo", [
         "CARICO_ACQUISTO",
         "SCARICO_VENDITA",
@@ -40,6 +42,7 @@ exports.up = (pgm) => {
         "RESO"
     ]);
 
+    // notification_type
     pgm.createType("notification_type", [
         "SOTTO_SCORTA",
         "PO_IN_RITARDO",
