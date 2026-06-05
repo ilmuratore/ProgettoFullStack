@@ -1,0 +1,14 @@
+$kind: http-request
+name: 15 - GET lista senza token -> 401
+url: "{{baseUrl}}/api/v1/prodotti"
+method: GET
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      var b = pm.response.json();
+      pm.test('15 senza token -> 401', function () { pm.response.to.have.status(401); });
+      pm.test('code = AUTH_REQUIRED', function () { pm.expect(b.code).to.eql('AUTH_REQUIRED'); });
+    language: text/javascript
+order: 16000

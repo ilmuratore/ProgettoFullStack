@@ -187,6 +187,20 @@ const updatePrezzo = (id, prezzo) =>
  * Soft delete — non rimuove fisicamente il record.
  * Il prodotto sparisce dal listino ma resta referenziabile in ordini/movimenti storici.
  */
+const softDelete = (id) => {
+    return pool.query(
+        `
+        UPDATE prodotti
+        SET attivo = false
+        WHERE id = $1 AND attivo = true
+        RETURNING id;
+        `,
+        [id]
+    );
+};
+
+/*Remove
+*/
 const remove = (id) =>
     pool.query(
         `UPDATE prodotti
@@ -212,5 +226,6 @@ module.exports = {
     create,
     update,
     updatePrezzo,
+    softDelete,
     remove
 };

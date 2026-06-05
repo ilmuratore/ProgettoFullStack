@@ -1,0 +1,1131 @@
+{
+  "info": {
+    "name": "LogiChain V2 - M02 Prodotti",
+    "description": "Suite di verifica backend M02 (Listino Prezzi Aziendale).\n\nCOME USARLA:\n1) Avvia il backend (npm run dev) DOPO aver applicato i fix #1 (rinomina migration trigger) e #2 (DELETE controller).\n2) In .env imposta ADMIN_EMAIL e ADMIN_PASSWORD, poi: npm run seed_ruoli_permessi && npm run seed_admin.\n3) Allinea le variabili di collection adminEmail/adminPassword a quelle del .env.\n4) Apri Runner -> seleziona questa collection -> Run. Esegue prima 'Setup' (login + crea Operatore/Corriere + popola i token) e poi i 18 test.\n\nGli SKU sono generati con timestamp ad ogni run, quindi la suite e ri-eseguibile senza collisioni.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0 - Setup (login + token)",
+      "item": [
+        {
+          "name": "1 - Login Admin -> token_admin",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// genera SKU unici per ogni run (evita 409/500 da riuso SKU su prodotti soft-deleted)",
+                  "var run = Date.now().toString();",
+                  "pm.collectionVariables.set('runId', run);",
+                  "pm.collectionVariables.set('sku_1', 'VIT-M6-' + run);",
+                  "pm.collectionVariables.set('sku_2', 'BUL-M8-' + run);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Login Admin -> 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('token presente', function () { pm.expect(b.data && b.data.token).to.be.a('string'); });",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_admin', b.data.token); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2 - Registra Operatore (idempotente)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Op\",\n  \"cognome\": \"Eratore\",\n  \"email\": \"{{operatorEmail}}\",\n  \"password\": \"{{operatorPassword}}\",\n  \"ruolo_id\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Registra Operatore -> 201 o 409 (gia esistente)', function () {",
+                  "  pm.expect([201, 409]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3 - Registra Corriere (idempotente)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Cor\",\n  \"cognome\": \"Riere\",\n  \"email\": \"{{corriereEmail}}\",\n  \"password\": \"{{corrierePassword}}\",\n  \"ruolo_id\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Registra Corriere -> 201 o 409 (gia esistente)', function () {",
+                  "  pm.expect([201, 409]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4 - Login Operatore -> token_read_only",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{operatorEmail}}\",\n  \"password\": \"{{operatorPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Login Operatore -> 200', function () { pm.response.to.have.status(200); });",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_read_only', b.data.token); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5 - Login Corriere -> token_no_access",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{corriereEmail}}\",\n  \"password\": \"{{corrierePassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Login Corriere -> 200', function () { pm.response.to.have.status(200); });",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_no_access', b.data.token); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Prodotti (18 test)",
+      "item": [
+        {
+          "name": "01 - GET lista prodotti (admin) -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prodotti",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('01 GET lista -> 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('data e un array', function () { pm.expect(b.data).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - POST crea prodotto valido -> 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prodotti",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Vite M6x20\",\n  \"sku\": \"{{sku_1}}\",\n  \"prezzo\": 1.25\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('02 POST valido -> 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('ritorna id numerico', function () { pm.expect(b.data.id).to.be.a('number'); });",
+                  "pm.test('ritorna data_agg_prezzo', function () { pm.expect(b.data.data_agg_prezzo).to.be.ok; });",
+                  "pm.test('prezzo = 1.25', function () { pm.expect(Number(b.data.prezzo)).to.eql(1.25); });",
+                  "pm.collectionVariables.set('prodotto_id', b.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - POST SKU duplicato -> 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prodotti",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Vite M6x20 DUP\",\n  \"sku\": \"{{sku_1}}\",\n  \"prezzo\": 2.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('03 SKU duplicato -> 409', function () { pm.response.to.have.status(409); });",
+                  "pm.test('code = DUPLICATE_ENTRY', function () { pm.expect(b.code).to.eql('DUPLICATE_ENTRY'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - POST prezzo = 0 -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prodotti",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Test Zero\",\n  \"sku\": \"{{sku_1}}-Z0\",\n  \"prezzo\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('04 prezzo=0 -> 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('code = VALIDATION_ERROR', function () { pm.expect(b.code).to.eql('VALIDATION_ERROR'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 - POST prezzo negativo -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prodotti",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Test Neg\",\n  \"sku\": \"{{sku_1}}-NEG\",\n  \"prezzo\": -5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('05 prezzo negativo -> 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('code = VALIDATION_ERROR', function () { pm.expect(b.code).to.eql('VALIDATION_ERROR'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 - POST campo obbligatorio mancante -> 400 + details",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prodotti",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Test Solo Nome\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('06 campi mancanti -> 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('code = VALIDATION_ERROR', function () { pm.expect(b.code).to.eql('VALIDATION_ERROR'); });",
+                  "pm.test('details presente e non vuoto', function () { pm.expect(b.details).to.be.an('array').that.is.not.empty; });",
+                  "pm.test('details copre sku e prezzo', function () {",
+                  "  var campi = (b.details || []).map(function (d) { return d.field; });",
+                  "  pm.expect(campi).to.include('sku');",
+                  "  pm.expect(campi).to.include('prezzo');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 - GET dettaglio prodotto esistente -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prodotti/{{prodotto_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti",
+                "{{prodotto_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('07 GET dettaglio -> 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('id corrisponde', function () { pm.expect(b.data.id).to.eql(Number(pm.collectionVariables.get('prodotto_id'))); });",
+                  "// memorizzo la data_agg_prezzo PRIMA della modifica prezzo (test 09)",
+                  "pm.collectionVariables.set('data_agg_before', b.data.data_agg_prezzo);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 - GET id inesistente -> 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prodotti/999999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti",
+                "999999999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('08 id inesistente -> 404', function () { pm.response.to.have.status(404); });",
+                  "pm.test('code = RESOURCE_NOT_FOUND', function () { pm.expect(b.code).to.eql('RESOURCE_NOT_FOUND'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 - PATCH solo prezzo -> 200 (data_agg_prezzo cambia)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prodotti/{{prodotto_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti",
+                "{{prodotto_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prezzo\": 2.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('09 PATCH solo prezzo -> 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('prezzo aggiornato a 2.50', function () { pm.expect(Number(b.data.prezzo)).to.eql(2.5); });",
+                  "pm.test('data_agg_prezzo CAMBIATA', function () {",
+                  "  pm.expect(b.data.data_agg_prezzo).to.not.eql(pm.collectionVariables.get('data_agg_before'));",
+                  "});",
+                  "// memorizzo il nuovo valore per confronto con test 10",
+                  "pm.collectionVariables.set('data_agg_after_price', b.data.data_agg_prezzo);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10 - PATCH solo nome -> 200 (data_agg_prezzo invariata)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prodotti/{{prodotto_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti",
+                "{{prodotto_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Vite M6x20 ZINC\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('10 PATCH solo nome -> 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('nome aggiornato', function () { pm.expect(b.data.nome).to.eql('Vite M6x20 ZINC'); });",
+                  "pm.test('data_agg_prezzo INVARIATA (trigger non scatta)', function () {",
+                  "  pm.expect(b.data.data_agg_prezzo).to.eql(pm.collectionVariables.get('data_agg_after_price'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[setup] crea 2 prodotto (serve al test 11)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prodotti",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Bullone M8x30\",\n  \"sku\": \"{{sku_2}}\",\n  \"prezzo\": 0.8\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('[setup] 2 prodotto -> 201 o 409', function () { pm.expect([201,409]).to.include(pm.response.code); });",
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('prodotto_id_2', b.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11 - PATCH con SKU di un altro prodotto -> 409",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prodotti/{{prodotto_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti",
+                "{{prodotto_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"{{sku_2}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('11 PATCH con SKU di altro prodotto -> 409', function () { pm.response.to.have.status(409); });",
+                  "pm.test('code = DUPLICATE_ENTRY', function () { pm.expect(b.code).to.eql('DUPLICATE_ENTRY'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12 - DELETE soft delete -> 204",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prodotti/{{prodotto_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti",
+                "{{prodotto_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('12 DELETE soft -> 204', function () { pm.response.to.have.status(204); });",
+                  "pm.test('nessun body', function () { pm.expect(pm.response.text()).to.be.oneOf(['', undefined, null]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13 - GET prodotto eliminato -> 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prodotti/{{prodotto_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti",
+                "{{prodotto_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('13 GET prodotto eliminato -> 404', function () { pm.response.to.have.status(404); });",
+                  "pm.test('code = RESOURCE_NOT_FOUND', function () { pm.expect(b.code).to.eql('RESOURCE_NOT_FOUND'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14 - GET lista: eliminato non compare -> 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prodotti",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('14 lista -> 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('prodotto eliminato NON presente in lista', function () {",
+                  "  var pid = Number(pm.collectionVariables.get('prodotto_id'));",
+                  "  var ids = (b.data || []).map(function (p) { return p.id; });",
+                  "  pm.expect(ids).to.not.include(pid);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15 - GET lista senza token -> 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prodotti",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('15 senza token -> 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('code = AUTH_REQUIRED', function () { pm.expect(b.code).to.eql('AUTH_REQUIRED'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16 - POST con token Operatore -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_read_only}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prodotti",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Vietato\",\n  \"sku\": \"{{sku_1}}-OP\",\n  \"prezzo\": 1.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('16 POST con Operatore -> 403', function () { pm.response.to.have.status(403); });",
+                  "pm.test('code = ACCESS_DENIED', function () { pm.expect(b.code).to.eql('ACCESS_DENIED'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17 - DELETE con token Operatore -> 403",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_read_only}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prodotti/{{prodotto_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti",
+                "{{prodotto_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('17 DELETE con Operatore -> 403', function () { pm.response.to.have.status(403); });",
+                  "pm.test('code = ACCESS_DENIED', function () { pm.expect(b.code).to.eql('ACCESS_DENIED'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18 - GET lista con token Corriere -> 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_no_access}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/prodotti",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('18 GET con Corriere -> 403', function () { pm.response.to.have.status(403); });",
+                  "pm.test('code = ACCESS_DENIED', function () { pm.expect(b.code).to.eql('ACCESS_DENIED'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@logichain.it"
+    },
+    {
+      "key": "adminPassword",
+      "value": "Admin123!"
+    },
+    {
+      "key": "operatorEmail",
+      "value": "operatore@logichain.it"
+    },
+    {
+      "key": "operatorPassword",
+      "value": "Operatore123"
+    },
+    {
+      "key": "corriereEmail",
+      "value": "corriere@logichain.it"
+    },
+    {
+      "key": "corrierePassword",
+      "value": "Corriere123"
+    },
+    {
+      "key": "token_admin",
+      "value": ""
+    },
+    {
+      "key": "token_read_only",
+      "value": ""
+    },
+    {
+      "key": "token_no_access",
+      "value": ""
+    },
+    {
+      "key": "prodotto_id",
+      "value": ""
+    },
+    {
+      "key": "prodotto_id_2",
+      "value": ""
+    },
+    {
+      "key": "sku_1",
+      "value": ""
+    },
+    {
+      "key": "sku_2",
+      "value": ""
+    },
+    {
+      "key": "data_agg_before",
+      "value": ""
+    },
+    {
+      "key": "data_agg_after_price",
+      "value": ""
+    },
+    {
+      "key": "runId",
+      "value": ""
+    }
+  ]
+}
