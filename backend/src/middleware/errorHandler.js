@@ -1,0 +1,57 @@
+const errorMessages = {
+    VALIDATION_ERROR: 'Dati richiesta non validi',
+    AUTH_REQUIRED: 'Autenticazione richiesta',
+    CREDENZIALI_NON_VALIDE: 'Credenziali non valide',
+    UTENTE_DISABILITATO: 'Utente disabilitato',
+    ACCESS_DENIED: 'Accesso negato',
+    EMAIL_GIA_ESISTENTE: 'Email gia esistente',
+    RUOLO_NON_VALIDO: 'Ruolo non valido',
+    UTENTE_NON_TROVATO: 'Utente non trovato',
+    RESOURCE_NOT_FOUND: 'Prodotto non trovato',
+    DUPLICATE_ENTRY: 'SKU gia esistente',
+    RATE_LIMIT: 'Troppe richieste',
+    INTERNAL_SERVER_ERROR: 'Errore interno del server'
+};
+
+const errorStatusCodes = {
+    VALIDATION_ERROR: 400,
+    AUTH_REQUIRED: 401,
+    CREDENZIALI_NON_VALIDE: 401,
+    UTENTE_DISABILITATO: 401,
+    ACCESS_DENIED: 403,
+    UTENTE_NON_TROVATO: 404,
+    RESOURCE_NOT_FOUND: 404,
+    EMAIL_GIA_ESISTENTE: 409,
+    DUPLICATE_ENTRY: 409,
+    RUOLO_NON_VALIDO: 422,
+    RATE_LIMIT: 429,
+    INTERNAL_SERVER_ERROR: 500
+};
+
+const errorHandler = (err, _req, res, _next) => {
+    const code = err.code || err.message || 'INTERNAL_SERVER_ERROR';
+    const statusCode = err.statusCode || errorStatusCodes[code] || 500;
+    const message = errorMessages[code] || err.message || errorMessages.INTERNAL_SERVER_ERROR;
+
+    if (process.env.NODE_ENV !== 'production') {
+        console.error(`[${new Date().toISOString()}] ${statusCode} - ${code}: ${message}`);
+
+        if (statusCode === 500 && err.stack) {
+            console.error(err.stack);
+        }
+    }
+
+    const payload = {
+        status: 'error',
+        code,
+        message
+    };
+
+    if (code === 'VALIDATION_ERROR' && err.details) {
+        payload.details = err.details;
+    }
+
+    return res.status(statusCode).json(payload);
+};
+
+module.exports = errorHandler;

@@ -6,6 +6,7 @@ const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 
 const { initDB } = require('./src/config/initDB');
+const errorHandler = require('./src/middleware/errorHandler');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -38,7 +39,7 @@ app.use('/api/v1/auth', require('./src/routes/authRoutes'));
 // app.use('/api/v1/utenti',     require('./src/routes/utentiRoutes'));
 
 // M02 — I nostri Prodotti (Listino)
-// app.use('/api/v1/prodotti',   require('./src/routes/prodottiRoutes'));
+app.use('/api/v1/prodotti', require('./src/routes/prodottiRoutes'));
 // app.use('/api/v1/categorie',  require('./src/routes/categorieRoutes'));
 
 // M03 — I nostri Fornitori
@@ -87,10 +88,7 @@ app.use('/api/v1/auth', require('./src/routes/authRoutes'));
 
 app.use((_req, res) => res.status(404).json({ status: 'error', code: 'RESOURCE_NOT_FOUND', message: 'Endpoint non trovato' }));
 
-app.use((err, _req, res, _next) => {
-    console.error('Errore:', err);
-    res.status(500).json({ status: 'error', code: 'INTERNAL_SERVER_ERROR', message: 'Errore interno' });
-});
+app.use(errorHandler);
 
 const start = async () => {
     try {
