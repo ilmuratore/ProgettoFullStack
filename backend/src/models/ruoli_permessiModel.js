@@ -67,8 +67,26 @@ const remove = ({ ruolo_id, permesso_id }) =>
         [ruolo_id, permesso_id]
     );
 
+const hasPermesso = (ruolo_id, codice_permesso) => {
+    return pool.query(
+        `
+        SELECT 1
+        FROM ruoli_permessi rp
+        JOIN permessi p ON p.id = rp.permesso_id
+        WHERE rp.ruolo_id = $1
+        AND p.codice = $2
+        LIMIT 1;
+        `,
+        [ruolo_id, codice_permesso]
+    );
+};
+
 
 module.exports = {
-    findAll, findByRuoloId, findByPermessoId,
-    create, remove
+    findAll,
+    findByRuoloId,
+    findByPermessoId,
+    create,
+    remove,
+    hasPermesso
 };
