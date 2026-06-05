@@ -8,6 +8,7 @@
     "start": "node server.js",
     "migrate": "node-pg-migrate up --no-check-order",
     "seed_ruoli_permessi": "node seeds/seed_ruoli_permessi.js",
+    "seed_admin": "node seeds/seed_admin.js",
     "migrate:down": "node-pg-migrate down",
     "migrate:redo": "node-pg-migrate redo",
     "migrate:create": "node-pg-migrate create"
