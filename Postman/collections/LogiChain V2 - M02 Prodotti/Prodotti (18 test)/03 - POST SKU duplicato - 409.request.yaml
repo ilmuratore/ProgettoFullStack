@@ -1,0 +1,22 @@
+$kind: http-request
+name: 03 - POST SKU duplicato -> 409
+url: "{{baseUrl}}/api/v1/prodotti"
+method: POST
+headers:
+  Authorization: Bearer {{token_admin}}
+body:
+  type: json
+  content: |-
+    {
+      "nome": "Vite M6x20 DUP",
+      "sku": "{{sku_1}}",
+      "prezzo": 2.0
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      var b = pm.response.json();
+      pm.test('03 SKU duplicato -> 409', function () { pm.response.to.have.status(409); });
+      pm.test('code = DUPLICATE_ENTRY', function () { pm.expect(b.code).to.eql('DUPLICATE_ENTRY'); });
+    language: text/javascript
+order: 3000

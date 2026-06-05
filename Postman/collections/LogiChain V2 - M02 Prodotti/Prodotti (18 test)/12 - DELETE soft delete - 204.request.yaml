@@ -1,0 +1,13 @@
+$kind: http-request
+name: 12 - DELETE soft delete -> 204
+url: "{{baseUrl}}/api/v1/prodotti/{{prodotto_id}}"
+method: DELETE
+headers:
+  Authorization: Bearer {{token_admin}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('12 DELETE soft -> 204', function () { pm.response.to.have.status(204); });
+      pm.test('nessun body', function () { pm.expect(pm.response.text()).to.be.oneOf(['', undefined, null]); });
+    language: text/javascript
+order: 13000

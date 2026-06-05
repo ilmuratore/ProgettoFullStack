@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/prodotti"
+method: POST
+headers:
+  Authorization: Bearer {{token_admin}}
+body:
+  type: json
+  content: |-
+    {
+      "nome": "Bullone M8x30",
+      "sku": "{{sku_2}}",
+      "prezzo": 0.8
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      var b = pm.response.json();
+      pm.test('[setup] 2 prodotto -> 201 o 409', function () { pm.expect([201,409]).to.include(pm.response.code); });
+      if (pm.response.code === 201) {
+        pm.collectionVariables.set('prodotto_id_2', b.data.id);
+      }
+    language: text/javascript
+order: 11000
