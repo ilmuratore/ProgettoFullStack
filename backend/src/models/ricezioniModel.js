@@ -11,7 +11,9 @@ const findAll = () =>
                 ricezioni.data_ricezione,
                 ricezioni.note,
                 ricezioni.utente_id,
-                CONCAT(utenti.nome, ' ', utenti.cognome) AS utente
+                CONCAT(utenti.nome, ' ', utenti.cognome) AS utente,
+                ricezioni.created_at,
+                ricezioni.updated_at
      FROM ricezioni
      JOIN ordini_acquisto ON ricezioni.ordine_acquisto_id = ordini_acquisto.id
      JOIN fornitori ON ordini_acquisto.fornitore_id = fornitori.id
@@ -30,7 +32,9 @@ const findById = (id) =>
                 ricezioni.data_ricezione,
                 ricezioni.note,
                 ricezioni.utente_id,
-                CONCAT(utenti.nome, ' ', utenti.cognome) AS utente
+                CONCAT(utenti.nome, ' ', utenti.cognome) AS utente,
+                ricezioni.created_at,
+                ricezioni.updated_at
      FROM ricezioni
      JOIN ordini_acquisto ON ricezioni.ordine_acquisto_id = ordini_acquisto.id
      JOIN fornitori ON ordini_acquisto.fornitore_id = fornitori.id
@@ -41,7 +45,7 @@ const findById = (id) =>
 
 const findByOrdineAcquistoId = (ordine_acquisto_id) =>
     pool.query(
-        `SELECT id, ordine_acquisto_id, data_ricezione, note, utente_id
+        `SELECT id, ordine_acquisto_id, data_ricezione, note, utente_id, created_at, updated_at
      FROM ricezioni
      WHERE ordine_acquisto_id = $1
      ORDER BY id`,
@@ -50,7 +54,7 @@ const findByOrdineAcquistoId = (ordine_acquisto_id) =>
 
 const findByUtenteId = (utente_id) =>
     pool.query(
-        `SELECT id, ordine_acquisto_id, data_ricezione, note, utente_id
+        `SELECT id, ordine_acquisto_id, data_ricezione, note, utente_id, created_at, updated_at
      FROM ricezioni
      WHERE utente_id = $1
      ORDER BY data_ricezione DESC`,
@@ -62,7 +66,7 @@ const create = ({ ordine_acquisto_id, data_ricezione, note, utente_id }) =>
     pool.query(
         `INSERT INTO ricezioni (ordine_acquisto_id, data_ricezione, note, utente_id)
      VALUES ($1, COALESCE($2, CURRENT_TIMESTAMP), $3, $4)
-     RETURNING id, ordine_acquisto_id, data_ricezione, note, utente_id`,
+     RETURNING id, ordine_acquisto_id, data_ricezione, note, utente_id, created_at, updated_at`,
         [ordine_acquisto_id, data_ricezione, note, utente_id]
     );
 
@@ -75,7 +79,7 @@ const update = (id, { ordine_acquisto_id, data_ricezione, note, utente_id }) =>
          utente_id = COALESCE($4, utente_id),
          updated_at = CURRENT_TIMESTAMP
      WHERE id = $5
-     RETURNING id, ordine_acquisto_id, data_ricezione, note, utente_id`,
+     RETURNING id, ordine_acquisto_id, data_ricezione, note, utente_id, created_at, updated_at`,
         [ordine_acquisto_id, data_ricezione, note, utente_id, id]
     );
 

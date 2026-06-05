@@ -3,7 +3,7 @@ const db = require('../config/db');
 module.exports = {
     findAll() {
         return db.query(`
-            SELECT id, nome, categoria_padre_id
+            SELECT id, nome, categoria_padre_id, created_at, updated_at
             FROM categorie
             ORDER BY nome ASC
     `);
@@ -28,8 +28,8 @@ module.exports = {
     update(id, { nome, categoria_padre_id }) {
         return db.query(
             `UPDATE categorie
-                SET nome = $1,
-                categoria_padre_id = $2,
+                SET nome = COALESCE($1, nome),
+                categoria_padre_id = COALESCE($2, categoria_padre_id),
                 updated_at = NOW()
             WHERE id = $3
             RETURNING *`,

@@ -7,7 +7,7 @@ Applicazione ERP full stack per la gestione della supply chain, sviluppata nell'
 | Ruolo | Nome |
 |-------|------|
 | Tech Lead / Responsabile progetto | Simone Iengo |
-| Sviluppatore | Giorgio Gay |
+| Sviluppatore | Giorgio Gambelli |
 | Sviluppatore | Cristina Buffone |
 | Sviluppatore | Emma Santi Andrea |
 | Sviluppatore | Agostino Schiattarella |
