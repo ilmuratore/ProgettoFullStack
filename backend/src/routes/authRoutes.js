@@ -1,6 +1,7 @@
 const express = require('express');
 const authController = require('../controllers/authController');
 const auth = require('../middleware/auth');
+const { requirePermesso } = require('../middleware/rbac');
 const validate = require('../middleware/validate');
 
 const router = express.Router();
@@ -21,8 +22,7 @@ const registerBlueprint = {
 
 
 router.post('/login', validate(loginBlueprint), authController.login);
-router.post('/register', validate(registerBlueprint), authController.register);
+router.post('/register', auth, requirePermesso('utenti:write'), validate(registerBlueprint), authController.register);
 router.get('/me', auth, authController.getMe);
-
 
 module.exports = router;
