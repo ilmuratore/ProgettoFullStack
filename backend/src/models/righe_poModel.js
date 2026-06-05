@@ -10,7 +10,9 @@ const findAll = () =>
                 prodotti.nome AS prodotto,
                 righe_po.quantita_ordinata,
                 righe_po.quantita_ricevuta,
-                righe_po.prezzo_unitario
+                righe_po.prezzo_unitario,
+                righe_po.created_at,
+                righe_po.updated_at
      FROM righe_po
      JOIN prodotti ON righe_po.prodotto_id = prodotti.id
      ORDER BY righe_po.id`
@@ -26,7 +28,9 @@ const findById = (id) =>
                 prodotti.nome AS prodotto,
                 righe_po.quantita_ordinata,
                 righe_po.quantita_ricevuta,
-                righe_po.prezzo_unitario
+                righe_po.prezzo_unitario,
+                righe_po.created_at,
+                righe_po.updated_at
      FROM righe_po
      JOIN prodotti ON righe_po.prodotto_id = prodotti.id
      WHERE righe_po.id = $1`,
@@ -42,7 +46,9 @@ const findByOrdineAcquistoId = (ordine_acquisto_id) =>
                 prodotti.nome AS prodotto,
                 righe_po.quantita_ordinata,
                 righe_po.quantita_ricevuta,
-                righe_po.prezzo_unitario
+                righe_po.prezzo_unitario,
+                righe_po.created_at,
+                righe_po.updated_at
      FROM righe_po
      JOIN prodotti ON righe_po.prodotto_id = prodotti.id
      WHERE righe_po.ordine_acquisto_id = $1
@@ -52,7 +58,7 @@ const findByOrdineAcquistoId = (ordine_acquisto_id) =>
 
 const findByProdottoId = (prodotto_id) =>
     pool.query(
-        `SELECT id, ordine_acquisto_id, prodotto_id, quantita_ordinata, quantita_ricevuta, prezzo_unitario
+        `SELECT id, ordine_acquisto_id, prodotto_id, quantita_ordinata, quantita_ricevuta, prezzo_unitario, created_at, updated_at
      FROM righe_po
      WHERE prodotto_id = $1
      ORDER BY id`,
@@ -64,7 +70,7 @@ const create = ({ ordine_acquisto_id, prodotto_id, quantita_ordinata, quantita_r
     pool.query(
         `INSERT INTO righe_po (ordine_acquisto_id, prodotto_id, quantita_ordinata, quantita_ricevuta, prezzo_unitario)
      VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, ordine_acquisto_id, prodotto_id, quantita_ordinata, quantita_ricevuta, prezzo_unitario`,
+     RETURNING id, ordine_acquisto_id, prodotto_id, quantita_ordinata, quantita_ricevuta, prezzo_unitario, created_at, updated_at`,
         [ordine_acquisto_id, prodotto_id, quantita_ordinata, quantita_ricevuta, prezzo_unitario]
     );
 
@@ -78,7 +84,7 @@ const update = (id, { ordine_acquisto_id, prodotto_id, quantita_ordinata, quanti
          prezzo_unitario = COALESCE($5, prezzo_unitario),
          updated_at = CURRENT_TIMESTAMP
      WHERE id = $6
-     RETURNING id, ordine_acquisto_id, prodotto_id, quantita_ordinata, quantita_ricevuta, prezzo_unitario`,
+     RETURNING id, ordine_acquisto_id, prodotto_id, quantita_ordinata, quantita_ricevuta, prezzo_unitario, created_at, updated_at`,
         [ordine_acquisto_id, prodotto_id, quantita_ordinata, quantita_ricevuta, prezzo_unitario, id]
     );
 
@@ -89,7 +95,7 @@ const updateQuantitaRicevuta = (id, quantita_ricevuta) =>
      SET quantita_ricevuta = $1,
          updated_at = CURRENT_TIMESTAMP
      WHERE id = $2
-     RETURNING id, quantita_ricevuta`,
+     RETURNING id, quantita_ricevuta, updated_at`,
         [quantita_ricevuta, id]
     );
 

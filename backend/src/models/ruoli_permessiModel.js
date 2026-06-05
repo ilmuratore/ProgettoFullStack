@@ -6,7 +6,9 @@ const findAll = () =>
                 ruoli_permessi.ruolo_id,
                 ruoli.nome AS ruolo,
                 ruoli_permessi.permesso_id,
-                permessi.codice AS permesso
+                permessi.codice AS permesso,
+                ruoli_permessi.created_at,
+                ruoli_permessi.updated_at
      FROM ruoli_permessi
      JOIN ruoli ON ruoli_permessi.ruolo_id = ruoli.id
      JOIN permessi ON ruoli_permessi.permesso_id = permessi.id
@@ -20,7 +22,9 @@ const findByRuoloId = (ruolo_id) =>
                 ruoli_permessi.ruolo_id,
                 ruoli.nome AS ruolo,
                 ruoli_permessi.permesso_id,
-                permessi.codice AS permesso
+                permessi.codice AS permesso,
+                ruoli_permessi.created_at,
+                ruoli_permessi.updated_at
      FROM ruoli_permessi
      JOIN ruoli ON ruoli_permessi.ruolo_id = ruoli.id
      JOIN permessi ON ruoli_permessi.permesso_id = permessi.id
@@ -35,7 +39,9 @@ const findByPermessoId = (permesso_id) =>
                 ruoli_permessi.ruolo_id,
                 ruoli.nome AS ruolo,
                 ruoli_permessi.permesso_id,
-                permessi.codice AS permesso
+                permessi.codice AS permesso,
+                ruoli_permessi.created_at,
+                ruoli_permessi.updated_at
      FROM ruoli_permessi
      JOIN ruoli ON ruoli_permessi.ruolo_id = ruoli.id
      JOIN permessi ON ruoli_permessi.permesso_id = permessi.id
@@ -49,7 +55,7 @@ const create = ({ ruolo_id, permesso_id }) =>
     pool.query(
         `INSERT INTO ruoli_permessi (ruolo_id, permesso_id)
      VALUES ($1, $2)
-     RETURNING ruolo_id, permesso_id`,
+     RETURNING ruolo_id, permesso_id, created_at, updated_at`,
         [ruolo_id, permesso_id]
     );
 
@@ -57,12 +63,30 @@ const remove = ({ ruolo_id, permesso_id }) =>
     pool.query(
         `DELETE FROM ruoli_permessi
      WHERE ruolo_id = $1 AND permesso_id = $2
-     RETURNING ruolo_id, permesso_id`,
+     RETURNING ruolo_id, permesso_id, created_at, updated_at`,
         [ruolo_id, permesso_id]
     );
 
+const hasPermesso = (ruolo_id, codice_permesso) => {
+    return pool.query(
+        `
+        SELECT 1
+        FROM ruoli_permessi rp
+        JOIN permessi p ON p.id = rp.permesso_id
+        WHERE rp.ruolo_id = $1
+        AND p.codice = $2
+        LIMIT 1;
+        `,
+        [ruolo_id, codice_permesso]
+    );
+};
+
 
 module.exports = {
-    findAll, findByRuoloId, findByPermessoId,
-    create, remove
+    findAll,
+    findByRuoloId,
+    findByPermessoId,
+    create,
+    remove,
+    hasPermesso
 };

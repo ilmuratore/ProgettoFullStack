@@ -1,13 +1,13 @@
 require('dotenv').config();
 
-const express   = require('express');
-const helmet    = require('helmet');
+const express = require('express');
+const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const cors      = require('cors');
+const cors = require('cors');
 
 const { initDB } = require('./src/config/initDB');
 
-const app  = express();
+const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
@@ -34,7 +34,7 @@ app.get('/', (_req, res) => res.json({ status: 'success', version: '2.0.0' }));
 // -----------------------------------------------------------------
 
 // M01 — Auth & RBAC
-// app.use('/api/v1/auth',       require('./src/routes/authRoutes'));
+app.use('/api/v1/auth', require('./src/routes/authRoutes'));
 // app.use('/api/v1/utenti',     require('./src/routes/utentiRoutes'));
 
 // M02 — I nostri Prodotti (Listino)
