@@ -2,7 +2,15 @@ const pool = require('../config/db');
 
 const findAll = () =>
     pool.query(
-        `SELECT utenti.id, utenti.nome, utenti.cognome, utenti.email, utenti.ruolo_id, ruoli.nome AS ruolo, utenti.attivo
+        `SELECT utenti.id,
+                utenti.nome,
+                utenti.cognome,
+                utenti.email,
+                utenti.ruolo_id,
+                ruoli.nome AS ruolo,
+                utenti.attivo,
+                utenti.created_at,
+                utenti.updated_at
      FROM utenti
      JOIN ruoli ON utenti.ruolo_id = ruoli.id
      ORDER BY utenti.id`
@@ -11,7 +19,15 @@ const findAll = () =>
 
 const findById = (id) =>
     pool.query(
-        `SELECT utenti.id, utenti.nome, utenti.cognome, utenti.email, utenti.ruolo_id, ruoli.nome AS ruolo, utenti.attivo
+        `SELECT utenti.id,
+                utenti.nome,
+                utenti.cognome,
+                utenti.email,
+                utenti.ruolo_id,
+                ruoli.nome AS ruolo,
+                utenti.attivo,
+                utenti.created_at,
+                utenti.updated_at
      FROM utenti
      JOIN ruoli ON utenti.ruolo_id = ruoli.id
      WHERE utenti.id = $1`,
@@ -32,7 +48,7 @@ const create = ({ nome, cognome, email, password_hash, ruolo_id, attivo = true }
     pool.query(
         `INSERT INTO utenti (nome, cognome, email, password_hash, ruolo_id, attivo)
      VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING id, nome, cognome, email, ruolo_id, attivo`,
+     RETURNING id, nome, cognome, email, ruolo_id, attivo, created_at, updated_at`,
         [nome, cognome, email, password_hash, ruolo_id, attivo]
     );
 
@@ -46,7 +62,7 @@ const update = (id, { nome, cognome, email, ruolo_id, attivo }) =>
          attivo  = COALESCE($5, attivo),
          updated_at = CURRENT_TIMESTAMP
      WHERE id = $6
-     RETURNING id, nome, cognome, email, ruolo_id, attivo`,
+     RETURNING id, nome, cognome, email, ruolo_id, attivo, created_at, updated_at`,
         [nome, cognome, email, ruolo_id, attivo, id]
     );
 
@@ -57,7 +73,7 @@ const updatePassword = (id, hashedPassword) =>
      SET password_hash = $1,
          updated_at = CURRENT_TIMESTAMP
      WHERE id = $2
-     RETURNING id`,
+     RETURNING id, updated_at`,
         [hashedPassword, id]
     );
 
@@ -67,7 +83,7 @@ const remove = (id) =>
      SET attivo = false,
          updated_at = CURRENT_TIMESTAMP
      WHERE id = $1
-     RETURNING id`,
+     RETURNING id, attivo, updated_at`,
         [id]
     );
 

@@ -2,13 +2,13 @@ const pool = require('../config/db');
 
 const findAll = () =>
     pool.query(
-        'SELECT id, nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id FROM dipendenti ORDER BY id'
+        'SELECT id, nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id, created_at, updated_at FROM dipendenti ORDER BY id'
     );
 
 
 const findById = (id) =>
     pool.query(
-        'SELECT id, nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id FROM dipendenti WHERE id = $1',
+        'SELECT id, nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id, created_at, updated_at FROM dipendenti WHERE id = $1',
         [id]
     );
 
@@ -20,7 +20,7 @@ const create = ({ nome, cognome, codice_fiscale, ruolo_operativo, data_assunzion
     pool.query(
         `INSERT INTO dipendenti (nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id)
      VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING id, nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id`,
+     RETURNING id, nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id, created_at, updated_at`,
         [nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id]
     );
 
@@ -35,7 +35,7 @@ const update = (id, { nome, cognome, codice_fiscale, ruolo_operativo, data_assun
          utente_id = COALESCE($6, utente_id),
          updated_at = CURRENT_TIMESTAMP
      WHERE id = $7
-     RETURNING id, nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id`,
+     RETURNING id, nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id, created_at, updated_at`,
         [nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id, id]
     );
 
