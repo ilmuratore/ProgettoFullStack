@@ -1,4 +1,5 @@
 # Milestone 02 — Anagrafiche: I nostri Prodotti (Backend)
+
 ## LogiChain ERP V2 | Checklist Sviluppo
 
 ---
@@ -9,25 +10,25 @@ Questa milestone implementa il backend del modulo **M02 — I nostri Prodotti**,
 
 **Prerequisiti:** M01 completata e merged su develop.
 **Stack:** Node.js + Express + PostgreSQL
-**Pattern:** Routes → Middleware → Controllers → Services → Queries
+**Pattern:** Routes → Middleware → Controllers → Services → Models
 
 **Permessi coinvolti (definiti in M01):**
 
-| Permesso | Operazione |
-|----------|------------|
-| `prodotti:read` | GET lista, GET dettaglio |
-| `prodotti:write` | POST crea, PATCH modifica |
-| `prodotti:delete` | DELETE soft delete |
+| Permesso          | Operazione                |
+| ----------------- | ------------------------- |
+| `prodotti:read`   | GET lista, GET dettaglio  |
+| `prodotti:write`  | POST crea, PATCH modifica |
+| `prodotti:delete` | DELETE soft delete        |
 
 **Chi può fare cosa:**
 
-| Ruolo | Read | Write | Delete |
-|-------|------|-------|--------|
-| Admin | ✅ | ✅ | ✅ |
-| Responsabile Acquisti | ✅ | ❌ | ❌ |
-| Responsabile Magazzino | ✅ | ❌ | ❌ |
-| Operatore | ✅ | ❌ | ❌ |
-| Corriere | ❌ | ❌ | ❌ |
+| Ruolo                  | Read | Write | Delete |
+| ---------------------- | ---- | ----- | ------ |
+| Admin                  | ✅   | ✅    | ✅     |
+| Responsabile Acquisti  | ✅   | ❌    | ❌     |
+| Responsabile Magazzino | ✅   | ❌    | ❌     |
+| Operatore              | ✅   | ❌    | ❌     |
+| Corriere               | ❌   | ❌    | ❌     |
 
 ---
 
@@ -38,8 +39,8 @@ backend/
 ├── migrations/
 │   └── [timestamp]_add_prezzo_prodotti.js     ← NUOVO: migration DB
 ├── src/
-│   ├── queries/
-│   │   └── prodottiQueries.js                 ← NUOVO: SQL puro
+│   ├── models/
+│   │   └── prodottiModel.js                 ← NUOVO: SQL puro
 │   ├── services/
 │   │   └── prodottiService.js                 ← NUOVO: business logic
 │   ├── controllers/
@@ -109,7 +110,7 @@ EXECUTE FUNCTION fn_set_data_agg_prezzo();
 
 ---
 
-## STEP 2 — Queries `prodottiQueries.js`
+## STEP 2 — Model `prodottiModel.js`
 
 Questo file contiene **solo SQL parametrizzato**. Zero business logic.
 Importa il pool da `src/config/db.js`.
@@ -198,12 +199,12 @@ gestione errori di dominio. Non fa mai SQL diretto — usa sempre le queries.
 
 ### `getAll()`
 
-- [ ] Chiama `prodottiQueries.findAll()`
+- [ ] Chiama `prodottiModel.findAll()`
 - [ ] Ritorna array prodotti (può essere vuoto `[]`)
 
 ### `getById(id)`
 
-- [ ] Chiama `prodottiQueries.findById(id)`
+- [ ] Chiama `prodottiModel.findById(id)`
 - [ ] Se non trovato (null) → lancia errore `RESOURCE_NOT_FOUND`
 - [ ] Ritorna il prodotto
 
@@ -211,7 +212,7 @@ gestione errori di dominio. Non fa mai SQL diretto — usa sempre le queries.
 
 - [ ] Verifica che SKU non esista già: chiama `findBySku(sku)`
 - [ ] Se SKU già presente → lancia errore `DUPLICATE_ENTRY`
-- [ ] Chiama `prodottiQueries.create(nome, sku, prezzo)`
+- [ ] Chiama `prodottiModel.create(nome, sku, prezzo)`
 - [ ] Ritorna il prodotto creato
 
 ### `update(id, { nome, sku, prezzo })`
@@ -219,18 +220,18 @@ gestione errori di dominio. Non fa mai SQL diretto — usa sempre le queries.
 - [ ] Verifica che il prodotto esista: chiama `findById(id)`
 - [ ] Se non trovato → lancia errore `RESOURCE_NOT_FOUND`
 - [ ] Se `sku` è presente nel body → verifica che non sia già usato da un altro prodotto:
-  chiama `findBySkuExcludingId(sku, id)`
+      chiama `findBySkuExcludingId(sku, id)`
 - [ ] Se SKU già usato da altro prodotto → lancia errore `DUPLICATE_ENTRY`
 - [ ] Costruisce l'oggetto fields con solo i campi presenti nel body (PATCH parziale)
 - [ ] Se `fields` è vuoto (body senza campi validi) → lancia errore `VALIDATION_ERROR`
-- [ ] Chiama `prodottiQueries.update(id, fields)`
+- [ ] Chiama `prodottiModel.update(id, fields)`
 - [ ] Ritorna il prodotto aggiornato
 
 ### `delete(id)`
 
 - [ ] Verifica che il prodotto esista: chiama `findById(id)`
 - [ ] Se non trovato → lancia errore `RESOURCE_NOT_FOUND`
-- [ ] Chiama `prodottiQueries.softDelete(id)`
+- [ ] Chiama `prodottiModel.softDelete(id)`
 - [ ] Non ritorna dati (risposta 204)
 
 ### Checklist service
@@ -293,13 +294,13 @@ costruisce la risposta. Gestisce la mappatura errori service → HTTP response.
 
 ### Endpoint esposti
 
-| Metodo | Path | Middleware | Controller |
-|--------|------|-----------|------------|
-| `GET` | `/api/v1/prodotti` | `auth`, `requirePermesso('prodotti:read')` | `prodottiController.getAll` |
-| `POST` | `/api/v1/prodotti` | `auth`, `requirePermesso('prodotti:write')`, `validate(createBlueprint)` | `prodottiController.create` |
-| `GET` | `/api/v1/prodotti/:id` | `auth`, `requirePermesso('prodotti:read')` | `prodottiController.getById` |
-| `PATCH` | `/api/v1/prodotti/:id` | `auth`, `requirePermesso('prodotti:write')`, `validate(updateBlueprint)` | `prodottiController.update` |
-| `DELETE` | `/api/v1/prodotti/:id` | `auth`, `requirePermesso('prodotti:delete')` | `prodottiController.delete` |
+| Metodo   | Path                   | Middleware                                                               | Controller                   |
+| -------- | ---------------------- | ------------------------------------------------------------------------ | ---------------------------- |
+| `GET`    | `/api/v1/prodotti`     | `auth`, `requirePermesso('prodotti:read')`                               | `prodottiController.getAll`  |
+| `POST`   | `/api/v1/prodotti`     | `auth`, `requirePermesso('prodotti:write')`, `validate(createBlueprint)` | `prodottiController.create`  |
+| `GET`    | `/api/v1/prodotti/:id` | `auth`, `requirePermesso('prodotti:read')`                               | `prodottiController.getById` |
+| `PATCH`  | `/api/v1/prodotti/:id` | `auth`, `requirePermesso('prodotti:write')`, `validate(updateBlueprint)` | `prodottiController.update`  |
+| `DELETE` | `/api/v1/prodotti/:id` | `auth`, `requirePermesso('prodotti:delete')`                             | `prodottiController.delete`  |
 
 ### Blueprint validazione
 
@@ -325,7 +326,7 @@ costruisce la risposta. Gestisce la mappatura errori service → HTTP response.
 - [ ] Aggiungere in `server.js`:
 
 ```js
-app.use('/api/v1/prodotti', require('./src/routes/prodottiRoutes'));
+app.use("/api/v1/prodotti", require("./src/routes/prodottiRoutes"));
 ```
 
 ### Checklist routes
@@ -364,13 +365,13 @@ app.use('/api/v1/prodotti', require('./src/routes/prodottiRoutes'));
 
 ### Tabella codici errore M02
 
-| HTTP | Codice | Quando |
-|------|--------|--------|
-| `400` | `VALIDATION_ERROR` | Body non supera blueprint (campo mancante, tipo errato, prezzo ≤ 0) |
-| `401` | `AUTH_REQUIRED` | Token mancante o non valido |
-| `403` | `ACCESS_DENIED` | Ruolo senza il permesso richiesto |
-| `404` | `RESOURCE_NOT_FOUND` | Prodotto non trovato o `attivo = false` |
-| `409` | `DUPLICATE_ENTRY` | SKU già presente su altro prodotto attivo |
+| HTTP  | Codice               | Quando                                                              |
+| ----- | -------------------- | ------------------------------------------------------------------- |
+| `400` | `VALIDATION_ERROR`   | Body non supera blueprint (campo mancante, tipo errato, prezzo ≤ 0) |
+| `401` | `AUTH_REQUIRED`      | Token mancante o non valido                                         |
+| `403` | `ACCESS_DENIED`      | Ruolo senza il permesso richiesto                                   |
+| `404` | `RESOURCE_NOT_FOUND` | Prodotto non trovato o `attivo = false`                             |
+| `409` | `DUPLICATE_ENTRY`    | SKU già presente su altro prodotto attivo                           |
 
 ---
 
@@ -379,6 +380,7 @@ app.use('/api/v1/prodotti', require('./src/routes/prodottiRoutes'));
 Aggiungere folder **Prodotti** alla collection LogiChain V2.
 
 > Preparare variabili d'ambiente:
+>
 > - `{{token_admin}}` — token Admin (tutti i permessi)
 > - `{{token_read_only}}` — token Operatore (solo `prodotti:read`)
 > - `{{token_no_access}}` — token Corriere (nessun permesso prodotti)
@@ -489,5 +491,5 @@ ad ogni UPDATE — il nuovo trigger `trg_data_agg_prezzo` si aggiunge senza conf
 
 ---
 
-*Giugno 2025 — LogiChain ERP V2.0 — CONFIDENZIALE*
-*Milestone M02 — Backend Prodotti — Listino Prezzi Aziendale*
+_Giugno 2025 — LogiChain ERP V2.0 — CONFIDENZIALE_
+_Milestone M02 — Backend Prodotti — Listino Prezzi Aziendale_
