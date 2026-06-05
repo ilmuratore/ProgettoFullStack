@@ -28,8 +28,12 @@ const errorStatusCodes = {
     INTERNAL_SERVER_ERROR: 500
 };
 
+const PG_SQLSTATE = {
+    '23505' : 'DUPLICATE_ENTRY',
+}
+
 const errorHandler = (err, _req, res, _next) => {
-    const code = err.code || err.message || 'INTERNAL_SERVER_ERROR';
+    const code = PG_SQLSTATE[err.code] || err.code || err.message || 'INTERNAL_SERVER_ERROR';
     const statusCode = err.statusCode || errorStatusCodes[code] || 500;
     const message = errorMessages[code] || err.message || errorMessages.INTERNAL_SERVER_ERROR;
 

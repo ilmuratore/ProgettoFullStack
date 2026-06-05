@@ -53,7 +53,12 @@ const update = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
         const { nome, sku, prezzo } = req.body;
-        const prodotto = await prodottiService.update(id, { nome, sku, prezzo });
+
+        const fields = {};
+        if (nome !== undefined) fields.nome = nome;
+        if (sku !== undefined) fields.sku = sku;
+        if (prezzo !== undefined) fields.prezzo = prezzo;
+        const prodotto = await prodottiService.update(id, fields);
 
         return res.status(200).json({
             status: 'success',
@@ -70,7 +75,7 @@ const elimina = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
 
-        await prodottiService.delete(id);
+        await prodottiService.deleteProdotto(id);
 
         return res.status(204).send();
     } catch (err) {

@@ -1,0 +1,29 @@
+$kind: collection
+description: |-
+  Suite di verifica backend M02 (Listino Prezzi Aziendale).
+
+  COME USARLA:
+  1) Avvia il backend (npm run dev) DOPO aver applicato i fix #1 (rinomina migration trigger) e #2 (DELETE controller).
+  2) In .env imposta ADMIN_EMAIL e ADMIN_PASSWORD, poi: npm run seed_ruoli_permessi && npm run seed_admin.
+  3) Allinea le variabili di collection adminEmail/adminPassword a quelle del .env.
+  4) Apri Runner -> seleziona questa collection -> Run. Esegue prima 'Setup' (login + crea Operatore/Corriere + popola i token) e poi i 18 test.
+
+  Gli SKU sono generati con timestamp ad ogni run, quindi la suite e ri-eseguibile senza collisioni.
+variables:
+  baseUrl: http://localhost:3000
+  adminEmail: admin@logichain.it
+  adminPassword: Admin123!
+  operatorEmail: operatore@logichain.it
+  operatorPassword: Operatore123
+  corriereEmail: corriere@logichain.it
+  corrierePassword: Corriere123
+  token_admin: ""
+  token_read_only: ""
+  token_no_access: ""
+  prodotto_id: ""
+  prodotto_id_2: ""
+  sku_1: ""
+  sku_2: ""
+  data_agg_before: ""
+  data_agg_after_price: ""
+  runId: ""

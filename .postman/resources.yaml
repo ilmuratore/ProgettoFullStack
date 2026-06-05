@@ -1,0 +1,13 @@
+# Use this workspace to collaborate
+workspace:
+  id: 83638359-00f4-40ba-839d-008428b134e8
+
+cloudResources:
+  collections:
+    ..\postman\collections\LogiChain V2 - M02 Prodotti: c4348bb0-0ba5-4882-8c54-4aec75f61bfe
+
+# All resources in the `postman/` folder are automatically registered in Local View.
+# Point to additional files outside the `postman/` folder to register them individually. Example:
+#localResources:
+#  collections:
+#    - ../tests/E2E Test Collection/

@@ -1,0 +1,26 @@
+$kind: http-request
+name: 06 - POST campo obbligatorio mancante -> 400 + details
+url: "{{baseUrl}}/api/v1/prodotti"
+method: POST
+headers:
+  Authorization: Bearer {{token_admin}}
+body:
+  type: json
+  content: |-
+    {
+      "nome": "Test Solo Nome"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      var b = pm.response.json();
+      pm.test('06 campi mancanti -> 400', function () { pm.response.to.have.status(400); });
+      pm.test('code = VALIDATION_ERROR', function () { pm.expect(b.code).to.eql('VALIDATION_ERROR'); });
+      pm.test('details presente e non vuoto', function () { pm.expect(b.details).to.be.an('array').that.is.not.empty; });
+      pm.test('details copre sku e prezzo', function () {
+        var campi = (b.details || []).map(function (d) { return d.field; });
+        pm.expect(campi).to.include('sku');
+        pm.expect(campi).to.include('prezzo');
+      });
+    language: text/javascript
+order: 6000

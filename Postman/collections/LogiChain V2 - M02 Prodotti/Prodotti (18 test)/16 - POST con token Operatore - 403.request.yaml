@@ -1,0 +1,22 @@
+$kind: http-request
+name: 16 - POST con token Operatore -> 403
+url: "{{baseUrl}}/api/v1/prodotti"
+method: POST
+headers:
+  Authorization: Bearer {{token_read_only}}
+body:
+  type: json
+  content: |-
+    {
+      "nome": "Vietato",
+      "sku": "{{sku_1}}-OP",
+      "prezzo": 1.0
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      var b = pm.response.json();
+      pm.test('16 POST con Operatore -> 403', function () { pm.response.to.have.status(403); });
+      pm.test('code = ACCESS_DENIED', function () { pm.expect(b.code).to.eql('ACCESS_DENIED'); });
+    language: text/javascript
+order: 17000
