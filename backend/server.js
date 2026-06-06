@@ -52,8 +52,8 @@ app.use('/api/v1/clienti',    require('./src/routes/clientiRoutes'));
 // app.use('/api/v1/dipendenti', require('./src/routes/dipendentiRoutes'));
 
 // M06 — Magazzino
-// app.use('/api/v1/magazzini',  require('./src/routes/magazziniRoutes'));
-// app.use('/api/v1/ubicazioni', require('./src/routes/ubicazioniRoutes'));
+app.use('/api/v1/magazzini',  require('./src/routes/magazziniRoutes'));
+app.use('/api/v1/ubicazioni', require('./src/routes/ubicazioniRoutes'));
 
 // M07 — Giacenze & Movimenti Stock
 // app.use('/api/v1/giacenze',         require('./src/routes/giacenzeRoutes'));

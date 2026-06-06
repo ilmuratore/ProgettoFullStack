@@ -42,6 +42,14 @@ module.exports = (blueprint) => {
                 });
             }
 
+            // Integer (solo numeri)
+            if (rules.integer && typeof value === 'number' && !Number.isInteger(value)) {
+                errors.push({
+                    field,
+                    message: `${field} deve essere un numero intero`
+                });
+            }
+
             // Min (solo numeri)
             if (rules.min !== undefined && typeof value === 'number' && value < rules.min) {
                 errors.push({
