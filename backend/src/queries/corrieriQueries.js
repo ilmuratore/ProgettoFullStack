@@ -1,14 +1,15 @@
 // ============================================================
-// corrieriModel.js — M05: Anagrafiche Corrieri
+// corrieriQueries.js — M05: Anagrafiche Corrieri
 //
 // Schema DB effettivo (migration 094_create_corrieri.js):
 //   id, codice TEXT UNIQUE NOT NULL, nome TEXT NOT NULL,
 //   telefono TEXT, email TEXT, attivo BOOLEAN DEFAULT true,
 //   created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ
 //
-// NOTA: corrieri = aziende corriere (BRT, DHL, GLS...).
-// spedizioni.corriere_id → dipendenti (non corrieri):
-// nessun FK da spedizioni a questa tabella.
+// NOTA: la tabella corrieri rappresenta le aziende corriere
+// (es. BRT, DHL, GLS). Non ha cognome né campi personali.
+// spedizioni.corriere_id → dipendenti (non corrieri): nessun
+// FK da spedizioni a questa tabella → soft delete senza check FK.
 // ============================================================
 
 const pool = require('../config/db');
@@ -19,7 +20,10 @@ const COLS = `id, codice, nome, telefono, email, attivo, created_at, updated_at`
 // READ
 // -----------------------------------------------------------------
 
-/** Lista corrieri attivi, ordinati per nome. */
+/**
+ * Lista corrieri attivi, ordinati per nome.
+ * Non espone i record con attivo = false (soft-deleted).
+ */
 const findAll = () =>
     pool.query(
         `SELECT ${COLS}
@@ -30,7 +34,7 @@ const findAll = () =>
 
 /**
  * Dettaglio corriere per id — senza filtro attivo.
- * Il service verifica il flag attivo.
+ * Il service verifica il flag e restituisce RESOURCE_NOT_FOUND se disabilitato.
  */
 const findById = (id) =>
     pool.query(
@@ -44,7 +48,10 @@ const findById = (id) =>
 // WRITE
 // -----------------------------------------------------------------
 
-/** Crea nuovo corriere. codice UNIQUE — 23505 → DUPLICATE_ENTRY nell'errorHandler. */
+/**
+ * Crea nuovo corriere.
+ * codice: identificativo univoco (es. 'BRT', 'DHL-IT') — UNIQUE constraint su DB.
+ */
 const create = ({ codice, nome, telefono, email }) =>
     pool.query(
         `INSERT INTO corrieri (codice, nome, telefono, email)
@@ -53,7 +60,10 @@ const create = ({ codice, nome, telefono, email }) =>
         [codice, nome, telefono, email]
     );
 
-/** Aggiornamento parziale tramite COALESCE. */
+/**
+ * Aggiornamento parziale tramite COALESCE.
+ * Riceve solo i campi presenti nel body — il service filtra prima di chiamare.
+ */
 const update = (id, { codice, nome, telefono, email }) =>
     pool.query(
         `UPDATE corrieri
@@ -70,9 +80,9 @@ const update = (id, { codice, nome, telefono, email }) =>
 
 /**
  * Soft delete — imposta attivo = false.
- * Il corriere non compare più nelle liste ma il record storico è preservato.
+ * Il corriere non compare più nelle liste operative ma i dati storici restano.
  */
-const remove = (id) =>
+const softDelete = (id) =>
     pool.query(
         `UPDATE corrieri
          SET attivo     = false,
@@ -85,4 +95,10 @@ const remove = (id) =>
 
 // -----------------------------------------------------------------
 
-module.exports = { findAll, findById, create, update, remove };
+module.exports = {
+    findAll,
+    findById,
+    create,
+    update,
+    softDelete
+};
