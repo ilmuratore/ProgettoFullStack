@@ -1,3 +1,0 @@
-$kind: collection
-description: Esegui i 3 login per popolare i token nelle variabili. Personalizza email/password in base al tuo seed.
-order: 1000

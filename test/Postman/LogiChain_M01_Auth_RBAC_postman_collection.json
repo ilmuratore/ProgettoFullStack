@@ -1,0 +1,889 @@
+{
+  "info": {
+    "name": "LogiChain V2 — M01 Auth & RBAC",
+    "description": "Suite di verifica backend M01 (Autenticazione JWT e RBAC Granulare).\n\nCOME USARLA:\n1) Avvia il backend (npm run dev).\n2) Nel .env imposta ADMIN_EMAIL e ADMIN_PASSWORD, poi:\n   npm run seed_ruoli_permessi && npm run seed_admin\n3) Allinea le variabili di collection admin_email/admin_password a quelle del .env.\n4) Apri Runner -> seleziona questa collection -> Run.\n\nIl setup esegue solo il login Admin (già creato via seed).\nL'utente di test (Resp. Magazzino) viene creato al test 03 con email univoca via timestamp.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "5d98976f-ddf1-4dda-8bd1-9c89fc84d04a"
+  },
+  "item": [
+    {
+      "id": "33a43d11-d950-4324-824c-fbe509a0b134",
+      "name": "0. Setup — Login Admin",
+      "item": [
+        {
+          "id": "44baafe3-f625-48f9-8493-7998453e821d",
+          "name": "Login Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "id": "32c43bcd-d06d-4c19-877c-c2514651dd0f",
+                "exec": [
+                  "var run = Date.now().toString();",
+                  "pm.collectionVariables.set('runId', run);",
+                  "pm.collectionVariables.set('test_email', 'test.m01.mag.' + run + '@logichain.it');",
+                  "pm.collectionVariables.set('test_email_dup', 'test.m01.mag.' + run + '@logichain.it');"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "id": "dfc68c97-42de-4257-998c-3630d9cbfb78",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Login Admin -> 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Setup: token presente', () => pm.expect(b.data && b.data.token).to.be.a('string'));",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_admin', b.data.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "7628d522-0ab3-4e32-969b-a63b0aad379c",
+      "name": "Auth & RBAC (15 test)",
+      "item": [
+        {
+          "id": "339aca7e-674a-4a4b-8763-707b7007882e",
+          "name": "01 POST /auth/login — credenziali valide → 200",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "4e717d63-4c2b-4a5a-a783-43a11666a9b2",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('01 login valido -> 200', () => pm.response.to.have.status(200));",
+                  "pm.test('01 status = success', () => pm.expect(b.status).to.eql('success'));",
+                  "pm.test('01 token e stringa', () => pm.expect(b.data.token).to.be.a('string'));",
+                  "pm.test('01 utente presente', () => pm.expect(b.data.utente).to.be.an('object'));",
+                  "pm.test('01 utente ha id, email, ruolo', () => {",
+                  "  pm.expect(b.data.utente).to.have.property('id');",
+                  "  pm.expect(b.data.utente).to.have.property('email');",
+                  "  pm.expect(b.data.utente).to.have.property('ruolo');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "1da73826-3e3d-49d6-9d6c-bc991f92d75a",
+          "name": "02 GET /auth/me — token admin → 200",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "101dd2d5-eb06-4129-9275-ac270dcf1bec",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('02 GET /me -> 200', () => pm.response.to.have.status(200));",
+                  "pm.test('02 status = success', () => pm.expect(b.status).to.eql('success'));",
+                  "pm.test('02 dati utente: id, nome, cognome, email, ruolo', () => {",
+                  "  ['id','nome','cognome','email','ruolo'].forEach(k =>",
+                  "    pm.expect(b.data).to.have.property(k));",
+                  "});",
+                  "pm.test('02 ruolo = Admin', () => pm.expect(b.data.ruolo).to.eql('Admin'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "85fddc40-9f41-4816-b9a8-728e9e350cb2",
+          "name": "03 POST /auth/register — nuovo utente Resp. Magazzino → 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Test\",\n  \"cognome\": \"M01\",\n  \"email\": \"{{test_email}}\",\n  \"password\": \"Test1234!\",\n  \"ruolo_id\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "8bafae77-1512-49fc-8197-1b9830480011",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('03 register valido -> 201', () => pm.response.to.have.status(201));",
+                  "pm.test('03 status = success', () => pm.expect(b.status).to.eql('success'));",
+                  "pm.test('03 id numerico', () => pm.expect(b.data.id).to.be.a('number'));",
+                  "pm.test('03 email corrisponde', () => pm.expect(b.data.email).to.eql(pm.collectionVariables.get('test_email')));",
+                  "pm.test('03 ruolo = Responsabile Magazzino', () => pm.expect(b.data.ruolo).to.eql('Responsabile Magazzino'));",
+                  "pm.collectionVariables.set('utente_id', b.data.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "3489a116-d0fe-4804-9c58-04c02a124116",
+          "name": "04 POST /auth/register — email duplicata → 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Dup\",\n  \"cognome\": \"Test\",\n  \"email\": \"{{test_email_dup}}\",\n  \"password\": \"Dup1234!\",\n  \"ruolo_id\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "15cc92fd-a102-4d33-b71a-43d5b67b190c",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('04 email duplicata -> 409', () => pm.response.to.have.status(409));",
+                  "pm.test('04 code = EMAIL_GIA_ESISTENTE', () => pm.expect(b.code).to.eql('EMAIL_GIA_ESISTENTE'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "a8648f20-a3fe-4587-a760-f7440625d73e",
+          "name": "05 POST /auth/register — ruolo_id inesistente → 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Test\",\n  \"cognome\": \"Ruolo\",\n  \"email\": \"noruolo@logichain.it\",\n  \"password\": \"Test1234!\",\n  \"ruolo_id\": 999\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "bd6bde4e-7b02-4402-a94d-e2292eab167e",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('05 ruolo inesistente -> 422', () => pm.response.to.have.status(422));",
+                  "pm.test('05 code = RUOLO_NON_VALIDO', () => pm.expect(b.code).to.eql('RUOLO_NON_VALIDO'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "6ea3496e-603d-4029-91a3-fe46459c2c93",
+          "name": "06 POST /auth/register — campo obbligatorio mancante → 400 + details",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cognome\": \"Test\",\n  \"email\": \"nomissing@logichain.it\",\n  \"password\": \"Test1234!\",\n  \"ruolo_id\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "6d425ac0-2540-46c0-81a2-ee0f1474142d",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('06 campo mancante -> 400', () => pm.response.to.have.status(400));",
+                  "pm.test('06 code = VALIDATION_ERROR', () => pm.expect(b.code).to.eql('VALIDATION_ERROR'));",
+                  "pm.test('06 details presente e non vuoto', () => pm.expect(b.details).to.be.an('array').that.is.not.empty);",
+                  "pm.test('06 details copre nome', () => {",
+                  "  var campi = (b.details || []).map(d => d.field);",
+                  "  pm.expect(campi).to.include('nome');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "13b78d8b-f1a2-4af8-b49d-9aaf52255aba",
+          "name": "07 POST /auth/register — password < 6 caratteri → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Test\",\n  \"cognome\": \"Short\",\n  \"email\": \"shortpwd@logichain.it\",\n  \"password\": \"abc\",\n  \"ruolo_id\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "9aae40e0-1206-46c2-8d42-a7fc01847446",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('07 password corta -> 400', () => pm.response.to.have.status(400));",
+                  "pm.test('07 code = VALIDATION_ERROR', () => pm.expect(b.code).to.eql('VALIDATION_ERROR'));",
+                  "pm.test('07 details copre password', () => {",
+                  "  var campi = (b.details || []).map(d => d.field);",
+                  "  pm.expect(campi).to.include('password');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "d47fa7a9-2f08-4225-85af-83aaec7d13ba",
+          "name": "08 POST /auth/login — Resp. Magazzino appena creato → 200",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{test_email}}\",\n  \"password\": \"Test1234!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "35f6f3af-389f-4266-b7b9-0d42f24f0382",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('08 login Resp. Magazzino -> 200', () => pm.response.to.have.status(200));",
+                  "pm.test('08 token presente', () => pm.expect(b.data.token).to.be.a('string'));",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_resp_mag', b.data.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "d277d415-6791-4375-8a94-aa4a6f0de85f",
+          "name": "09 GET /auth/me — token Resp. Magazzino → 200 ruolo corretto",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_resp_mag}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "ba96b049-821e-42a4-8154-7c549d666f77",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('09 GET /me Resp. Magazzino -> 200', () => pm.response.to.have.status(200));",
+                  "pm.test('09 ruolo = Responsabile Magazzino', () => pm.expect(b.data.ruolo).to.eql('Responsabile Magazzino'));",
+                  "pm.test('09 id corrisponde all utente registrato', () => {",
+                  "  pm.expect(b.data.id).to.eql(Number(pm.collectionVariables.get('utente_id')));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "d1610f0c-7a6b-4288-9443-5d10b396d92f",
+          "name": "10 POST /auth/register — token Resp. Magazzino → 403 (no utenti:write)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_resp_mag}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Test\",\n  \"cognome\": \"RBAC\",\n  \"email\": \"rbac_test@logichain.it\",\n  \"password\": \"Test1234!\",\n  \"ruolo_id\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "0ec90c45-47b3-43c5-b0b5-d7c88439dffa",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('10 Resp. Magazzino register -> 403', () => pm.response.to.have.status(403));",
+                  "pm.test('10 code = ACCESS_DENIED', () => pm.expect(b.code).to.eql('ACCESS_DENIED'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "7164f63d-a37d-4dbe-93c2-4ce82e065b8f",
+          "name": "11 POST /auth/login — password errata → 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"PasswordSbagliata!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "7f9bb492-e132-473b-af28-830d8839d8de",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('11 password errata -> 401', () => pm.response.to.have.status(401));",
+                  "pm.test('11 code = CREDENZIALI_NON_VALIDE', () => pm.expect(b.code).to.eql('CREDENZIALI_NON_VALIDE'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "8396b260-2eaf-46ec-8531-5b4e2edd46b5",
+          "name": "12 POST /auth/login — email inesistente → 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"inesistente@logichain.it\",\n  \"password\": \"Test1234!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "1908c6ff-c016-4153-88aa-15018779e15b",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('12 email inesistente -> 401', () => pm.response.to.have.status(401));",
+                  "pm.test('12 code = CREDENZIALI_NON_VALIDE', () => pm.expect(b.code).to.eql('CREDENZIALI_NON_VALIDE'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "22465487-dcf9-4d54-a8a0-007885ba3075",
+          "name": "13 GET /auth/me — senza token → 401",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "61c9d554-14b5-4965-8d6a-65f570701eef",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('13 senza token -> 401', () => pm.response.to.have.status(401));",
+                  "pm.test('13 code = AUTH_REQUIRED', () => pm.expect(b.code).to.eql('AUTH_REQUIRED'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "cde69fac-d720-4316-a834-5dbb1ae7c37b",
+          "name": "14 GET /auth/me — token non valido → 401",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer token.non.valido.xyz"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "01ec5d37-ed70-45eb-9b44-36a65c74776b",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('14 token non valido -> 401', () => pm.response.to.have.status(401));",
+                  "pm.test('14 code = AUTH_REQUIRED', () => pm.expect(b.code).to.eql('AUTH_REQUIRED'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "56b549a9-1cb7-405e-a400-82e0b9f5db97",
+          "name": "15 POST /auth/register — senza token → 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Test\",\n  \"cognome\": \"Noauth\",\n  \"email\": \"noauth@logichain.it\",\n  \"password\": \"Test1234!\",\n  \"ruolo_id\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "a7862f3a-5162-4c8d-b91e-100165f25d2e",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('15 register senza token -> 401', () => pm.response.to.have.status(401));",
+                  "pm.test('15 code = AUTH_REQUIRED', () => pm.expect(b.code).to.eql('AUTH_REQUIRED'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "id": "fd360143-8d65-43a1-9925-203a75aa8bf2",
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "default"
+    },
+    {
+      "id": "4514b42c-43b8-4672-a67b-15e9f4ce99e8",
+      "key": "admin_email",
+      "value": "admin@logichain.it",
+      "type": "default"
+    },
+    {
+      "id": "7c2387c8-1663-406b-b2f1-43a40f7904ec",
+      "key": "admin_password",
+      "value": "Admin123!",
+      "type": "default"
+    },
+    {
+      "id": "74ef2f2b-e831-4625-bf16-06dd05a9ff58",
+      "key": "token_admin",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "79cd522e-4f41-4d29-82ff-dd64b27b8dff",
+      "key": "token_resp_mag",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "65c7c86b-81e9-4193-b2f3-79fcf830cdb9",
+      "key": "test_email",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "134fe2f4-6f36-4003-afdd-1090958d79ed",
+      "key": "test_email_dup",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "364a6a9c-74b1-4a29-bd45-b9a8fa2db120",
+      "key": "utente_id",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "678394ac-79c0-4a68-81e9-440d19df9e17",
+      "key": "runId",
+      "value": "",
+      "type": "default"
+    }
+  ]
+}

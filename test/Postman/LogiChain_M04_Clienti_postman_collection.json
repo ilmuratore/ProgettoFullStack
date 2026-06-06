@@ -1,0 +1,1409 @@
+{
+  "info": {
+    "name": "LogiChain V2 — M04 Clienti",
+    "description": "Suite di verifica backend M04 (Anagrafiche — I nostri Clienti).\n\nCOME USARLA:\n1) Avvia il backend (npm run dev) dopo aver applicato tutte le migration fino a 102_alter_clienti_v2.js.\n2) Nel .env imposta ADMIN_EMAIL e ADMIN_PASSWORD, poi:\n   npm run seed_ruoli_permessi && npm run seed_admin\n3) Allinea le variabili di collection admin_email/admin_password a quelle del .env.\n4) Per i test 08 e 11 (cliente source=ecosystem) inserisci manualmente:\n   INSERT INTO clienti (ragione_sociale, piva_cf, source) VALUES ('Eco Corp Srl', '99988877766', 'ecosystem');\n   poi copia l'id restituito in {{cliente_eco_id}}.\n5) Apri Runner -> seleziona questa collection -> Run.\n\nGli utenti di test sono creati nel Setup con email univoche via timestamp (ri-eseguibile).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "id": "7a835a82-dfb8-4910-8a7a-e57ad4b7d654",
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "default"
+    },
+    {
+      "id": "2fd59b79-c99b-4f88-bdd1-72bd5eb5c8c0",
+      "key": "admin_email",
+      "value": "admin@logichain.it",
+      "type": "default"
+    },
+    {
+      "id": "c779ee9c-4e9b-487c-b058-346b27acb9cf",
+      "key": "admin_password",
+      "value": "Admin123!",
+      "type": "default"
+    },
+    {
+      "id": "1cc083c4-23d5-4de5-bcb8-2f5797266526",
+      "key": "resp_acquisti_email",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "b6bcee6b-eb03-462c-bee3-ee89b0a7a630",
+      "key": "resp_acquisti_password",
+      "value": "Test1234!",
+      "type": "default"
+    },
+    {
+      "id": "893cd7fc-bc1a-4847-af78-1084694dba49",
+      "key": "resp_magazzino_email",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "76cd43c4-4ff4-4e8d-9793-3e912cec1f31",
+      "key": "resp_magazzino_password",
+      "value": "Test1234!",
+      "type": "default"
+    },
+    {
+      "id": "565db1cb-4b54-432f-a739-c85bb5895657",
+      "key": "operatore_email",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "dd0674e9-4d42-4613-af20-d823b0362c05",
+      "key": "operatore_password",
+      "value": "Test1234!",
+      "type": "default"
+    },
+    {
+      "id": "381655a6-8027-4341-ad7d-339cbab84c16",
+      "key": "token_admin",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "b8bff636-1d3b-4975-ae98-e017ee8c3910",
+      "key": "token_resp_acquisti",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "645d24a0-8c96-4814-9998-d6593c231c50",
+      "key": "token_resp_magazzino",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "66625ce1-1467-4aff-8b4d-dca6aab8457f",
+      "key": "token_operatore",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "b5f8364f-c2b5-4a28-bf6b-4a1ea668f058",
+      "key": "cliente_id",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "c1f98d4b-af9b-4483-a629-98d14f60a12b",
+      "key": "cliente_eco_id",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "8f0acc72-8323-4b44-94b3-0c3ffcc6400b",
+      "key": "runId",
+      "value": "",
+      "type": "default"
+    }
+  ],
+  "item": [
+    {
+      "id": "f49b4728-0481-4fde-af74-1fbae43f37ca",
+      "name": "0. Setup — Auth & utenti di test",
+      "item": [
+        {
+          "id": "e310dd9f-cee3-4d9c-ab9e-b654621f7e87",
+          "name": "Login Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "id": "54e911d7-8c9c-4bee-ab06-4f9d8bf9d362",
+                "exec": [
+                  "var run = Date.now().toString();",
+                  "pm.collectionVariables.set('runId', run);",
+                  "pm.collectionVariables.set('resp_acquisti_email',    'test.m04.racq.'  + run + '@logichain.it');",
+                  "pm.collectionVariables.set('resp_magazzino_email',   'test.m04.rmag.'  + run + '@logichain.it');",
+                  "pm.collectionVariables.set('operatore_email',        'test.m04.oper.'  + run + '@logichain.it');"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "id": "95055b2a-eb56-4f7a-8b63-4e57f51a8da8",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Login Admin -> 200', () => pm.response.to.have.status(200));",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_admin', b.data.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "0f711168-d077-4be7-95e2-873da0721743",
+          "name": "Register Responsabile Acquisti (ruolo_id 2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Acquisti\",\n  \"email\": \"{{resp_acquisti_email}}\",\n  \"password\": \"{{resp_acquisti_password}}\",\n  \"ruolo_id\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "8cfeafc3-97bf-42be-a3f2-700638a7476a",
+                "exec": [
+                  "pm.test('Setup: Register Resp. Acquisti -> 201 o 409', () => pm.expect([201,409]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "59b90f24-8306-4cb2-ade1-0a3369bb9623",
+          "name": "Register Responsabile Magazzino (ruolo_id 3)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Magazzino\",\n  \"email\": \"{{resp_magazzino_email}}\",\n  \"password\": \"{{resp_magazzino_password}}\",\n  \"ruolo_id\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "85a488d0-8a1e-45fe-b59b-9dca26a50023",
+                "exec": [
+                  "pm.test('Setup: Register Resp. Magazzino -> 201 o 409', () => pm.expect([201,409]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "d4f7297b-f6f8-43fe-a54a-002a12e0da34",
+          "name": "Register Operatore (ruolo_id 4)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Op\",\n  \"cognome\": \"Eratore\",\n  \"email\": \"{{operatore_email}}\",\n  \"password\": \"{{operatore_password}}\",\n  \"ruolo_id\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "ade12361-131b-46aa-8895-508df9aa5410",
+                "exec": [
+                  "pm.test('Setup: Register Operatore -> 201 o 409', () => pm.expect([201,409]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "17bb4681-52f5-42a9-8b87-45608a0e67a5",
+          "name": "Login Responsabile Acquisti (token_resp_acquisti)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{resp_acquisti_email}}\",\n  \"password\": \"{{resp_acquisti_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "b3698940-751e-4416-9f3e-e0b3b795c965",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Login Resp. Acquisti -> 200', () => pm.response.to.have.status(200));",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_resp_acquisti', b.data.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "278c1891-5b10-4f25-8a96-daa1384b74f0",
+          "name": "Login Responsabile Magazzino (token_resp_magazzino)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{resp_magazzino_email}}\",\n  \"password\": \"{{resp_magazzino_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "1555a4ed-3c9d-44be-9a9a-e5448fb10f0e",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Login Resp. Magazzino -> 200', () => pm.response.to.have.status(200));",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_resp_magazzino', b.data.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "77f152a5-6d16-4542-9ab7-cdded6a8458d",
+          "name": "Login Operatore (token_operatore)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{operatore_email}}\",\n  \"password\": \"{{operatore_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "28364c3a-13c1-4c5c-b140-5bbced30deea",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Login Operatore -> 200', () => pm.response.to.have.status(200));",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_operatore', b.data.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "📋 M04 — Clienti (Happy Path)",
+      "description": "Test principali in ordine logico. Eseguire dall'alto verso il basso.",
+      "item": [
+        {
+          "name": "01 — GET lista clienti",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Struttura risposta corretta', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "    pm.expect(json.data).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('Ogni cliente ha il campo source', () => {",
+                  "    const json = pm.response.json();",
+                  "    if (json.data.length > 0) {",
+                  "        json.data.forEach(c => {",
+                  "            pm.expect(c).to.have.property('source');",
+                  "            pm.expect(['manual', 'ecosystem']).to.include(c.source);",
+                  "        });",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test('Nessun cliente con attivo=false nella lista', () => {",
+                  "    const json = pm.response.json();",
+                  "    json.data.forEach(c => {",
+                  "        pm.expect(c.attivo).to.not.eql(false);",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 — POST crea cliente manual ✅",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ragione_sociale\": \"Beta Spa\",\n  \"piva_cf\": \"98765432101\",\n  \"email\": \"info@beta.it\",\n  \"telefono\": \"0298765432\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "",
+                  "pm.test('Struttura risposta corretta', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "    pm.expect(json.data).to.be.an('object');",
+                  "});",
+                  "",
+                  "pm.test('source è manual (mai dal body)', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.source).to.eql('manual');",
+                  "});",
+                  "",
+                  "pm.test('Campi obbligatori presenti', () => {",
+                  "    const d = pm.response.json().data;",
+                  "    pm.expect(d).to.have.property('id');",
+                  "    pm.expect(d).to.have.property('ragione_sociale');",
+                  "    pm.expect(d).to.have.property('piva_cf');",
+                  "});",
+                  "",
+                  "// Salva id per i test successivi",
+                  "const id = pm.response.json().data?.id;",
+                  "if (id) {",
+                  "    pm.collectionVariables.set('cliente_id', id);",
+                  "    console.log('✅ cliente_id salvato:', id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 — POST source nel body ignorato",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ragione_sociale\": \"Gamma Srl\",\n  \"piva_cf\": \"11122233344\",\n  \"source\": \"ecosystem\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "",
+                  "pm.test('source è manual anche se il body inviava ecosystem', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.source).to.eql('manual');",
+                  "});",
+                  "",
+                  "// Pulizia: il cliente Gamma Srl va soft-deleted dopo i test",
+                  "const id = pm.response.json().data?.id;",
+                  "if (id) {",
+                  "    pm.collectionVariables.set('cliente_gamma_id', id);",
+                  "    console.log('ℹ️  cliente_gamma_id salvato per pulizia:', id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 — POST campo obbligatorio mancante → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ragione_sociale\": \"Solo Nome Srl\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "",
+                  "pm.test('Codice VALIDATION_ERROR', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('error');",
+                  "    pm.expect(json.code).to.eql('VALIDATION_ERROR');",
+                  "});",
+                  "",
+                  "pm.test('Errore su piva_cf', () => {",
+                  "    const json = pm.response.json();",
+                  "    const fields = (json.details || []).map(d => d.field);",
+                  "    pm.expect(fields).to.include('piva_cf');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 — GET dettaglio cliente manual",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti/{{cliente_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti",
+                "{{cliente_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Risposta con dati cliente', () => {",
+                  "    const d = pm.response.json().data;",
+                  "    pm.expect(d.id.toString()).to.eql(pm.collectionVariables.get('cliente_id').toString());",
+                  "    pm.expect(d).to.have.property('ragione_sociale');",
+                  "    pm.expect(d).to.have.property('piva_cf');",
+                  "    pm.expect(d).to.have.property('source');",
+                  "    pm.expect(d.source).to.eql('manual');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 — GET id inesistente → 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti/999999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti",
+                "999999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "",
+                  "pm.test('Codice RESOURCE_NOT_FOUND', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.code).to.eql('RESOURCE_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 — PATCH modifica cliente manual ✅",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telefono\": \"0612345678\",\n  \"email\": \"nuovo@beta.it\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti/{{cliente_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti",
+                "{{cliente_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Campi aggiornati correttamente', () => {",
+                  "    const d = pm.response.json().data;",
+                  "    pm.expect(d.telefono).to.eql('0612345678');",
+                  "    pm.expect(d.email).to.eql('nuovo@beta.it');",
+                  "});",
+                  "",
+                  "pm.test('source rimane manual dopo la modifica', () => {",
+                  "    pm.expect(pm.response.json().data.source).to.eql('manual');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 — PATCH tentativo su cliente ecosystem → 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ragione_sociale\": \"Modifica Non Consentita\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti/{{cliente_eco_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti",
+                "{{cliente_eco_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('403 Forbidden (protezione backend source=ecosystem)', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "pm.test('Codice ACCESS_DENIED', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.code).to.eql('ACCESS_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 — PATCH source nel body ignorato",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ragione_sociale\": \"Beta Spa Rinominata\",\n  \"source\": \"ecosystem\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti/{{cliente_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti",
+                "{{cliente_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('ragione_sociale aggiornata', () => {",
+                  "    pm.expect(pm.response.json().data.ragione_sociale).to.eql('Beta Spa Rinominata');",
+                  "});",
+                  "",
+                  "pm.test('source rimane manual (non modificabile via body)', () => {",
+                  "    pm.expect(pm.response.json().data.source).to.eql('manual');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10 — PATCH body vuoto → 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti/{{cliente_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti",
+                "{{cliente_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 Bad Request — body senza campi validi', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Codice VALIDATION_ERROR', () => {",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🗑️  M04 — Soft Delete",
+      "description": "Test delete. Vanno eseguiti DOPO il blocco Happy Path perché usano cliente_id già creato.",
+      "item": [
+        {
+          "name": "11 — DELETE soft delete cliente ecosystem (sempre consentito)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti/{{cliente_eco_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti",
+                "{{cliente_eco_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('204 No Content — soft delete ecosystem consentito (FA D9)', () => {",
+                  "    pm.response.to.have.status(204);",
+                  "});",
+                  "",
+                  "pm.test('Body vuoto', () => {",
+                  "    pm.expect(pm.response.text()).to.eql('');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12 — DELETE soft delete cliente manual",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti/{{cliente_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti",
+                "{{cliente_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));",
+                  "",
+                  "pm.test('Body vuoto', () => {",
+                  "    pm.expect(pm.response.text()).to.eql('');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13 — GET dopo delete → 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti/{{cliente_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti",
+                "{{cliente_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('404 — cliente eliminato non trovato (attivo=false)', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('Codice RESOURCE_NOT_FOUND', () => {",
+                  "    pm.expect(pm.response.json().code).to.eql('RESOURCE_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14 — GET lista — clienti eliminati non compaiono",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('cliente_id eliminato non compare nella lista', () => {",
+                  "    const eliminatoId = parseInt(pm.collectionVariables.get('cliente_id'));",
+                  "    const lista = pm.response.json().data;",
+                  "    const trovato = lista.find(c => c.id === eliminatoId);",
+                  "    pm.expect(trovato).to.be.undefined;",
+                  "});",
+                  "",
+                  "pm.test('cliente_eco_id eliminato non compare nella lista', () => {",
+                  "    const ecoId = parseInt(pm.collectionVariables.get('cliente_eco_id'));",
+                  "    const lista = pm.response.json().data;",
+                  "    const trovato = lista.find(c => c.id === ecoId);",
+                  "    pm.expect(trovato).to.be.undefined;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14b — DELETE doppio su stesso id → 404",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti/{{cliente_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti",
+                "{{cliente_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('404 — cliente già soft-deleted non trovato', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('Codice RESOURCE_NOT_FOUND', () => {",
+                  "    pm.expect(pm.response.json().code).to.eql('RESOURCE_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🔒 M04 — Autenticazione & RBAC",
+      "description": "Verifica che chi non ha i permessi riceva 401 o 403.",
+      "item": [
+        {
+          "name": "15 — GET lista senza token → 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('401 Unauthorized — token mancante', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('Codice AUTH_REQUIRED', () => {",
+                  "    pm.expect(pm.response.json().code).to.eql('AUTH_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16 — POST con token Resp. Acquisti → 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_resp_acquisti}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ragione_sociale\": \"Test Rbac Srl\",\n  \"piva_cf\": \"00000000000\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('403 Forbidden — Resp. Acquisti non ha clienti:write', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "pm.test('Codice ACCESS_DENIED', () => {",
+                  "    pm.expect(pm.response.json().code).to.eql('ACCESS_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17 — GET lista con token Resp. Acquisti → 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_resp_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('403 Forbidden — Resp. Acquisti non ha clienti:read', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "pm.test('Codice ACCESS_DENIED', () => {",
+                  "    pm.expect(pm.response.json().code).to.eql('ACCESS_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18 — PATCH con token Resp. Magazzino → 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_resp_magazzino}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ragione_sociale\": \"Tentativo Magazzino\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti",
+                "1"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('403 Forbidden — Resp. Magazzino non ha clienti:write', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "pm.test('Codice ACCESS_DENIED', () => {",
+                  "    pm.expect(pm.response.json().code).to.eql('ACCESS_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "19 — DELETE con token Operatore → 403",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_operatore}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti",
+                "1"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('403 Forbidden — Operatore non ha clienti:delete', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "pm.test('Codice ACCESS_DENIED', () => {",
+                  "    pm.expect(pm.response.json().code).to.eql('ACCESS_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

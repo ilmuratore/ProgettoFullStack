@@ -1,3 +1,0 @@
-$kind: collection
-description: "Esegui questa cartella per prima: crea gli utenti di test (idempotente) e popola i token usati dai test Fornitori."
-order: 1000
