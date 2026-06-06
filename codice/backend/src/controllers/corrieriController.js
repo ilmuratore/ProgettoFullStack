@@ -1,9 +1,3 @@
-// ============================================================
-// corrieriController.js — M05: Anagrafiche Corrieri
-// Estrae parametri, chiama il service, costruisce la response.
-// Nessuna business logic — tutto nel service.
-// ============================================================
-
 const corrieriService = require('../services/corrieriService');
 
 // GET /api/v1/corrieri
@@ -44,7 +38,6 @@ const update = async (req, res, next) => {
         const id = parseInt(req.params.id, 10);
         const { codice, nome, telefono, email } = req.body;
 
-        // PATCH parziale: solo i campi presenti nel body
         const fields = {};
         if (codice   !== undefined) fields.codice   = codice;
         if (nome     !== undefined) fields.nome     = nome;

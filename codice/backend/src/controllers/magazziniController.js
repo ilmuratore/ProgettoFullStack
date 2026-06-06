@@ -1,7 +1,3 @@
-// ============================================================
-// magazziniController.js — M06: Gestione Magazzino
-// ============================================================
-
 const magazziniService = require('../services/magazziniService');
 
 // GET /api/v1/magazzini

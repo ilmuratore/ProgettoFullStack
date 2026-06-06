@@ -1,8 +1,3 @@
-// ============================================================
-// dipendentiService.js — M05: Anagrafiche Dipendenti
-// Business logic. Nessun SQL diretto — tutto delegato al model.
-// ============================================================
-
 const dipendentiModel = require('../models/dipendentiModel');
 
 const throwError = (code, message) => {
@@ -24,7 +19,6 @@ const getById = async (id) => {
     return result.rows[0];
 };
 
-/** codice_fiscale UNIQUE: 23505 → DUPLICATE_ENTRY nell'errorHandler. */
 const create = async ({ nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id }) => {
     const result = await dipendentiModel.create({
         nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id
@@ -48,10 +42,6 @@ const update = async (id, fields) => {
     return result.rows[0];
 };
 
-/**
- * DELETE — hard delete fisico.
- * Safe: spedizioni.corriere_id → ON DELETE SET NULL, nessun blocco FK.
- */
 const deleteDipendente = async (id) => {
     await getById(id);
     await dipendentiModel.remove(id);

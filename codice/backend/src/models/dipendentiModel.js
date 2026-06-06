@@ -1,19 +1,3 @@
-// ============================================================
-// dipendentiModel.js — M05: Anagrafiche Dipendenti
-//
-// Schema DB effettivo (migration 014_create_dipendenti.js):
-//   id, nome TEXT NOT NULL, cognome TEXT NOT NULL,
-//   codice_fiscale TEXT UNIQUE NOT NULL, ruolo_operativo TEXT,
-//   data_assunzione DATE, utente_id INTEGER FK→utenti SET NULL,
-//   created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ
-//
-// NOTA: nessun campo `attivo` → DELETE fisico.
-// spedizioni.corriere_id → dipendenti ON DELETE SET NULL:
-// il DELETE non è bloccato da FK (il DB annulla il riferimento).
-//
-// `ruolo_operativo` = mansione operativa (es. "Magazziniere"),
-// DISTINTO dalla tabella ruoli del sistema RBAC.
-// ============================================================
 
 const pool = require('../config/db');
 
@@ -23,11 +7,6 @@ const COLS = `
     created_at, updated_at
 `;
 
-// -----------------------------------------------------------------
-// READ
-// -----------------------------------------------------------------
-
-/** Lista tutti i dipendenti, ordinati per cognome e nome. */
 const findAll = () =>
     pool.query(
         `SELECT ${COLS}
@@ -35,7 +14,6 @@ const findAll = () =>
          ORDER  BY cognome ASC, nome ASC`
     );
 
-/** Dettaglio dipendente per id. */
 const findById = (id) =>
     pool.query(
         `SELECT ${COLS}
@@ -44,15 +22,7 @@ const findById = (id) =>
         [id]
     );
 
-// -----------------------------------------------------------------
-// WRITE
-// -----------------------------------------------------------------
 
-/**
- * Crea nuovo dipendente.
- * codice_fiscale UNIQUE NOT NULL → 23505 mappato a DUPLICATE_ENTRY nell'errorHandler.
- * utente_id, ruolo_operativo, data_assunzione: opzionali.
- */
 const create = ({ nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id }) =>
     pool.query(
         `INSERT INTO dipendenti
@@ -62,7 +32,7 @@ const create = ({ nome, cognome, codice_fiscale, ruolo_operativo, data_assunzion
         [nome, cognome, codice_fiscale, ruolo_operativo ?? null, data_assunzione ?? null, utente_id ?? null]
     );
 
-/** Aggiornamento parziale tramite COALESCE. */
+
 const update = (id, { nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id }) =>
     pool.query(
         `UPDATE dipendenti
@@ -78,10 +48,7 @@ const update = (id, { nome, cognome, codice_fiscale, ruolo_operativo, data_assun
         [nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id, id]
     );
 
-/**
- * Hard delete fisico.
- * Safe: spedizioni.corriere_id usa ON DELETE SET NULL → nessun blocco FK.
- */
+
 const remove = (id) =>
     pool.query(
         `DELETE FROM dipendenti
@@ -90,6 +57,6 @@ const remove = (id) =>
         [id]
     );
 
-// -----------------------------------------------------------------
+
 
 module.exports = { findAll, findById, create, update, remove };

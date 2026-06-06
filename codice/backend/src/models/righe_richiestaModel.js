@@ -1,18 +1,5 @@
-// ============================================================
-// righe_richiestaModel.js  —  V2  [NUOVO]
-// M16: Righe delle Richieste di Acquisto Ecosistema
-//
-// Dipende da: richieste_acquisto, prodotti
-// ON DELETE CASCADE: le righe vengono eliminate con la richiesta padre.
-// ============================================================
-
 const pool = require('../config/db');
 
-// -----------------------------------------------------------------
-// READ
-// -----------------------------------------------------------------
-
-/** Tutte le righe di una richiesta, con dettaglio prodotto. */
 const findByRichiestaId = (richiesta_id) =>
     pool.query(
         `SELECT
@@ -31,7 +18,6 @@ const findByRichiestaId = (richiesta_id) =>
         [richiesta_id]
     );
 
-/** Singola riga per ID. */
 const findById = (id) =>
     pool.query(
         `SELECT
@@ -49,14 +35,6 @@ const findById = (id) =>
         [id]
     );
 
-// -----------------------------------------------------------------
-// WRITE
-// -----------------------------------------------------------------
-
-/**
- * Inserisce una singola riga nella richiesta.
- * Validazione quantita_richiesta > 0 è enforced dal CHECK in DB.
- */
 const create = ({ richiesta_id, prodotto_id, quantita_richiesta }) =>
     pool.query(
         `INSERT INTO righe_richiesta (richiesta_id, prodotto_id, quantita_richiesta)
@@ -65,10 +43,6 @@ const create = ({ richiesta_id, prodotto_id, quantita_richiesta }) =>
         [richiesta_id, prodotto_id, quantita_richiesta]
     );
 
-/**
- * Inserimento bulk di più righe in una singola query (efficiente per nuove richieste).
- * rows: Array<{ prodotto_id, quantita_richiesta }>
- */
 const createBulk = async (richiesta_id, rows) => {
     if (!rows || rows.length === 0) return { rows: [] };
 
@@ -84,9 +58,6 @@ const createBulk = async (richiesta_id, rows) => {
     );
 };
 
-/**
- * Aggiorna quantità di una riga (solo mentre la richiesta è in BOZZA — validato nel service).
- */
 const updateQuantita = (id, quantita_richiesta) =>
     pool.query(
         `UPDATE righe_richiesta
@@ -96,9 +67,6 @@ const updateQuantita = (id, quantita_richiesta) =>
         [quantita_richiesta, id]
     );
 
-/**
- * Elimina una singola riga (solo mentre la richiesta è in BOZZA — validato nel service).
- */
 const remove = (id) =>
     pool.query(
         `DELETE FROM righe_richiesta
@@ -107,10 +75,6 @@ const remove = (id) =>
         [id]
     );
 
-/**
- * Elimina tutte le righe di una richiesta.
- * Usato per sostituire l'intero carrello della bozza.
- */
 const removeByRichiestaId = (richiesta_id) =>
     pool.query(
         `DELETE FROM righe_richiesta
@@ -119,13 +83,10 @@ const removeByRichiestaId = (richiesta_id) =>
         [richiesta_id]
     );
 
-// -----------------------------------------------------------------
 
 module.exports = {
-    // Read
     findByRichiestaId,
     findById,
-    // Write
     create,
     createBulk,
     updateQuantita,

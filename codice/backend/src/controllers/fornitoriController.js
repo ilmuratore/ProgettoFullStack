@@ -62,9 +62,6 @@ const update = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
         const { ragione_sociale, piva, indirizzo, email, telefono, sito_web, descrizione_aziendale } = req.body;
-
-        // PATCH parziale: includo solo i campi effettivamente presenti nel body.
-        // source non viene mai letto qui → non può raggiungere il service/model.
         const fields = {};
         if (ragione_sociale !== undefined) fields.ragione_sociale = ragione_sociale;
         if (piva !== undefined) fields.piva = piva;

@@ -1,8 +1,3 @@
-// ============================================================
-// corrieriService.js — M05: Anagrafiche Corrieri
-// Business logic. Nessun SQL diretto — tutto delegato al model.
-// ============================================================
-
 const corrieriModel = require('../models/corrieriModel');
 
 const throwError = (code, message) => {
@@ -24,10 +19,6 @@ const getById = async (id) => {
     return result.rows[0];
 };
 
-/**
- * CREATE — codice UNIQUE gestito a livello DB.
- * PG_SQLSTATE 23505 → DUPLICATE_ENTRY nell'errorHandler.
- */
 const create = async ({ codice, nome, telefono, email }) => {
     const result = await corrieriModel.create({ codice, nome, telefono, email });
     return result.rows[0];
@@ -47,10 +38,6 @@ const update = async (id, fields) => {
     return result.rows[0];
 };
 
-/**
- * DELETE — soft delete (attivo = false).
- * Nessun check FK: spedizioni referisce dipendenti, non corrieri.
- */
 const deleteCorriere = async (id) => {
     await getById(id);
     await corrieriModel.remove(id);

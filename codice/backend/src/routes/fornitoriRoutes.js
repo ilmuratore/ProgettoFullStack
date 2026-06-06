@@ -6,9 +6,6 @@ const validate = require("../middleware/validate");
 
 const router = express.Router();
 
-
-// ragione_sociale e piva obbligatori; resto opzionale.
-// 'source' NON è presente: non viene mai accettato dal body utente.
 const createBlueprint = {
     ragione_sociale:       { required: true,  type: "string" },
     piva:                  { required: true,  type: "string" },
@@ -18,9 +15,6 @@ const createBlueprint = {
     sito_web:              { required: false, type: "string" },
     descrizione_aziendale: { required: false, type: "string" }
 };
-
-// PATCH parziale: tutti opzionali. Almeno un campo presente → controllo nel service.
-// 'source' NON è presente: non viene mai accettato dal body utente.
 const updateBlueprint = {
     ragione_sociale:       { required: false, type: "string" },
     piva:                  { required: false, type: "string" },

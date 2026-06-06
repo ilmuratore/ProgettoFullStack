@@ -1,9 +1,3 @@
-// ============================================================
-// errorHandler.js — aggiornato M05
-// Aggiunto: CORRIERE_CON_SPEDIZIONI (409) — riservato per futura
-// implementazione hard-delete con FK check quando M10 è completo.
-// ============================================================
-
 const errorMessages = {
     VALIDATION_ERROR:           'Dati richiesta non validi',
     AUTH_REQUIRED:              'Autenticazione richiesta',

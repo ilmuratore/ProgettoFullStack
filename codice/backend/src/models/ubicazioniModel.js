@@ -76,7 +76,6 @@ const create = ({ magazzino_id, corsia, scaffale, codice, attivo = true, tempera
         [magazzino_id, corsia, scaffale, codice, attivo, temperatura_controllata]
     );
 
-// Aggiorna solo temperatura_controllata — M06
 const updateTemperatura = (id, temperatura_controllata) =>
     pool.query(
         `UPDATE ubicazioni

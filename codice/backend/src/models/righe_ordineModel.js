@@ -1,6 +1,5 @@
 const pool = require('../config/db');
 
-// CREATE
 const create = (data) => {
     const {
         ordine_id,
@@ -20,7 +19,6 @@ const create = (data) => {
     );
 };
 
-// FIND BY ORDINE
 const findByOrdine = (ordine_id) => {
     return pool.query(
         `
@@ -33,7 +31,6 @@ const findByOrdine = (ordine_id) => {
     );
 };
 
-// FIND BY ID
 const findById = (id) => {
     return pool.query(
         `SELECT * FROM righe_ordine WHERE id = $1;`,
@@ -41,7 +38,6 @@ const findById = (id) => {
     );
 };
 
-// UPDATE
 const update = (id, data) => {
     const { quantita, prezzo_unitario } = data;
 
@@ -57,7 +53,6 @@ const update = (id, data) => {
     );
 };
 
-// DELETE
 const remove = (id) => {
     return pool.query(
         `

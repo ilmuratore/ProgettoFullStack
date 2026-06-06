@@ -33,8 +33,6 @@ const findAttivi = () =>
          ORDER BY nome`
     );
 
-// Vista albero M06 — ubicazioni con contatore giacenze tramite LEFT JOIN.
-// Restituisce totale_giacenza = 0 se nessuna giacenza presente (M07 non ancora attivo).
 const findUbicazioniByMagazzino = (magazzino_id) =>
     pool.query(
         `SELECT u.id,

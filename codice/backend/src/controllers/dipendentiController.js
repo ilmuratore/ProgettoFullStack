@@ -1,9 +1,3 @@
-// ============================================================
-// dipendentiController.js — M05: Anagrafiche Dipendenti
-// Estrae parametri, chiama il service, costruisce la response.
-// Nessuna business logic — tutto nel service.
-// ============================================================
-
 const dipendentiService = require('../services/dipendentiService');
 
 // GET /api/v1/dipendenti
@@ -51,7 +45,6 @@ const update = async (req, res, next) => {
         const id = parseInt(req.params.id, 10);
         const { nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id } = req.body;
 
-        // PATCH parziale: solo i campi presenti nel body
         const fields = {};
         if (nome            !== undefined) fields.nome            = nome;
         if (cognome         !== undefined) fields.cognome         = cognome;

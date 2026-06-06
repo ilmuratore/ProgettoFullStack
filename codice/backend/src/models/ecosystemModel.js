@@ -1,28 +1,6 @@
-// ============================================================
-// ecosystemModel.js  —  V2  [NUOVO]
-// M13: Ricerca Globale Ecosistema
-// M14: Scheda Fornitore Ecosistema
-// M15: Scheda Prodotto Ecosistema
-//
-// Questo model centralizza tutte le query del layer ecosistema B2B.
-// Non crea nuove tabelle: usa join su tabelle esistenti.
-// Endpoint: /api/v1/ecosystem/...
-// ============================================================
-
 const pool = require('../config/db');
 
-// -----------------------------------------------------------------
-// M13 — RICERCA GLOBALE
-// -----------------------------------------------------------------
 
-/**
- * Ricerca globale real-time su prodotti e fornitori.
- * Restituisce risultati categorizzati: { prodotti: [...], fornitori: [...] }
- * Supporta debounce 300ms lato frontend.
- *
- * @param {string} q - termine di ricerca (min 2 caratteri consigliato)
- * @returns {Promise<{ prodotti: Array, fornitori: Array }>}
- */
 const search = async (q) => {
     const term = `%${q}%`;
 
@@ -67,15 +45,7 @@ const search = async (q) => {
     };
 };
 
-// -----------------------------------------------------------------
-// M14 — SCHEDA FORNITORE ECOSISTEMA
-// -----------------------------------------------------------------
 
-/**
- * Scheda completa fornitore ecosistema.
- * Include: dati aziendali, catalogo prodotti (da storico PO), contatti,
- *          ultimi 10 richieste acquisto verso questo fornitore.
- */
 const getSchedaFornitore = (fornitore_id) =>
     pool.query(
         `SELECT
@@ -141,10 +111,6 @@ const getSchedaFornitore = (fornitore_id) =>
         [fornitore_id]
     );
 
-/**
- * Catalogo prodotti di un fornitore (endpoint separato per paginazione futura).
- * GET /api/v1/ecosystem/fornitori/:id/prodotti
- */
 const getCatalogoFornitore = (fornitore_id) =>
     pool.query(
         `SELECT DISTINCT
@@ -170,14 +136,7 @@ const getCatalogoFornitore = (fornitore_id) =>
         [fornitore_id]
     );
 
-// -----------------------------------------------------------------
-// M15 — SCHEDA PRODOTTO ECOSISTEMA
-// -----------------------------------------------------------------
 
-/**
- * Scheda dettagliata prodotto ecosistema.
- * Include: dati prodotto, disponibilità per magazzino, fornitore principale.
- */
 const getSchedaProdotto = (prodotto_id) =>
     pool.query(
         `SELECT
@@ -242,10 +201,7 @@ const getSchedaProdotto = (prodotto_id) =>
         [prodotto_id]
     );
 
-/**
- * Disponibilità interna per magazzino di un prodotto.
- * GET /api/v1/ecosystem/prodotti/:id/disponibilita
- */
+
 const getDisponibilitaProdotto = (prodotto_id) =>
     pool.query(
         `SELECT
@@ -265,15 +221,12 @@ const getDisponibilitaProdotto = (prodotto_id) =>
         [prodotto_id]
     );
 
-// -----------------------------------------------------------------
 
 module.exports = {
-    // M13 — Ricerca globale
+
     search,
-    // M14 — Scheda fornitore
     getSchedaFornitore,
     getCatalogoFornitore,
-    // M15 — Scheda prodotto
     getSchedaProdotto,
     getDisponibilitaProdotto
 };

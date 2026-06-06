@@ -1,19 +1,3 @@
-// ============================================================
-// fornitoriModel.js  —  V2
-// M03: Anagrafiche "I nostri Fornitori"
-// M14: Scheda Fornitore Ecosistema
-//
-// Modifiche V2:
-//   + source TEXT ('manual'|'ecosystem') — regola visibilità azione Modifica
-//   + sito_web TEXT
-//   + descrizione_aziendale TEXT
-//   + findBySource(source) — filtra per source
-//   + findEcosistema() — solo fornitori ecosistema (scheda M14)
-//   + findConCatalogo(id) — scheda fornitore con prodotti associati
-//   ~ create() — include source (default 'manual')
-//   ~ update() — solo per source=manual (enforcement nel service/controller)
-//   ~ remove() — soft delete; NON rimuove dall'ecosistema globale
-// ============================================================
 
 const pool = require('../config/db');
 
@@ -33,11 +17,6 @@ const BASE_COLS = `
     f.updated_at
 `;
 
-// -----------------------------------------------------------------
-// READ
-// -----------------------------------------------------------------
-
-/** Tutti i fornitori (attivi e non) — uso amministrativo. */
 const findAll = () =>
     pool.query(
         `SELECT ${BASE_COLS}
@@ -45,7 +24,6 @@ const findAll = () =>
          ORDER  BY f.ragione_sociale ASC`
     );
 
-/** Solo fornitori attivi — lista "I nostri Fornitori" (M03). */
 const findAttivi = () =>
     pool.query(
         `SELECT ${BASE_COLS}
@@ -54,7 +32,7 @@ const findAttivi = () =>
          ORDER  BY f.ragione_sociale ASC`
     );
 
-/** Filtra per source ('manual' | 'ecosystem'). */
+
 const findBySource = (source) =>
     pool.query(
         `SELECT ${BASE_COLS}
@@ -65,13 +43,10 @@ const findBySource = (source) =>
         [source]
     );
 
-/** Solo fornitori ecosistema attivi — usato in M14 e nelle dropdown acquisti. */
 const findEcosistema = () => findBySource('ecosystem');
 
-/** Solo fornitori creati manualmente — usati nelle form di modifica. */
 const findManuali = () => findBySource('manual');
 
-/** Dettaglio singolo fornitore per ID. */
 const findById = (id) =>
     pool.query(
         `SELECT ${BASE_COLS}
@@ -80,7 +55,6 @@ const findById = (id) =>
         [id]
     );
 
-/** Ricerca per P.IVA (univoca). */
 const findByPiva = (piva) =>
     pool.query(
         `SELECT ${BASE_COLS}
@@ -89,14 +63,6 @@ const findByPiva = (piva) =>
         [piva]
     );
 
-/**
- * Scheda Fornitore Ecosistema (M14).
- * Restituisce il fornitore con i prodotti del suo catalogo
- * (join su righe_po per ricavare i prodotti ordinati in passato,
- *  oppure potrai estenderlo con una tabella catalogo_fornitore in V3).
- *
- * Attualmente: recupera i prodotti distinti ordinati tramite PO a questo fornitore.
- */
 const findSchedaEcosistema = (id) =>
     pool.query(
         `SELECT
@@ -132,9 +98,6 @@ const findSchedaEcosistema = (id) =>
         [id]
     );
 
-/**
- * Ricerca full-text su ragione_sociale e piva — alimenta M13 Ricerca Globale.
- */
 const search = (q) =>
     pool.query(
         `SELECT
@@ -151,7 +114,6 @@ const search = (q) =>
         [`%${q}%`]
     );
 
-// Contatti
 const findContattiByFornitoreId = (fornitore_id) =>
     pool.query(
         `SELECT id, fornitore_id, nome, ruolo, email, telefono
@@ -161,14 +123,6 @@ const findContattiByFornitoreId = (fornitore_id) =>
         [fornitore_id]
     );
 
-// -----------------------------------------------------------------
-// WRITE
-// -----------------------------------------------------------------
-
-/**
- * Crea fornitore.
- * source: default 'manual'. Per inserimenti dall'ecosistema usare source='ecosystem'.
- */
 const create = ({ ragione_sociale, piva, indirizzo, email, telefono, lead_time_giorni,
                   source = 'manual', sito_web, descrizione_aziendale, attivo = true }) =>
     pool.query(
@@ -182,11 +136,6 @@ const create = ({ ragione_sociale, piva, indirizzo, email, telefono, lead_time_g
          source, sito_web, descrizione_aziendale, attivo]
     );
 
-/**
- * Aggiorna fornitore.
- * ATTENZIONE: il service deve verificare source='manual' prima di chiamare questa funzione.
- * I fornitori ecosystem non sono modificabili (403 ACCESS_DENIED nel service).
- */
 const update = (id, { ragione_sociale, piva, indirizzo, email, telefono, lead_time_giorni,
                       sito_web, descrizione_aziendale, attivo }) =>
     pool.query(
@@ -208,10 +157,6 @@ const update = (id, { ragione_sociale, piva, indirizzo, email, telefono, lead_ti
          sito_web, descrizione_aziendale, attivo, id]
     );
 
-/**
- * Soft delete — rimuove dalla lista "I nostri Fornitori".
- * NON elimina dall'ecosistema globale (il record rimane con attivo=false).
- */
 const remove = (id) =>
     pool.query(
         `UPDATE fornitori
@@ -222,7 +167,6 @@ const remove = (id) =>
         [id]
     );
 
-// Contatti
 const createContatto = ({ fornitore_id, nome, ruolo, email, telefono }) =>
     pool.query(
         `INSERT INTO contatti_fornitori (fornitore_id, nome, ruolo, email, telefono)
@@ -247,10 +191,8 @@ const updateContatto = (id, { nome, ruolo, email, telefono }) =>
 const removeContatto = (id) =>
     pool.query('DELETE FROM contatti_fornitori WHERE id = $1 RETURNING id', [id]);
 
-// -----------------------------------------------------------------
 
 module.exports = {
-    // Read
     findAll,
     findAttivi,
     findBySource,
@@ -261,7 +203,6 @@ module.exports = {
     findSchedaEcosistema,
     search,
     findContattiByFornitoreId,
-    // Write
     create,
     update,
     remove,

@@ -1,6 +1,5 @@
 const pool = require('../config/db');
 
-// CREATE
 const create = (data) => {
     const {
         cliente_id,
@@ -21,7 +20,6 @@ const create = (data) => {
     );
 };
 
-// FIND ALL
 const findAll = () => {
     return pool.query(`
         SELECT *
@@ -30,7 +28,6 @@ const findAll = () => {
     `);
 };
 
-// FIND BY ID
 const findById = (id) => {
     return pool.query(
         `SELECT * FROM ordini WHERE id = $1;`,
@@ -38,7 +35,6 @@ const findById = (id) => {
     );
 };
 
-// UPDATE (solo campi modificabili)
 const update = (id, data) => {
     const { data_consegna_richiesta, note } = data;
 
@@ -54,7 +50,6 @@ const update = (id, data) => {
     );
 };
 
-// UPDATE STATO COMMERCIALE
 const updateStato = (id, stato) => {
     return pool.query(
         `
@@ -67,7 +62,6 @@ const updateStato = (id, stato) => {
     );
 };
 
-// UPDATE STATO PICKING
 const updateStatoPicking = (id, stato_picking) => {
     return pool.query(
         `
@@ -80,7 +74,6 @@ const updateStatoPicking = (id, stato_picking) => {
     );
 };
 
-// DELETE (hard delete)
 const remove = (id) => {
     return pool.query(
         `

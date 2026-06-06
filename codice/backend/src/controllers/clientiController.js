@@ -1,16 +1,4 @@
-// ============================================================
-// clientiController.js  —  V2
-// M04: Anagrafiche "I nostri Clienti"
-//
-// Handler HTTP puri:
-//   - estrae parametri da req.params / req.body
-//   - chiama il service
-//   - costruisce la response standardizzata
-//   - zero business logic, zero SQL
-// ============================================================
-
 const clientiService = require('../services/clientiService');
-
 
 // GET /api/v1/clienti
 const getAll = async (req, res, next) => {
@@ -46,7 +34,6 @@ const getById = async (req, res, next) => {
 // POST /api/v1/clienti
 const create = async (req, res, next) => {
     try {
-        // Estrai solo i campi ammessi — source NON viene letto qui
         const { ragione_sociale, piva_cf, email, telefono } = req.body;
 
         const cliente = await clientiService.create({
@@ -71,12 +58,7 @@ const update = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
 
-        // Estrai solo i campi modificabili — source NON viene mai letto qui
         const { ragione_sociale, piva_cf, email, telefono } = req.body;
-
-        // Costruisce PATCH parziale: includo solo i campi effettivamente
-        // presenti nel body. source non viene mai letto → non può raggiungere
-        // il service/model anche se incluso nel body.
         const fields = {};
         if (ragione_sociale !== undefined) fields.ragione_sociale = ragione_sociale;
         if (piva_cf          !== undefined) fields.piva_cf         = piva_cf;
@@ -101,8 +83,6 @@ const elimina = async (req, res, next) => {
         const id = parseInt(req.params.id, 10);
 
         await clientiService.deleteCliente(id);
-
-        // 204 No Content — nessun body nella risposta
         return res.status(204).send();
     } catch (err) {
         return next(err);

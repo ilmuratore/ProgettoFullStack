@@ -1,14 +1,3 @@
-// ============================================================
-// clientiModel.js  —  V2
-// M04: Anagrafiche "I nostri Clienti"
-//
-// Modifiche V2:
-//   + source TEXT ('manual'|'ecosystem') — regola visibilità azione Modifica
-//   + findStorico(id) — storico operazioni completo per modale Visualizza
-//   + findBySource(source) — filtra per source
-//   ~ remove() — soft delete: mantiene lo storico transazionale
-// ============================================================
-
 const pool = require('../config/db');
 
 const BASE_COLS = `
@@ -23,11 +12,6 @@ const BASE_COLS = `
     c.updated_at
 `;
 
-// -----------------------------------------------------------------
-// READ
-// -----------------------------------------------------------------
-
-/** Tutti i clienti (inclusi non attivi) — uso amministrativo. */
 const findAll = () =>
     pool.query(
         `SELECT ${BASE_COLS}
@@ -35,7 +19,6 @@ const findAll = () =>
          ORDER  BY c.ragione_sociale ASC`
     );
 
-/** Solo clienti attivi — lista "I nostri Clienti" (M04). */
 const findAttivi = () =>
     pool.query(
         `SELECT ${BASE_COLS}
@@ -44,7 +27,7 @@ const findAttivi = () =>
          ORDER  BY c.ragione_sociale ASC`
     );
 
-/** Filtra per source ('manual' | 'ecosystem'). */
+
 const findBySource = (source) =>
     pool.query(
         `SELECT ${BASE_COLS}
@@ -55,7 +38,6 @@ const findBySource = (source) =>
         [source]
     );
 
-/** Dettaglio singolo cliente per ID. */
 const findById = (id) =>
     pool.query(
         `SELECT ${BASE_COLS}
@@ -64,7 +46,6 @@ const findById = (id) =>
         [id]
     );
 
-/** Cerca per P.IVA / Codice Fiscale (univoco). */
 const findByPivaCf = (piva_cf) =>
     pool.query(
         `SELECT ${BASE_COLS}
@@ -73,14 +54,7 @@ const findByPivaCf = (piva_cf) =>
         [piva_cf]
     );
 
-/**
- * Storico operazioni completo per la modale Visualizza (M04).
- * Restituisce:
- *  - dati cliente e destinazioni
- *  - ultimi 50 ordini con stato, importo, data
- *  - ultime 20 spedizioni con stato
- *  - fatturato totale e data ultimo acquisto
- */
+
 const findStorico = (id) =>
     pool.query(
         `SELECT
@@ -155,14 +129,7 @@ const findStorico = (id) =>
         [id]
     );
 
-// -----------------------------------------------------------------
-// WRITE
-// -----------------------------------------------------------------
 
-/**
- * Crea nuovo cliente.
- * source: default 'manual'. Per inserimenti dall'ecosistema: source='ecosystem'.
- */
 const create = ({ ragione_sociale, piva_cf, email, telefono, source = 'manual', attivo = true }) =>
     pool.query(
         `INSERT INTO clienti (ragione_sociale, piva_cf, email, telefono, source, attivo)
@@ -171,11 +138,7 @@ const create = ({ ragione_sociale, piva_cf, email, telefono, source = 'manual', 
         [ragione_sociale, piva_cf, email, telefono, source, attivo]
     );
 
-/**
- * Aggiorna cliente.
- * ATTENZIONE: il service deve verificare source='manual' prima di chiamare questa funzione.
- * I clienti ecosystem non sono modificabili (403 ACCESS_DENIED nel service).
- */
+
 const update = (id, { ragione_sociale, piva_cf, email, telefono, attivo }) =>
     pool.query(
         `UPDATE clienti
@@ -190,12 +153,7 @@ const update = (id, { ragione_sociale, piva_cf, email, telefono, attivo }) =>
         [ragione_sociale, piva_cf, email, telefono, attivo, id]
     );
 
-/**
- * Soft delete — rimuove dalla lista "I nostri Clienti".
- * Lo storico transazionale (ordini, spedizioni, DDT) viene preservato
- * per integrità dati: attivo=false impedisce al cliente di apparire
- * nelle liste operative ma tutti i riferimenti rimangono validi.
- */
+
 const remove = (id) =>
     pool.query(
         `UPDATE clienti
@@ -206,17 +164,14 @@ const remove = (id) =>
         [id]
     );
 
-// -----------------------------------------------------------------
 
 module.exports = {
-    // Read
     findAll,
     findAttivi,
     findBySource,
     findById,
     findByPivaCf,
     findStorico,
-    // Write
     create,
     update,
     remove

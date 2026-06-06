@@ -1,7 +1,3 @@
-// ============================================================
-// ubicazioniController.js — M06: Gestione Ubicazioni
-// ============================================================
-
 const ubicazioniService = require('../services/ubicazioniService');
 
 // GET /api/v1/ubicazioni/:id

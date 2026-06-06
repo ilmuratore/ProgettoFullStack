@@ -153,8 +153,6 @@ const softDelete = (id) => {
     );
 };
 
-/*Remove
-*/
 const remove = (id) =>
     pool.query(
         `UPDATE prodotti
@@ -165,10 +163,8 @@ const remove = (id) =>
         [id]
     );
 
-// -----------------------------------------------------------------
 
 module.exports = {
-    // Read
     findAll,
     findAttivi,
     findListino,
@@ -176,7 +172,6 @@ module.exports = {
     findBySku,
     findByCategoriaId,
     search,
-    // Write
     create,
     update,
     updatePrezzo,
