@@ -1,0 +1,25 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/clienti/{{cliente_eco_id}}"
+method: PATCH
+headers:
+  Authorization: Bearer {{token_admin}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "ragione_sociale": "Modifica Non Consentita"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('403 Forbidden (protezione backend source=ecosystem)', () => {
+          pm.response.to.have.status(403);
+      });
+
+      pm.test('Codice ACCESS_DENIED', () => {
+          const json = pm.response.json();
+          pm.expect(json.code).to.eql('ACCESS_DENIED');
+      });
+    language: text/javascript
+order: 8000

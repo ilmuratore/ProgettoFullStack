@@ -1,0 +1,3 @@
+$kind: collection
+description: Verifica che chi non ha i permessi riceva 401 o 403.
+order: 4000

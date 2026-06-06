@@ -8,6 +8,7 @@ cloudResources:
   collections:
     ..\postman\collections\LogiChain V2 - M02 Prodotti: 211a26d5-160b-4eaf-b75a-73c8e2a340e5
     ..\postman\collections\LogiChain V2 — M03 Fornitori: 0a141ab9-9e77-47b7-b5b8-20ee9fc2926b
+    ..\postman\collections\LogiChain V2 — M04 Clienti: 04059bcf-9213-4ed4-b72a-6feb0ba99e9c
 
 # All resources in the `postman/` folder are automatically registered in Local View.
 # Point to additional files outside the `postman/` folder to register them individually. Example:

@@ -1,0 +1,23 @@
+$kind: collection
+name: LogiChain V2 — M04 Clienti
+description: |-
+  Collection completa per il modulo M04 — Anagrafiche: I nostri Clienti.
+
+  ⚠️  SETUP PRIMA DI ESEGUIRE:
+  1. Imposta le variabili d'ambiente (vedi tab Variables)
+  2. Ottieni i token via POST /api/v1/auth/login per Admin, Resp. Acquisti, Operatore
+  3. Inserisci un cliente ecosystem via psql:
+     INSERT INTO clienti (ragione_sociale, piva_cf, email, source)
+     VALUES ('Ecosistema Client Srl', '88888888888', 'eco@client.it', 'ecosystem');
+     Salva il suo id come {{cliente_eco_id}}
+
+  ORDINE CONSIGLIATO: eseguire i test dall'alto verso il basso nell'ordine della folder.
+variables:
+  base_url: http://localhost:3000
+  token_admin: ""
+  token_resp_acquisti: ""
+  token_resp_magazzino: ""
+  token_operatore: ""
+  cliente_id: ""
+  cliente_eco_id: ""
+  cliente_gamma_id: ""

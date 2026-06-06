@@ -46,7 +46,7 @@ app.use('/api/v1/prodotti', require('./src/routes/prodottiRoutes'));
 app.use('/api/v1/fornitori',  require('./src/routes/fornitoriRoutes'));
 
 // M04 — I nostri Clienti
-// app.use('/api/v1/clienti',    require('./src/routes/clientiRoutes'));
+app.use('/api/v1/clienti',    require('./src/routes/clientiRoutes'));
 
 // M05 — Corrieri & Dipendenti
 // app.use('/api/v1/dipendenti', require('./src/routes/dipendentiRoutes'));
