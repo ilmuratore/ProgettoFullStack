@@ -1,0 +1,3 @@
+$kind: collection
+description: I 18 test della M03 in sequenza. Richiede la cartella Setup eseguita e {{fornitore_eco_id}} impostata.
+order: 2000

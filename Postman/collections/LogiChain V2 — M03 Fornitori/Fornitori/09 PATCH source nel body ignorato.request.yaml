@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/fornitori/{{fornitore_id}}"
+method: PATCH
+headers:
+  Authorization: Bearer {{token_admin}}
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "ragione_sociale": "Nuovo nome",
+      "source": "ecosystem"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const f = pm.response.json().data;
+      pm.test("source non modificato -> 'manual'", () => pm.expect(f.source).to.eql('manual'));
+      pm.test('ragione_sociale aggiornata', () => pm.expect(f.ragione_sociale).to.eql('Nuovo nome'));
+    language: text/javascript
+order: 9000

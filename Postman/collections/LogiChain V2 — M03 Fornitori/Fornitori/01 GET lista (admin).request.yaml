@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/fornitori"
+method: GET
+headers:
+  Authorization: Bearer {{token_admin}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const d = pm.response.json().data;
+      pm.test('data è un array', () => pm.expect(d).to.be.an('array'));
+      pm.test("ogni fornitore espone 'source'", () => d.forEach(f => pm.expect(f).to.have.property('source')));
+    language: text/javascript
+order: 1000

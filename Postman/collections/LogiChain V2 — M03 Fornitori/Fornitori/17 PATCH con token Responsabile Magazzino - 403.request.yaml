@@ -1,0 +1,20 @@
+$kind: http-request
+name: 17 PATCH con token Responsabile Magazzino -> 403
+url: "{{base_url}}/api/v1/fornitori/{{fornitore_id}}"
+method: PATCH
+headers:
+  Authorization: Bearer {{token_resp_magazzino}}
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "ragione_sociale": "X"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 403', () => pm.response.to.have.status(403));
+      pm.test('code = ACCESS_DENIED', () => pm.expect(pm.response.json().code).to.eql('ACCESS_DENIED'));
+    language: text/javascript
+order: 17000

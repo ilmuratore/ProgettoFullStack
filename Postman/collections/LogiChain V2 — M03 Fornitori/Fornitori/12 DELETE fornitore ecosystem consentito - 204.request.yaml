@@ -1,0 +1,17 @@
+$kind: http-request
+name: 12 DELETE fornitore ecosystem consentito -> 204
+url: "{{base_url}}/api/v1/fornitori/{{fornitore_eco_id}}"
+method: DELETE
+headers:
+  Authorization: Bearer {{token_admin}}
+scripts:
+  - type: beforeRequest
+    code: |-
+      if (!pm.collectionVariables.get('fornitore_eco_id')) {
+          throw new Error("Imposta prima la variabile {{fornitore_eco_id}} — vedi la SQL nella descrizione della collection.");
+      }
+    language: text/javascript
+  - type: afterResponse
+    code: pm.test('Status 204 (delete consentito anche per ecosystem)', () => pm.response.to.have.status(204));
+    language: text/javascript
+order: 12000

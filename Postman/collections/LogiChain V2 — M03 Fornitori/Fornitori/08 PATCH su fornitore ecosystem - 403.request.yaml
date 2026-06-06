@@ -1,0 +1,26 @@
+$kind: http-request
+name: 08 PATCH su fornitore ecosystem -> 403
+url: "{{base_url}}/api/v1/fornitori/{{fornitore_eco_id}}"
+method: PATCH
+headers:
+  Authorization: Bearer {{token_admin}}
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "ragione_sociale": "Modifica"
+    }
+scripts:
+  - type: beforeRequest
+    code: |-
+      if (!pm.collectionVariables.get('fornitore_eco_id')) {
+          throw new Error("Imposta prima la variabile {{fornitore_eco_id}} — vedi la SQL nella descrizione della collection.");
+      }
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('Status 403', () => pm.response.to.have.status(403));
+      pm.test('code = ACCESS_DENIED', () => pm.expect(pm.response.json().code).to.eql('ACCESS_DENIED'));
+    language: text/javascript
+order: 8000
