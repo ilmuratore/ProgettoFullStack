@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/clienti/{{cliente_eco_id}}"
+method: DELETE
+headers:
+  Authorization: Bearer {{token_admin}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('204 No Content — soft delete ecosystem consentito (FA D9)', () => {
+          pm.response.to.have.status(204);
+      });
+
+      pm.test('Body vuoto', () => {
+          pm.expect(pm.response.text()).to.eql('');
+      });
+    language: text/javascript
+order: 1000

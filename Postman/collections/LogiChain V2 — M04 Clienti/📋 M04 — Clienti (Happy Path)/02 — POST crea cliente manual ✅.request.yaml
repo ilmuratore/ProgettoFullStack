@@ -1,0 +1,46 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/clienti"
+method: POST
+headers:
+  Authorization: Bearer {{token_admin}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "ragione_sociale": "Beta Spa",
+      "piva_cf": "98765432101",
+      "email": "info@beta.it",
+      "telefono": "0298765432"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('201 Created', () => pm.response.to.have.status(201));
+
+      pm.test('Struttura risposta corretta', () => {
+          const json = pm.response.json();
+          pm.expect(json.status).to.eql('success');
+          pm.expect(json.data).to.be.an('object');
+      });
+
+      pm.test('source è manual (mai dal body)', () => {
+          const json = pm.response.json();
+          pm.expect(json.data.source).to.eql('manual');
+      });
+
+      pm.test('Campi obbligatori presenti', () => {
+          const d = pm.response.json().data;
+          pm.expect(d).to.have.property('id');
+          pm.expect(d).to.have.property('ragione_sociale');
+          pm.expect(d).to.have.property('piva_cf');
+      });
+
+      // Salva id per i test successivi
+      const id = pm.response.json().data?.id;
+      if (id) {
+          pm.collectionVariables.set('cliente_id', id);
+          console.log('✅ cliente_id salvato:', id);
+      }
+    language: text/javascript
+order: 2000

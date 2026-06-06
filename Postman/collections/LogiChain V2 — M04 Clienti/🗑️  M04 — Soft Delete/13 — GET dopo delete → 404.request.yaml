@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/clienti/{{cliente_id}}"
+method: GET
+headers:
+  Authorization: Bearer {{token_admin}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('404 — cliente eliminato non trovato (attivo=false)', () => {
+          pm.response.to.have.status(404);
+      });
+
+      pm.test('Codice RESOURCE_NOT_FOUND', () => {
+          pm.expect(pm.response.json().code).to.eql('RESOURCE_NOT_FOUND');
+      });
+    language: text/javascript
+order: 3000

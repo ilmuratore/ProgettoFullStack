@@ -1,0 +1,3 @@
+$kind: collection
+description: Test delete. Vanno eseguiti DOPO il blocco Happy Path perché usano cliente_id già creato.
+order: 3000

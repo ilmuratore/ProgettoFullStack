@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/clienti/1"
+method: PATCH
+headers:
+  Authorization: Bearer {{token_resp_magazzino}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "ragione_sociale": "Tentativo Magazzino"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('403 Forbidden — Resp. Magazzino non ha clienti:write', () => {
+          pm.response.to.have.status(403);
+      });
+
+      pm.test('Codice ACCESS_DENIED', () => {
+          pm.expect(pm.response.json().code).to.eql('ACCESS_DENIED');
+      });
+    language: text/javascript
+order: 4000
