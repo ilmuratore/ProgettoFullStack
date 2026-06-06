@@ -1,0 +1,22 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/fornitori/{{fornitore_id}}"
+method: PATCH
+headers:
+  Authorization: Bearer {{token_admin}}
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "telefono": "0298765432",
+      "sito_web": "https://acme.it"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const f = pm.response.json().data;
+      pm.test('telefono aggiornato', () => pm.expect(f.telefono).to.eql('0298765432'));
+      pm.test('sito_web aggiornato', () => pm.expect(f.sito_web).to.eql('https://acme.it'));
+    language: text/javascript
+order: 7000

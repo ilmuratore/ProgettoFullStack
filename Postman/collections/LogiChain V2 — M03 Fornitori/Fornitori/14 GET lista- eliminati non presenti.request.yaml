@@ -1,0 +1,17 @@
+$kind: http-request
+name: "14 GET lista: eliminati non presenti"
+url: "{{base_url}}/api/v1/fornitori"
+method: GET
+headers:
+  Authorization: Bearer {{token_admin}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status 200', () => pm.response.to.have.status(200));
+      const d = pm.response.json().data;
+      const delId = Number(pm.collectionVariables.get('fornitore_id'));
+      const ecoId = Number(pm.collectionVariables.get('fornitore_eco_id'));
+      pm.test('fornitore manual eliminato assente', () => pm.expect(d.some(f => f.id === delId)).to.be.false);
+      pm.test('fornitore ecosystem eliminato assente', () => pm.expect(d.some(f => f.id === ecoId)).to.be.false);
+    language: text/javascript
+order: 14000

@@ -1,0 +1,23 @@
+$kind: http-request
+name: 10 - PATCH solo nome -> 200 (data_agg_prezzo invariata)
+url: "{{baseUrl}}/api/v1/prodotti/{{prodotto_id}}"
+method: PATCH
+headers:
+  Authorization: Bearer {{token_admin}}
+body:
+  type: json
+  content: |-
+    {
+      "nome": "Vite M6x20 ZINC"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      var b = pm.response.json();
+      pm.test('10 PATCH solo nome -> 200', function () { pm.response.to.have.status(200); });
+      pm.test('nome aggiornato', function () { pm.expect(b.data.nome).to.eql('Vite M6x20 ZINC'); });
+      pm.test('data_agg_prezzo INVARIATA (trigger non scatta)', function () {
+        pm.expect(b.data.data_agg_prezzo).to.eql(pm.collectionVariables.get('data_agg_after_price'));
+      });
+    language: text/javascript
+order: 10000

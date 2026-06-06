@@ -2,9 +2,12 @@
 workspace:
   id: 83638359-00f4-40ba-839d-008428b134e8
 
+# Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
+
 cloudResources:
   collections:
-    ..\postman\collections\LogiChain V2 - M02 Prodotti: c4348bb0-0ba5-4882-8c54-4aec75f61bfe
+    ..\postman\collections\LogiChain V2 - M02 Prodotti: 211a26d5-160b-4eaf-b75a-73c8e2a340e5
+    ..\postman\collections\LogiChain V2 — M03 Fornitori: 0a141ab9-9e77-47b7-b5b8-20ee9fc2926b
 
 # All resources in the `postman/` folder are automatically registered in Local View.
 # Point to additional files outside the `postman/` folder to register them individually. Example:

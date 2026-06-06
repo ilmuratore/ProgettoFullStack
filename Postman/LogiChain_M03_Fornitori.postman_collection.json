@@ -1,0 +1,1218 @@
+{
+  "info": {
+    "name": "LogiChain V2 — M03 Fornitori",
+    "_postman_id": "0a3f2c10-m03-4f0r-n170-r1c0ll3ct10n",
+    "description": "Collection di test per la Milestone M03 — Anagrafiche \"I nostri Fornitori\" (backend).\n\nCOME USARLA:\n1) Avvia il backend (npm run dev) con DB migrato e seedato (seed_ruoli_permessi + seed_admin).\n2) PREREQUISITO ECOSYSTEM — inserisci un fornitore source=ecosystem e copia il suo id nella variabile {{fornitore_eco_id}}:\n   INSERT INTO fornitori (ragione_sociale, piva, email, source) VALUES ('Ecosistema Srl', '99999999999', 'eco@test.it', 'ecosystem');\n   SELECT id FROM fornitori WHERE piva = '99999999999';\n3) Esegui prima la cartella \"0. Setup\" (crea utenti di test e popola i token).\n4) Esegui la cartella \"Fornitori\" IN ORDINE (i test condividono lo stato: 02 salva {{fornitore_id}}).\n\nSuggerimento: usa il Collection Runner mantenendo l'ordine. Le credenziali admin di default sono quelle del .env.example; modifica le variabili se nel tuo .env sono diverse.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Setup — Auth & utenti di test",
+      "description": "Esegui questa cartella per prima: crea gli utenti di test (idempotente) e popola i token usati dai test Fornitori.",
+      "item": [
+        {
+          "name": "Login Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login 200', () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json().data.token;",
+                  "pm.expect(t, 'token presente').to.be.a('string');",
+                  "pm.collectionVariables.set('token_admin', t);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register Responsabile Acquisti (ruolo_id 2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Acquisti\",\n  \"email\": \"{{resp_acquisti_email}}\",\n  \"password\": \"{{resp_acquisti_password}}\",\n  \"ruolo_id\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Register 201 oppure 409 (utente già esistente)', () => pm.expect([201, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register Operatore (ruolo_id 4)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Op\",\n  \"cognome\": \"Eratore\",\n  \"email\": \"{{operatore_email}}\",\n  \"password\": \"{{operatore_password}}\",\n  \"ruolo_id\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Register 201 oppure 409 (utente già esistente)', () => pm.expect([201, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register Responsabile Magazzino (ruolo_id 3)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Magazzino\",\n  \"email\": \"{{resp_magazzino_email}}\",\n  \"password\": \"{{resp_magazzino_password}}\",\n  \"ruolo_id\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Register 201 oppure 409 (utente già esistente)', () => pm.expect([201, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Responsabile Acquisti",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{resp_acquisti_email}}\",\n  \"password\": \"{{resp_acquisti_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login 200', () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json().data.token;",
+                  "pm.expect(t, 'token presente').to.be.a('string');",
+                  "pm.collectionVariables.set('token_resp_acquisti', t);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Operatore (token_no_access)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{operatore_email}}\",\n  \"password\": \"{{operatore_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login 200', () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json().data.token;",
+                  "pm.expect(t, 'token presente').to.be.a('string');",
+                  "pm.collectionVariables.set('token_no_access', t);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Responsabile Magazzino",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{resp_magazzino_email}}\",\n  \"password\": \"{{resp_magazzino_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login 200', () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json().data.token;",
+                  "pm.expect(t, 'token presente').to.be.a('string');",
+                  "pm.collectionVariables.set('token_resp_magazzino', t);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fornitori",
+      "description": "I 18 test della M03 in sequenza. Richiede la cartella Setup eseguita e {{fornitore_eco_id}} impostata.",
+      "item": [
+        {
+          "name": "01 GET lista (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test('data è un array', () => pm.expect(d).to.be.an('array'));",
+                  "pm.test(\"ogni fornitore espone 'source'\", () => d.forEach(f => pm.expect(f).to.have.property('source')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 POST crea fornitore valido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ragione_sociale\": \"Acme Srl\",\n  \"piva\": \"12345678901\",\n  \"email\": \"info@acme.it\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const f = pm.response.json().data;",
+                  "pm.test(\"source = 'manual'\", () => pm.expect(f.source).to.eql('manual'));",
+                  "pm.collectionVariables.set('fornitore_id', f.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 POST source nel body ignorato",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ragione_sociale\": \"Test\",\n  \"piva\": \"11111111111\",\n  \"source\": \"ecosystem\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test(\"source dal body ignorato -> 'manual'\", () => pm.expect(pm.response.json().data.source).to.eql('manual'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 POST campo obbligatorio mancante (no piva)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ragione_sociale\": \"Solo nome\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code = VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 GET dettaglio fornitore manual",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori/{{fornitore_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori",
+                "{{fornitore_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const f = pm.response.json().data;",
+                  "pm.test(\"source = 'manual'\", () => pm.expect(f.source).to.eql('manual'));",
+                  "pm.test('campi base presenti', () => ['id','ragione_sociale','piva','source'].forEach(k => pm.expect(f).to.have.property(k)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 GET id inesistente -> 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori/999999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori",
+                "999999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('code = RESOURCE_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('RESOURCE_NOT_FOUND'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 PATCH modifica fornitore manual",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori/{{fornitore_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori",
+                "{{fornitore_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telefono\": \"0298765432\",\n  \"sito_web\": \"https://acme.it\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const f = pm.response.json().data;",
+                  "pm.test('telefono aggiornato', () => pm.expect(f.telefono).to.eql('0298765432'));",
+                  "pm.test('sito_web aggiornato', () => pm.expect(f.sito_web).to.eql('https://acme.it'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 PATCH su fornitore ecosystem -> 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori/{{fornitore_eco_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori",
+                "{{fornitore_eco_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ragione_sociale\": \"Modifica\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('fornitore_eco_id')) {",
+                  "    throw new Error(\"Imposta prima la variabile {{fornitore_eco_id}} — vedi la SQL nella descrizione della collection.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('code = ACCESS_DENIED', () => pm.expect(pm.response.json().code).to.eql('ACCESS_DENIED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 PATCH source nel body ignorato",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori/{{fornitore_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori",
+                "{{fornitore_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ragione_sociale\": \"Nuovo nome\",\n  \"source\": \"ecosystem\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const f = pm.response.json().data;",
+                  "pm.test(\"source non modificato -> 'manual'\", () => pm.expect(f.source).to.eql('manual'));",
+                  "pm.test('ragione_sociale aggiornata', () => pm.expect(f.ragione_sociale).to.eql('Nuovo nome'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10 PATCH body vuoto -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori/{{fornitore_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori",
+                "{{fornitore_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code = VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11 DELETE soft delete fornitore manual -> 204",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori/{{fornitore_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori",
+                "{{fornitore_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12 DELETE fornitore ecosystem consentito -> 204",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori/{{fornitore_eco_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori",
+                "{{fornitore_eco_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('fornitore_eco_id')) {",
+                  "    throw new Error(\"Imposta prima la variabile {{fornitore_eco_id}} — vedi la SQL nella descrizione della collection.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 (delete consentito anche per ecosystem)', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13 GET dettaglio dopo delete -> 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori/{{fornitore_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori",
+                "{{fornitore_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 dopo delete', () => pm.response.to.have.status(404));",
+                  "pm.test('code = RESOURCE_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('RESOURCE_NOT_FOUND'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14 GET lista: eliminati non presenti",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "const delId = Number(pm.collectionVariables.get('fornitore_id'));",
+                  "const ecoId = Number(pm.collectionVariables.get('fornitore_eco_id'));",
+                  "pm.test('fornitore manual eliminato assente', () => pm.expect(d.some(f => f.id === delId)).to.be.false);",
+                  "pm.test('fornitore ecosystem eliminato assente', () => pm.expect(d.some(f => f.id === ecoId)).to.be.false);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15 GET lista senza token -> 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "pm.test('code = AUTH_REQUIRED', () => pm.expect(pm.response.json().code).to.eql('AUTH_REQUIRED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16 POST con token Operatore -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_no_access}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ragione_sociale\": \"X\",\n  \"piva\": \"22222222222\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('code = ACCESS_DENIED', () => pm.expect(pm.response.json().code).to.eql('ACCESS_DENIED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17 PATCH con token Responsabile Magazzino -> 403",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_resp_magazzino}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori/{{fornitore_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori",
+                "{{fornitore_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ragione_sociale\": \"X\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('code = ACCESS_DENIED', () => pm.expect(pm.response.json().code).to.eql('ACCESS_DENIED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18 DELETE con token Operatore -> 403",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_no_access}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori/{{fornitore_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori",
+                "{{fornitore_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('code = ACCESS_DENIED', () => pm.expect(pm.response.json().code).to.eql('ACCESS_DENIED'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "admin_email",
+      "value": "admin@logichain.it",
+      "type": "string"
+    },
+    {
+      "key": "admin_password",
+      "value": "Admin123!",
+      "type": "string"
+    },
+    {
+      "key": "resp_acquisti_email",
+      "value": "resp.acquisti@logichain.it",
+      "type": "string"
+    },
+    {
+      "key": "resp_acquisti_password",
+      "value": "Test1234!",
+      "type": "string"
+    },
+    {
+      "key": "operatore_email",
+      "value": "operatore@logichain.it",
+      "type": "string"
+    },
+    {
+      "key": "operatore_password",
+      "value": "Test1234!",
+      "type": "string"
+    },
+    {
+      "key": "resp_magazzino_email",
+      "value": "resp.magazzino@logichain.it",
+      "type": "string"
+    },
+    {
+      "key": "resp_magazzino_password",
+      "value": "Test1234!",
+      "type": "string"
+    },
+    {
+      "key": "token_admin",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token_resp_acquisti",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token_no_access",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token_resp_magazzino",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "fornitore_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "fornitore_eco_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

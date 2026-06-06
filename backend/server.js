@@ -43,7 +43,7 @@ app.use('/api/v1/prodotti', require('./src/routes/prodottiRoutes'));
 // app.use('/api/v1/categorie',  require('./src/routes/categorieRoutes'));
 
 // M03 — I nostri Fornitori
-// app.use('/api/v1/fornitori',  require('./src/routes/fornitoriRoutes'));
+app.use('/api/v1/fornitori',  require('./src/routes/fornitoriRoutes'));
 
 // M04 — I nostri Clienti
 // app.use('/api/v1/clienti',    require('./src/routes/clientiRoutes'));

@@ -1,0 +1,14 @@
+$kind: http-request
+name: 01 - GET lista prodotti (admin) -> 200
+url: "{{baseUrl}}/api/v1/prodotti"
+method: GET
+headers:
+  Authorization: Bearer {{token_admin}}
+scripts:
+  - type: afterResponse
+    code: |-
+      var b = pm.response.json();
+      pm.test('01 GET lista -> 200', function () { pm.response.to.have.status(200); });
+      pm.test('data e un array', function () { pm.expect(b.data).to.be.an('array'); });
+    language: text/javascript
+order: 1000

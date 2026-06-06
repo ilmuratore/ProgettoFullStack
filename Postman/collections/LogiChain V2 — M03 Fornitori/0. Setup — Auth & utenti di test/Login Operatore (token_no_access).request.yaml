@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{base_url}}/api/v1/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "{{operatore_email}}",
+      "password": "{{operatore_password}}"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Login 200', () => pm.response.to.have.status(200));
+      const t = pm.response.json().data.token;
+      pm.expect(t, 'token presente').to.be.a('string');
+      pm.collectionVariables.set('token_no_access', t);
+    language: text/javascript
+order: 6000
