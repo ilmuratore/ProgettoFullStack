@@ -1,5 +1,5 @@
 // ============================================================
-// dipendentiModel.js — M05: Anagrafiche Dipendenti
+// dipendentiQueries.js — M05: Anagrafiche Dipendenti
 //
 // Schema DB effettivo (migration 014_create_dipendenti.js):
 //   id, nome TEXT NOT NULL, cognome TEXT NOT NULL,
@@ -7,12 +7,13 @@
 //   data_assunzione DATE, utente_id INTEGER FK→utenti SET NULL,
 //   created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ
 //
-// NOTA: nessun campo `attivo` → DELETE fisico.
-// spedizioni.corriere_id → dipendenti ON DELETE SET NULL:
-// il DELETE non è bloccato da FK (il DB annulla il riferimento).
+// NOTA: la tabella NON ha il campo `attivo`.
+// spedizioni.corriere_id → dipendenti con ON DELETE SET NULL:
+// il DELETE fisico non è bloccato da FK (il DB annulla il riferimento).
+// DELETE è quindi hard delete — nessuna migration richiesta.
 //
-// `ruolo_operativo` = mansione operativa (es. "Magazziniere"),
-// DISTINTO dalla tabella ruoli del sistema RBAC.
+// Il campo `ruolo_operativo` è la mansione operativa (es. "Magazziniere"),
+// DISTINTO dal ruolo RBAC di sistema (tabella ruoli).
 // ============================================================
 
 const pool = require('../config/db');
@@ -27,7 +28,10 @@ const COLS = `
 // READ
 // -----------------------------------------------------------------
 
-/** Lista tutti i dipendenti, ordinati per cognome e nome. */
+/**
+ * Lista tutti i dipendenti, ordinati per cognome e nome.
+ * Nessun filtro attivo (campo non presente nello schema).
+ */
 const findAll = () =>
     pool.query(
         `SELECT ${COLS}
@@ -35,7 +39,9 @@ const findAll = () =>
          ORDER  BY cognome ASC, nome ASC`
     );
 
-/** Dettaglio dipendente per id. */
+/**
+ * Dettaglio dipendente per id.
+ */
 const findById = (id) =>
     pool.query(
         `SELECT ${COLS}
@@ -50,8 +56,8 @@ const findById = (id) =>
 
 /**
  * Crea nuovo dipendente.
- * codice_fiscale UNIQUE NOT NULL → 23505 mappato a DUPLICATE_ENTRY nell'errorHandler.
- * utente_id, ruolo_operativo, data_assunzione: opzionali.
+ * codice_fiscale: UNIQUE NOT NULL — 23505 mappato a DUPLICATE_ENTRY nell'errorHandler.
+ * utente_id: opzionale — collega il dipendente a un utente di sistema se esiste.
  */
 const create = ({ nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id }) =>
     pool.query(
@@ -62,7 +68,10 @@ const create = ({ nome, cognome, codice_fiscale, ruolo_operativo, data_assunzion
         [nome, cognome, codice_fiscale, ruolo_operativo ?? null, data_assunzione ?? null, utente_id ?? null]
     );
 
-/** Aggiornamento parziale tramite COALESCE. */
+/**
+ * Aggiornamento parziale tramite COALESCE.
+ * codice_fiscale aggiornabile (es. correzione errore di digitazione).
+ */
 const update = (id, { nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id }) =>
     pool.query(
         `UPDATE dipendenti
@@ -81,8 +90,9 @@ const update = (id, { nome, cognome, codice_fiscale, ruolo_operativo, data_assun
 /**
  * Hard delete fisico.
  * Safe: spedizioni.corriere_id usa ON DELETE SET NULL → nessun blocco FK.
+ * Il dipendente eliminato non apparirà più nelle spedizioni (corriere_id = NULL).
  */
-const remove = (id) =>
+const hardDelete = (id) =>
     pool.query(
         `DELETE FROM dipendenti
          WHERE id = $1
@@ -92,4 +102,10 @@ const remove = (id) =>
 
 // -----------------------------------------------------------------
 
-module.exports = { findAll, findById, create, update, remove };
+module.exports = {
+    findAll,
+    findById,
+    create,
+    update,
+    hardDelete
+};
