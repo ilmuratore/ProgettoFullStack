@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Search, Plus, Download, Upload, Filter, MoreVertical,
   Edit, Trash2, Eye, Mail, Phone, MapPin, Building2,
@@ -110,11 +110,26 @@ export function AnagrafichePage() {
     finally { setLoadingDipendenti(false); }
   }, []);
 
-  useEffect(() => { fetchProdotti(); }, [fetchProdotti]);
-  useEffect(() => { fetchFornitori(); }, [fetchFornitori]);
-  useEffect(() => { fetchClienti(); }, [fetchClienti]);
-  useEffect(() => { fetchCorrieri(); }, [fetchCorrieri]);
-  useEffect(() => { fetchDipendenti(); }, [fetchDipendenti]);
+  // Lazy loading per tab: fetch solo al primo accesso a ciascun tab
+  const fetchedTabs = useRef(new Set<TabType>());
+
+  const fetchForTab = useCallback(async (tab: TabType) => {
+    if (fetchedTabs.current.has(tab)) return;
+    fetchedTabs.current.add(tab);
+    switch (tab) {
+      case 'prodotti':   return fetchProdotti();
+      case 'fornitori':  return fetchFornitori();
+      case 'clienti':    return fetchClienti();
+      case 'corrieri':   return fetchCorrieri();
+      case 'dipendenti': return fetchDipendenti();
+      // 'categorie' è ancora locale/mock — nessuna fetch
+    }
+  }, [fetchProdotti, fetchFornitori, fetchClienti, fetchCorrieri, fetchDipendenti]);
+
+  // Fetch del tab iniziale al mount
+  useEffect(() => { fetchForTab('prodotti'); }, []);
+  // Fetch on-demand quando l'utente cambia tab
+  useEffect(() => { fetchForTab(activeTab); }, [activeTab, fetchForTab]);
 
   const tabs = [
     { id: 'prodotti' as TabType,    label: 'Prodotti',    icon: Package,   count: prodotti.length },
@@ -216,7 +231,8 @@ export function AnagrafichePage() {
   const handleSaveProduct = async (data: ProdottoCreateRequest | ProdottoUpdateRequest, id?: number) => {
     try {
       if (editMode === 'create') {
-        setProdotti(prev => [...prev, await prodottiApi.create(data as ProdottoCreateRequest)]);
+        const created = await prodottiApi.create(data as ProdottoCreateRequest);
+        setProdotti(prev => [...prev, created]);
         toast.success('Prodotto creato');
       } else if (id !== undefined) {
         const updated = await prodottiApi.update(id, data as ProdottoUpdateRequest);
@@ -232,7 +248,8 @@ export function AnagrafichePage() {
   const handleSaveSupplier = async (data: FornitoreCreateRequest | FornitoreUpdateRequest, id?: number) => {
     try {
       if (editMode === 'create') {
-        setFornitori(prev => [...prev, await fornitoriApi.create(data as FornitoreCreateRequest)]);
+        const created = await fornitoriApi.create(data as FornitoreCreateRequest);
+        setFornitori(prev => [...prev, created]);
         toast.success('Fornitore creato');
       } else if (id !== undefined) {
         const updated = await fornitoriApi.update(id, data as FornitoreUpdateRequest);
@@ -251,7 +268,8 @@ export function AnagrafichePage() {
   const handleSaveClient = async (data: ClienteCreateRequest | ClienteUpdateRequest, id?: number) => {
     try {
       if (editMode === 'create') {
-        setClienti(prev => [...prev, await clientiApi.create(data as ClienteCreateRequest)]);
+        const created = await clientiApi.create(data as ClienteCreateRequest);
+        setClienti(prev => [...prev, created]);
         toast.success('Cliente creato');
       } else if (id !== undefined) {
         const updated = await clientiApi.update(id, data as ClienteUpdateRequest);
@@ -267,7 +285,8 @@ export function AnagrafichePage() {
   const handleSaveCourier = async (data: CorriereCreateRequest | CorriereUpdateRequest, id?: number) => {
     try {
       if (editMode === 'create') {
-        setCorrieri(prev => [...prev, await corrieriApi.create(data as CorriereCreateRequest)]);
+        const created = await corrieriApi.create(data as CorriereCreateRequest);
+        setCorrieri(prev => [...prev, created]);
         toast.success('Corriere creato');
       } else if (id !== undefined) {
         const updated = await corrieriApi.update(id, data as CorriereUpdateRequest);
@@ -283,7 +302,8 @@ export function AnagrafichePage() {
   const handleSaveEmployee = async (data: DipendenteCreateRequest | DipendenteUpdateRequest, id?: number) => {
     try {
       if (editMode === 'create') {
-        setDipendenti(prev => [...prev, await dipendentiApi.create(data as DipendenteCreateRequest)]);
+        const created = await dipendentiApi.create(data as DipendenteCreateRequest);
+        setDipendenti(prev => [...prev, created]);
         toast.success('Dipendente creato');
       } else if (id !== undefined) {
         const updated = await dipendentiApi.update(id, data as DipendenteUpdateRequest);

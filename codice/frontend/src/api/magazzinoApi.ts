@@ -23,7 +23,7 @@ export const magazzinoApi = {
     api.patch<Magazzino>(`/magazzini/${id}`, body),
 
   toggle: (id: number): Promise<Magazzino> =>
-    api.patch<Magazzino>(`/magazzini/${id}/toggle`, {}),
+    api.patch<Magazzino>(`/magazzini/${id}/toggle`),
 
   createUbicazione: (magId: number, body: UbicazioneCreateRequest): Promise<Ubicazione> =>
     api.post<Ubicazione>(`/magazzini/${magId}/ubicazioni`, body),
@@ -35,5 +35,5 @@ export const magazzinoApi = {
     api.patch<Ubicazione>(`/ubicazioni/${id}`, body),
 
   toggleUbicazione: (id: number): Promise<Ubicazione> =>
-    api.patch<Ubicazione>(`/ubicazioni/${id}/toggle`, {}),
+  api.patch<Ubicazione>(`/ubicazioni/${id}/toggle`),
 };

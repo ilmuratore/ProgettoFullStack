@@ -79,20 +79,28 @@ export function WarehousePage() {
   const [ubicErrors, setUbicErrors] = useState<Partial<Record<keyof UbicazioneFormState, string>>>({});
   const [ubicLoading, setUbicLoading] = useState(false);
 
+  const [selectedMagDetail, setSelectedMagDetail] = useState<MagazzinoConUbicazioni | null>(null);
+
   const canWrite = hasPermesso('magazzino:write');
 
   const fetchMagazzini = useCallback(async () => {
-    setLoading(true);
-    try {
-      const list = await magazzinoApi.list();
-      const details = await Promise.all(list.map(m => magazzinoApi.getById(m.id)));
-      setMagazzini(details);
-    } catch (err: any) {
-      toast.error('Errore caricamento magazzini', { description: err?.message });
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  setLoading(true);
+  try {
+    setMagazzini(await magazzinoApi.list());
+  } catch (err: any) {
+    toast.error('Errore caricamento magazzini', { description: err?.message });
+  } finally {
+    setLoading(false);
+  }
+}, []);
+
+  const handleSelectMagazzino = async (id: number) => {
+  try {
+    setSelectedMagDetail(await magazzinoApi.getById(id));
+  } catch (err: any) {
+    toast.error('Errore caricamento ubicazioni', { description: err?.message });
+  }
+};
 
   useEffect(() => { fetchMagazzini(); }, [fetchMagazzini]);
 

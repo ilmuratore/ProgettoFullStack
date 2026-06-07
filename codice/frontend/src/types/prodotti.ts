@@ -4,6 +4,7 @@ export interface ProdottoListino {
   nome: string;
   prezzo: number;
   data_agg_prezzo: string; 
+}
 
 export interface Prodotto {
   id: number;
