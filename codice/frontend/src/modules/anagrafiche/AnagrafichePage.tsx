@@ -21,11 +21,11 @@ import {
 } from 'lucide-react';
 import { PageTabBar } from '../../components/ui/PageTabBar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
-import { ProductFormModal, ProductFormData } from '../anagrafiche/components/ProductFormModal';
-import { CategoryFormModal, CategoryFormData } from '../anagrafiche/components/CategoryFormModal';
-import { SupplierFormModal, SupplierFormData } from '../anagrafiche/components/SupplierFormModal';
-import { ClientFormModal, ClientFormData } from '../anagrafiche/components/ClientFormModal';
-import { CourierFormModal, CourierFormData} from '../anagrafiche/components/CourierFormModal';
+import { ProductFormModal, type ProductFormData } from '../anagrafiche/components/ProductFormModal';
+import { CategoryFormModal, type CategoryFormData } from '../anagrafiche/components/CategoryFormModal';
+import { SupplierFormModal, type SupplierFormData } from '../anagrafiche/components/SupplierFormModal';
+import { ClientFormModal, type ClientFormData } from '../anagrafiche/components/ClientFormModal';
+import { CourierFormModal, type CourierFormData} from '../anagrafiche/components/CourierFormModal';
 import { toast } from 'sonner';
 
 type TabType = 'prodotti' | 'categorie' | 'fornitori' | 'clienti' | 'corrieri';
