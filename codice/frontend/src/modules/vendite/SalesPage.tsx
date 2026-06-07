@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Plus, ShoppingBag, ListChecks, BarChart2, MapPin, CheckSquare, Clock } from 'lucide-react';
-import { SalesKPIs } from './sales/SalesKPIs';
-import { SalesOrdersTable } from './sales/SalesOrdersTable';
-import { SalesWidgets } from './sales/SalesWidgets';
-import { SalesChart } from './sales/SalesChart';
-import { TopClienti } from './sales/TopClienti';
-import { SalesOrderDrawer } from './sales/SalesOrderDrawer';
-import { NewSalesOrderModal } from './sales/NewSalesOrderModal';
-import { PageTabBar, TabConfig } from './ui/PageTabBar';
+import { SalesKPIs } from './components/SalesKPIs';
+import { SalesOrdersTable } from './components/SalesOrdersTable';
+import { SalesWidgets } from './components/SalesWidgets';
+import { SalesChart } from './components/SalesChart';
+import { TopClienti } from './components/TopClienti';
+import { SalesOrderDrawer } from './components/SalesOrderDrawer';
+import { NewSalesOrderModal } from './components/NewSalesOrderModal';
+import { PageTabBar, TabConfig } from '../../components/ui/PageTabBar';
 
 type SalesTab = 'ordini' | 'picking' | 'kpi';
 
