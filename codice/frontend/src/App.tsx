@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router';
 import { Toaster } from 'sonner';
 
-// Layout
 import { Sidebar } from './components/layout/Sidebar';
 import { Header }  from './components/layout/Header';
 
-// Pagine
 import { DashboardPage }      from './pages/DashboardPage';
 import { LoginPage }          from './pages/LoginPage';
+import { UserProfilePage }    from './pages/UserProfilePage';
+import { SicurezzaPage }      from './pages/SicurezzaPage';
+import { PreferenzePage }     from './pages/PreferenzePage';
+import { SupportoPage }       from './pages/SupportoPage';
 import { AnagrafichePage }    from './modules/anagrafiche/AnagrafichePage';
 import { WarehousePage }      from './modules/magazzino/WarehousePage';
 import { PurchasesPage }      from './modules/acquisti/PurchasesPage';
@@ -16,12 +18,9 @@ import { SalesPage }          from './modules/vendite/SalesPage';
 import { LogisticsPage }      from './modules/logistica/LogisticsPage';
 import { AdministrationPage } from './modules/amministrazione/AdministrationPage';
 
-// Store / API / Tipi
 import { useAuthStore, RUOLO_ID_TO_NOME, PAGINE_PER_RUOLO } from './store/authStore';
 import { authApi } from './api/authApi';
 import type { UiUser, Role } from './types/auth';
-
-// ─── Costanti ─────────────────────────────────────────────────────────────────
 
 const AVATAR_BGS: Record<number, string> = {
   1: '#0F172A', 2: '#1D4ED8', 3: '#0D9488', 4: '#16A34A', 5: '#EA580C',
@@ -35,6 +34,10 @@ const PAGE_TO_PATH: Record<string, string> = {
   vendite:         '/vendite',
   logistica:       '/logistica',
   amministrazione: '/amministrazione',
+  profilo:         '/profilo',
+  sicurezza:       '/sicurezza',
+  preferenze:      '/preferenze',
+  supporto:        '/supporto',
 };
 
 const PATH_TO_PAGE: Record<string, string> = Object.fromEntries(
@@ -43,15 +46,54 @@ const PATH_TO_PAGE: Record<string, string> = Object.fromEntries(
 
 // ─── ProtectedRoute ───────────────────────────────────────────────────────────
 
-function ProtectedRoute({ pageId, children }: { pageId: string; children: React.ReactNode }) {
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token, utente } = useAuthStore();
-
   if (!token || !utente) return <Navigate to="/login" replace />;
-
-  const accessiblePages = PAGINE_PER_RUOLO[utente.ruolo_id] ?? ['dashboard'];
-  if (!accessiblePages.includes(pageId)) return <Navigate to="/" replace />;
-
   return <>{children}</>;
+}
+
+function PageProtectedRoute({ pageId, children }: { pageId: string; children: React.ReactNode }) {
+ 
+  const { token, utente } = useAuthStore();
+  if (!token || !utente) return <Navigate to="/login" replace />;
+  const ruoloMap: Record<string, number> = {
+  Admin: 1,
+  'Responsabile Acquisti': 2,
+  'Responsabile Magazzino': 3,
+  Operatore: 4,
+  Corriere: 5,
+};
+
+const ruoloId =
+  utente.ruolo_id ??
+  ruoloMap[utente.ruolo ?? ''];
+
+const accessiblePages =
+  PAGINE_PER_RUOLO[ruoloId] ?? ['dashboard'];
+  console.log('Utente:', utente);
+  console.log('Ruolo:', utente?.ruolo_id);
+  console.log('Pagine:', PAGINE_PER_RUOLO[utente?.ruolo_id]);
+  console.log("UTENTE COMPLETO", utente);
+  console.log("CHIAVI", Object.keys(utente || {}));
+  if (!accessiblePages.includes(pageId)) return <Navigate to="/" replace />;
+  return <>{children}</>;
+  
+}
+
+// ─── LoginWrapper ─────────────────────────────────────────────────────────────
+
+function LoginWrapper() {
+  const { token, utente } = useAuthStore();
+  const navigate = useNavigate();
+  const isAuth = !!(token && utente);
+
+  if (isAuth) return <Navigate to="/" replace />;
+
+  return (
+    <LoginPage
+      onLoginSuccess={() => navigate('/', { replace: true })}
+    />
+  );
 }
 
 // ─── AppShell ─────────────────────────────────────────────────────────────────
@@ -65,19 +107,24 @@ function AppShell({ children }: { children: React.ReactNode }) {
     () => localStorage.getItem('sidebar-collapsed') === 'true'
   );
 
-  // Reidrata ruolo dal backend all'avvio (M01: ruolo sempre fresco)
   useEffect(() => {
     const token = localStorage.getItem('lc_token');
     if (!token) return;
     authApi.me()
       .then((u) => setAuth(token, u))
-      .catch(() => { /* client.ts gestisce il 401 */ });
+      .catch(() => {});
   }, []);
 
-  // Protezione: ProtectedRoute garantisce già token+utente, ma per sicurezza
   if (!utente) return null;
 
-  const ruoloNome       = (utente.ruolo_nome ?? RUOLO_ID_TO_NOME[utente.ruolo_id] ?? 'Utente') as Role;
+  const ruoloNome =
+  (
+    utente.ruolo_nome ??
+    utente.ruolo ??
+    RUOLO_ID_TO_NOME[utente.ruolo_id] ??
+    'Utente'
+  ) as Role;
+  const ruolo = utente.ruolo ?? utente.ruolo_nome;
   const accessiblePages = (PAGINE_PER_RUOLO[utente.ruolo_id] ?? ['dashboard']) as string[];
   const initials        = `${utente.nome?.[0] ?? ''}${utente.cognome?.[0] ?? ''}`.toUpperCase();
   const activePage      = PATH_TO_PAGE[location.pathname] ?? 'dashboard';
@@ -134,44 +181,64 @@ function AppRouter() {
 
   return (
     <Routes>
-      <Route
-        path="/login"
-        element={isAuth ? <Navigate to="/" replace /> : <LoginPage onLoginSuccess={() => {}} />}
-      />
+      <Route path="/login" element={<LoginWrapper />} />
 
+      {/* Pagine principali con RBAC */}
       <Route path="/" element={
-        <ProtectedRoute pageId="dashboard">
+        <PageProtectedRoute pageId="dashboard">
           <AppShell><DashboardPage /></AppShell>
-        </ProtectedRoute>
+        </PageProtectedRoute>
       } />
       <Route path="/anagrafiche" element={
-        <ProtectedRoute pageId="anagrafiche">
+        <PageProtectedRoute pageId="anagrafiche">
           <AppShell><AnagrafichePage /></AppShell>
-        </ProtectedRoute>
+        </PageProtectedRoute>
       } />
       <Route path="/magazzino" element={
-        <ProtectedRoute pageId="magazzino">
+        <PageProtectedRoute pageId="magazzino">
           <AppShell><WarehousePage /></AppShell>
-        </ProtectedRoute>
+        </PageProtectedRoute>
       } />
       <Route path="/acquisti" element={
-        <ProtectedRoute pageId="acquisti">
+        <PageProtectedRoute pageId="acquisti">
           <AppShell><PurchasesPage /></AppShell>
-        </ProtectedRoute>
+        </PageProtectedRoute>
       } />
       <Route path="/vendite" element={
-        <ProtectedRoute pageId="vendite">
+        <PageProtectedRoute pageId="vendite">
           <AppShell><SalesPage /></AppShell>
-        </ProtectedRoute>
+        </PageProtectedRoute>
       } />
       <Route path="/logistica" element={
-        <ProtectedRoute pageId="logistica">
+        <PageProtectedRoute pageId="logistica">
           <AppShell><LogisticsPage /></AppShell>
-        </ProtectedRoute>
+        </PageProtectedRoute>
       } />
       <Route path="/amministrazione" element={
-        <ProtectedRoute pageId="amministrazione">
+        <PageProtectedRoute pageId="amministrazione">
           <AppShell><AdministrationPage /></AppShell>
+        </PageProtectedRoute>
+      } />
+
+      {/* Pagine utente — accessibili a tutti gli utenti autenticati */}
+      <Route path="/profilo" element={
+        <ProtectedRoute>
+          <AppShell><UserProfilePage /></AppShell>
+        </ProtectedRoute>
+      } />
+      <Route path="/sicurezza" element={
+        <ProtectedRoute>
+          <AppShell><SicurezzaPage /></AppShell>
+        </ProtectedRoute>
+      } />
+      <Route path="/preferenze" element={
+        <ProtectedRoute>
+          <AppShell><PreferenzePage /></AppShell>
+        </ProtectedRoute>
+      } />
+      <Route path="/supporto" element={
+        <ProtectedRoute>
+          <AppShell><SupportoPage /></AppShell>
         </ProtectedRoute>
       } />
 
@@ -180,7 +247,6 @@ function AppRouter() {
   );
 }
 
-// ─── App root ─────────────────────────────────────────────────────────────────
 
 export default function App() {
   return (

@@ -15,20 +15,17 @@ import {
 import { useState, useEffect } from 'react';
 import type { UiUser as User } from '../../types/auth';
 
-// ─── Tipo pagina ──────────────────────────────────────────────────────────────
 type Page = 'dashboard' | 'anagrafiche' | 'magazzino' | 'acquisti' | 'vendite' | 'logistica' | 'amministrazione';
 
 interface SidebarProps {
   onNavigate?: (page: string) => void;
   activePage?: string;
   onCollapsedChange?: (collapsed: boolean) => void;
-  // Nuovi props per l'integrazione con il sistema auth
   user?: User;
-  accessiblePages?: Page[];
+  accessiblePages?: string[];
   onLogout?: () => void;
 }
 
-// ─── Colori per ruolo ─────────────────────────────────────────────────────────
 const ROLE_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   Admin:                    { bg: '#1E293B', text: '#17E88F',  dot: '#17E88F'  },
   'Responsabile Acquisti':  { bg: '#1E3A5F', text: '#60A5FA',  dot: '#3B82F6'  },
@@ -73,23 +70,22 @@ export function Sidebar({
     onNavigate?.(id);
   };
 
-  // Se accessiblePages è passato, filtra il menu — altrimenti mostra tutto
+  // Filtra per accessiblePages — accetta sia Page[] che string[]
   const menuItems = accessiblePages
-    ? ALL_MENU_ITEMS.filter(item => accessiblePages.includes(item.id as Page))
+    ? ALL_MENU_ITEMS.filter(item => accessiblePages.includes(item.id))
     : ALL_MENU_ITEMS;
 
-  // Dati utente: usa quelli reali se disponibili, fallback ai valori mockup
-  const displayName = user ? `${user.nome} ${user.cognome}` : 'Marco Rossi';
-  const displayRole = user?.ruolo ?? 'Admin';
-  const displayAvatar = user?.avatar ?? 'MR';
+  const displayName    = user ? `${user.nome} ${user.cognome}` : '—';
+  const displayRole    = user?.ruolo ?? 'Admin';
+  const displayAvatar  = user?.avatar ?? '??';
   const displayAvatarBg = user?.avatarBg ?? '#17E88F';
-  const roleStyle = ROLE_COLORS[displayRole] ?? ROLE_COLORS['Admin'];
+  const roleStyle      = ROLE_COLORS[displayRole] ?? ROLE_COLORS['Admin'];
 
   return (
-    <aside className={`h-screen bg-white border-r border-[#E5EAF2] flex flex-col fixed left-0 top-0 transition-all duration-300 z-20 ${isCollapsed ? 'w-[72px]' : 'w-[260px]'}`}>
+    <aside className={`h-screen bg-white border-r border-[#E5EAF2] flex flex-col fixed left-0 top-0 transition-all duration-300 z-20 overflow-hidden ${isCollapsed ? 'w-[72px]' : 'w-[260px]'}`}>
 
       {/* ── Logo ── */}
-      <div className={`border-b border-[#E5EAF2] flex items-center gap-3 ${isCollapsed ? 'p-4 justify-center' : 'p-5'}`}>
+      <div className={`border-b border-[#E5EAF2] flex items-center gap-3 flex-shrink-0 ${isCollapsed ? 'p-4 justify-center' : 'p-5'}`}>
         <div className="w-9 h-9 bg-gradient-to-br from-[#17E88F] to-[#0FA67A] rounded-xl flex items-center justify-center flex-shrink-0">
           <Package className="w-5 h-5 text-white" />
         </div>
@@ -102,7 +98,7 @@ export function Sidebar({
       </div>
 
       {/* ── Nav ── */}
-      <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-0.5">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeItem === item.id;
@@ -123,9 +119,9 @@ export function Sidebar({
                 {isActive && !isCollapsed && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#17E88F]" />}
               </button>
 
-              {/* Tooltip collapsed */}
+              {/* Tooltip quando collassata */}
               {isCollapsed && (
-                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1E293B] text-white text-xs font-medium rounded-lg opacity-0 pointer-events-none group-hover/item:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
+                <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1E293B] text-white text-xs font-medium rounded-lg opacity-0 group-hover/item:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
                   {item.label}
                   <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#1E293B]" />
                 </div>
@@ -136,7 +132,7 @@ export function Sidebar({
       </nav>
 
       {/* ── Footer ── */}
-      <div className={`border-t border-[#E5EAF2] space-y-1 ${isCollapsed ? 'p-2' : 'p-3'}`}>
+      <div className={`border-t border-[#E5EAF2] space-y-1 flex-shrink-0 ${isCollapsed ? 'p-2' : 'p-3'}`}>
         {!isCollapsed && (
           <div className="flex items-center gap-2 px-2 py-1">
             <div className="w-1.5 h-1.5 bg-[#22C55E] rounded-full animate-pulse" />
@@ -156,19 +152,18 @@ export function Sidebar({
             }
           </button>
           {isCollapsed && (
-            <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1E293B] text-white text-xs font-medium rounded-lg opacity-0 pointer-events-none group-hover/collapse:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
+            <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1E293B] text-white text-xs font-medium rounded-lg opacity-0 group-hover/collapse:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
               Espandi<div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#1E293B]" />
             </div>
           )}
         </div>
 
-        {/* User block */}
+        {/* User block → naviga a /profilo */}
         <div className="relative group/user">
           <button
-            onClick={() => navigate('amministrazione')}
+            onClick={() => navigate('profilo')}
             className={`w-full flex items-center rounded-xl hover:bg-[#F7F9FC] transition-all ${isCollapsed ? 'justify-center p-2' : 'gap-3 p-2'}`}
           >
-            {/* Avatar con colore ruolo */}
             <div
               className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
               style={{ backgroundColor: displayAvatarBg }}
@@ -186,14 +181,14 @@ export function Sidebar({
             )}
           </button>
           {isCollapsed && (
-            <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1E293B] text-white text-xs font-medium rounded-lg opacity-0 pointer-events-none group-hover/user:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
+            <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1E293B] text-white text-xs font-medium rounded-lg opacity-0 group-hover/user:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
               {displayName} — {displayRole}
               <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#1E293B]" />
             </div>
           )}
         </div>
 
-        {/* Logout button (solo se onLogout è passato) */}
+        {/* Logout */}
         {onLogout && (
           <div className="relative group/logout">
             <button
@@ -204,7 +199,7 @@ export function Sidebar({
               {!isCollapsed && <span className="text-sm text-[#EF4444] font-medium">Esci</span>}
             </button>
             {isCollapsed && (
-              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1E293B] text-white text-xs font-medium rounded-lg opacity-0 pointer-events-none group-hover/logout:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
+              <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1E293B] text-white text-xs font-medium rounded-lg opacity-0 group-hover/logout:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
                 Esci<div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#1E293B]" />
               </div>
             )}

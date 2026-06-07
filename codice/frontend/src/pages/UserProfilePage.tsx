@@ -1,83 +1,92 @@
 import { useState } from 'react';
 import {
-  User, Mail, Phone, MapPin, Camera, Save, Lock, Bell, Shield,
+  User, Mail, Camera, Save, Lock, Bell, Shield,
   Smartphone, Key, Eye, EyeOff, CheckCircle, AlertCircle, Monitor,
   Clock, Activity, Download, Globe, Palette, Moon, Sun, LogOut,
-  Edit2, Plus, X, ChevronRight
+  Edit2, X, ChevronRight,
 } from 'lucide-react';
+import { useAuthStore, RUOLO_ID_TO_NOME } from '../store/authStore';
 
 type Tab = 'profilo' | 'sicurezza' | 'notifiche' | 'preferenze' | 'sessioni';
 
 const RECENT_SESSIONS = [
-  { device: 'MacBook Pro 14"', browser: 'Chrome 124', location: 'Milano, IT', time: '04/06/2026 09:12', current: true },
-  { device: 'iPhone 15 Pro', browser: 'Safari iOS', location: 'Milano, IT', time: '03/06/2026 18:30', current: false },
-  { device: 'Windows PC', browser: 'Edge 123', location: 'Roma, IT', time: '02/06/2026 14:15', current: false },
+  { device: 'Chrome — Windows', browser: 'Sessione corrente', location: 'Milano, IT', time: 'Adesso', current: true },
+  { device: 'Safari — iPhone',  browser: 'Mobile',            location: 'Milano, IT', time: 'Ieri 18:30', current: false },
 ];
 
 const ACTIVITY_LOG = [
-  { action: 'Login effettuato', detail: 'Chrome 124 — Milano', time: '04/06/2026 09:12', type: 'login' },
-  { action: 'Password modificata', detail: 'Sicurezza account', time: '02/06/2026 10:00', type: 'security' },
-  { action: 'Profilo aggiornato', detail: 'Telefono e sede modificati', time: '01/06/2026 15:40', type: 'edit' },
-  { action: 'Export dati', detail: 'Report vendite Q1 2026', time: '30/05/2026 11:20', type: 'export' },
-  { action: '2FA abilitato', detail: 'App authenticator', time: '28/05/2026 09:00', type: 'security' },
+  { action: 'Login effettuato',    detail: 'Sessione avviata',            time: 'Oggi',       type: 'login'    },
+  { action: 'Profilo visualizzato', detail: 'Pagina profilo',             time: 'Oggi',       type: 'edit'     },
 ];
 
+const AVATAR_BGS: Record<number, string> = {
+  1: '#0F172A', 2: '#1D4ED8', 3: '#0D9488', 4: '#16A34A', 5: '#EA580C',
+};
+
 export function UserProfilePage() {
+  const { utente, logout } = useAuthStore();
+
   const [activeTab, setActiveTab] = useState<Tab>('profilo');
   const [showOldPwd, setShowOldPwd] = useState(false);
   const [showNewPwd, setShowNewPwd] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('light');
-  const [lang, setLang] = useState('it');
   const [twoFa, setTwoFa] = useState(true);
   const [notifs, setNotifs] = useState({
     ordini: true, magazzino: true, fatture: true, sistema: false,
     email: true, push: false, sms: false,
   });
 
+  if (!utente) return null;
+
+  const initials  = `${utente.nome?.[0] ?? ''}${utente.cognome?.[0] ?? ''}`.toUpperCase();
+  const ruoloNome = utente.ruolo_nome ?? RUOLO_ID_TO_NOME[utente.ruolo_id] ?? 'Utente';
+  const avatarBg  = AVATAR_BGS[utente.ruolo_id] ?? '#6B7280';
+
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'profilo', label: 'Profilo' },
+    { id: 'profilo',   label: 'Profilo' },
     { id: 'sicurezza', label: 'Sicurezza' },
     { id: 'notifiche', label: 'Notifiche' },
-    { id: 'preferenze', label: 'Preferenze' },
-    { id: 'sessioni', label: 'Sessioni & Log' },
+    { id: 'preferenze',label: 'Preferenze' },
+    { id: 'sessioni',  label: 'Sessioni & Log' },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-[#2D2D2D]">Profilo Utente</h1>
-          <p className="text-sm text-[#6B7280] mt-1">Admin / Profilo</p>
+          <p className="text-sm text-[#6B7280] mt-1">{ruoloNome} · {utente.email}</p>
         </div>
       </div>
 
-      {/* Profile hero card */}
+      {/* Hero card — dati reali */}
       <div className="bg-white rounded-2xl border border-[#E5EAF2] p-6">
         <div className="flex items-center gap-6">
           <div className="relative">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#17E88F] to-[#0FA67A] flex items-center justify-center text-white font-bold text-2xl">
-              MR
+            <div
+              className="w-20 h-20 rounded-2xl flex items-center justify-center text-white font-bold text-2xl"
+              style={{ backgroundColor: avatarBg }}
+            >
+              {initials}
             </div>
             <button className="absolute -bottom-1 -right-1 w-7 h-7 bg-white border border-[#E5EAF2] rounded-lg flex items-center justify-center shadow hover:bg-[#F7F9FC] transition-colors">
               <Camera className="w-3.5 h-3.5 text-[#6B7280]" />
             </button>
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-semibold text-[#2D2D2D]">Marco Rossi</h2>
-            <p className="text-sm text-[#6B7280]">Direttore Operazioni · LogiChain S.p.A.</p>
+            <h2 className="text-xl font-semibold text-[#2D2D2D]">{utente.nome} {utente.cognome}</h2>
+            <p className="text-sm text-[#6B7280]">{ruoloNome}</p>
             <div className="flex items-center gap-4 mt-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#F0FDF7] text-[#0FA67A] rounded-full text-xs font-medium">
                 <Shield className="w-3 h-3" />
-                Admin
+                {ruoloNome}
               </span>
               <span className="inline-flex items-center gap-1.5 text-xs text-[#9CA3AF]">
                 <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-                Account verificato
+                Account attivo
               </span>
               <span className="inline-flex items-center gap-1.5 text-xs text-[#9CA3AF]">
                 <Clock className="w-3.5 h-3.5" />
-                Membro dal Mar 2019
+                {utente.email}
               </span>
             </div>
           </div>
@@ -88,9 +97,8 @@ export function UserProfilePage() {
         </div>
       </div>
 
-      {/* Tabs + Content */}
       <div className="flex gap-6">
-        {/* Sidebar tabs */}
+        {/* Sidebar tab verticale */}
         <div className="w-52 flex-shrink-0">
           <div className="bg-white rounded-2xl border border-[#E5EAF2] p-2 space-y-0.5">
             {tabs.map(t => (
@@ -104,7 +112,10 @@ export function UserProfilePage() {
               </button>
             ))}
             <div className="pt-2 mt-2 border-t border-[#E5EAF2]">
-              <button className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-colors">
+              <button
+                onClick={logout}
+                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-colors"
+              >
                 <LogOut className="w-4 h-4" />
                 Esci
               </button>
@@ -112,44 +123,26 @@ export function UserProfilePage() {
           </div>
         </div>
 
-        {/* Content */}
+        {/* Contenuto */}
         <div className="flex-1 space-y-5">
-          {/* PROFILO */}
+
           {activeTab === 'profilo' && (
             <>
               <Section title="Dati Personali" icon={<User className="w-4 h-4 text-[#3B82F6]" />}>
                 <div className="grid grid-cols-2 gap-4">
-                  <ProfileField label="Nome" defaultValue="Marco" />
-                  <ProfileField label="Cognome" defaultValue="Rossi" />
-                  <ProfileField label="Email" type="email" defaultValue="marco.rossi@logichain.it" />
-                  <ProfileField label="Telefono" defaultValue="+39 02 1234567" />
+                  <Field label="Nome" defaultValue={utente.nome} />
+                  <Field label="Cognome" defaultValue={utente.cognome} />
+                  <Field label="Email" type="email" defaultValue={utente.email} />
                   <div className="col-span-2">
-                    <label className="text-xs text-[#9CA3AF] mb-2 block">Ruolo</label>
-                    <input disabled defaultValue="Direttore Operazioni" className="w-full h-10 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm text-[#9CA3AF] cursor-not-allowed" />
-                    <p className="text-xs text-[#9CA3AF] mt-1">Il ruolo può essere modificato solo dall'amministratore di sistema.</p>
-                  </div>
-                </div>
-              </Section>
-
-              <Section title="Sede & Informazioni Aziendali" icon={<MapPin className="w-4 h-4 text-[#3B82F6]" />}>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs text-[#9CA3AF] mb-2 block">Sede</label>
-                    <select className="w-full h-10 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20">
-                      {['Milano', 'Roma', 'Torino', 'Bologna'].map(s => <option key={s}>{s}</option>)}
-                    </select>
-                  </div>
-                  <ProfileField label="Dipartimento" defaultValue="Operations" />
-                  <div className="col-span-2">
-                    <label className="text-xs text-[#9CA3AF] mb-2 block">Bio</label>
-                    <textarea rows={3} defaultValue="Responsabile della supervisione delle operazioni quotidiane e della gestione del team operativo." className="w-full px-4 py-3 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 resize-none" />
+                    <label className="text-xs text-[#9CA3AF] mb-2 block">Ruolo di sistema</label>
+                    <input disabled value={ruoloNome} className="w-full h-10 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm text-[#9CA3AF] cursor-not-allowed" />
+                    <p className="text-xs text-[#9CA3AF] mt-1">Il ruolo può essere modificato solo dall'amministratore.</p>
                   </div>
                 </div>
               </Section>
             </>
           )}
 
-          {/* SICUREZZA */}
           {activeTab === 'sicurezza' && (
             <>
               <Section title="Cambia Password" icon={<Lock className="w-4 h-4 text-[#3B82F6]" />}>
@@ -162,9 +155,9 @@ export function UserProfilePage() {
                   </div>
                   <div className="bg-[#F7F9FC] rounded-xl p-3 space-y-1.5">
                     <p className="text-xs text-[#9CA3AF] mb-2">Requisiti password</p>
-                    {['Almeno 8 caratteri', 'Una lettera maiuscola', 'Un numero', 'Un carattere speciale'].map((r, i) => (
+                    {['Almeno 8 caratteri', 'Una lettera maiuscola', 'Un numero', 'Un carattere speciale'].map((r) => (
                       <div key={r} className="flex items-center gap-2">
-                        <CheckCircle className={`w-3.5 h-3.5 ${i < 2 ? 'text-emerald-500' : 'text-[#E5EAF2]'}`} />
+                        <CheckCircle className="w-3.5 h-3.5 text-[#E5EAF2]" />
                         <span className="text-xs text-[#6B7280]">{r}</span>
                       </div>
                     ))}
@@ -187,12 +180,7 @@ export function UserProfilePage() {
                         <p className="text-xs text-[#9CA3AF]">Google Authenticator / Authy</p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => setTwoFa(v => !v)}
-                      className={`relative w-12 h-6 rounded-full transition-colors ${twoFa ? 'bg-[#17E88F]' : 'bg-[#E5EAF2]'}`}
-                    >
-                      <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${twoFa ? 'translate-x-6' : 'translate-x-0.5'}`} />
-                    </button>
+                    <Toggle value={twoFa} onChange={setTwoFa} />
                   </div>
                   {twoFa && (
                     <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3">
@@ -208,21 +196,17 @@ export function UserProfilePage() {
             </>
           )}
 
-          {/* NOTIFICHE */}
           {activeTab === 'notifiche' && (
             <>
               <Section title="Canali di Notifica" icon={<Bell className="w-4 h-4 text-[#3B82F6]" />}>
                 <div className="space-y-3">
                   {([
-                    { key: 'email', label: 'Email', icon: <Mail className="w-4 h-4 text-blue-500" /> },
-                    { key: 'push', label: 'Notifiche Push', icon: <Bell className="w-4 h-4 text-purple-500" /> },
-                    { key: 'sms', label: 'SMS', icon: <Smartphone className="w-4 h-4 text-orange-500" /> },
-                  ] as { key: keyof typeof notifs; label: string; icon: React.ReactNode }[]).map(ch => (
+                    { key: 'email', label: 'Email' },
+                    { key: 'push',  label: 'Notifiche Push' },
+                    { key: 'sms',   label: 'SMS' },
+                  ] as { key: keyof typeof notifs; label: string }[]).map(ch => (
                     <div key={ch.key} className="flex items-center justify-between p-3 bg-[#F7F9FC] rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-white rounded-lg border border-[#E5EAF2] flex items-center justify-center shadow-sm">{ch.icon}</div>
-                        <span className="text-sm font-medium text-[#2D2D2D]">{ch.label}</span>
-                      </div>
+                      <span className="text-sm font-medium text-[#2D2D2D]">{ch.label}</span>
                       <Toggle value={notifs[ch.key]} onChange={v => setNotifs(prev => ({ ...prev, [ch.key]: v }))} />
                     </div>
                   ))}
@@ -232,10 +216,10 @@ export function UserProfilePage() {
               <Section title="Tipi di Notifica" icon={<AlertCircle className="w-4 h-4 text-[#3B82F6]" />}>
                 <div className="space-y-3">
                   {([
-                    { key: 'ordini', label: 'Nuovi ordini e aggiornamenti', detail: 'Acquisti, vendite, stato spedizioni' },
-                    { key: 'magazzino', label: 'Avvisi magazzino', detail: 'Sottoscorta, inventario, scadenze' },
-                    { key: 'fatture', label: 'Fatturazione & Pagamenti', detail: 'Scadenze, pagamenti ricevuti/inviati' },
-                    { key: 'sistema', label: 'Aggiornamenti sistema', detail: 'Manutenzione, nuove funzionalità' },
+                    { key: 'ordini',    label: 'Ordini e spedizioni',       detail: 'Acquisti, vendite, stato spedizioni' },
+                    { key: 'magazzino', label: 'Avvisi magazzino',           detail: 'Sottoscorta, inventario' },
+                    { key: 'fatture',   label: 'Fatturazione & Pagamenti',   detail: 'Scadenze, pagamenti ricevuti/inviati' },
+                    { key: 'sistema',   label: 'Aggiornamenti sistema',      detail: 'Manutenzione, nuove funzionalità' },
                   ] as { key: keyof typeof notifs; label: string; detail: string }[]).map(n => (
                     <div key={n.key} className="flex items-center justify-between p-3 border border-[#E5EAF2] rounded-xl hover:bg-[#F7F9FC] transition-colors">
                       <div>
@@ -250,59 +234,24 @@ export function UserProfilePage() {
             </>
           )}
 
-          {/* PREFERENZE */}
           {activeTab === 'preferenze' && (
-            <>
-              <Section title="Aspetto" icon={<Palette className="w-4 h-4 text-[#3B82F6]" />}>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs text-[#9CA3AF] mb-3 block">Tema</label>
-                    <div className="flex gap-3">
-                      {([
-                        { val: 'light', label: 'Chiaro', icon: <Sun className="w-5 h-5" /> },
-                        { val: 'dark', label: 'Scuro', icon: <Moon className="w-5 h-5" /> },
-                        { val: 'auto', label: 'Automatico', icon: <Monitor className="w-5 h-5" /> },
-                      ] as const).map(t => (
-                        <button
-                          key={t.val}
-                          onClick={() => setTheme(t.val)}
-                          className={`flex-1 flex flex-col items-center gap-2 py-4 rounded-xl border transition-colors ${theme === t.val ? 'border-[#17E88F] bg-[#F0FDF7] text-[#17E88F]' : 'border-[#E5EAF2] text-[#6B7280] hover:bg-[#F7F9FC]'}`}
-                        >
-                          {t.icon}
-                          <span className="text-xs font-medium">{t.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs text-[#9CA3AF] mb-2 block">Lingua</label>
-                    <select value={lang} onChange={e => setLang(e.target.value)} className="w-full h-10 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm focus:outline-none">
-                      <option value="it">Italiano</option>
-                      <option value="en">English</option>
-                      <option value="de">Deutsch</option>
-                      <option value="fr">Français</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs text-[#9CA3AF] mb-2 block">Fuso Orario</label>
-                    <select className="w-full h-10 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm focus:outline-none">
-                      <option>Europe/Rome (UTC+2)</option>
-                      <option>Europe/London (UTC+1)</option>
-                      <option>America/New_York (UTC-4)</option>
-                    </select>
-                  </div>
+            <Section title="Lingua e Fuso Orario" icon={<Globe className="w-4 h-4 text-[#3B82F6]" />}>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs text-[#9CA3AF] mb-2 block">Lingua</label>
+                  <select className="w-full h-10 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm focus:outline-none">
+                    <option value="it">Italiano</option>
+                    <option value="en">English</option>
+                  </select>
                 </div>
-              </Section>
-
-              <Section title="Dati e Privacy" icon={<Globe className="w-4 h-4 text-[#3B82F6]" />}>
-                <div className="space-y-3">
-                  <button className="w-full flex items-center justify-between p-3 border border-[#E5EAF2] rounded-xl hover:bg-[#F7F9FC] transition-colors">
-                    <div className="flex items-center gap-3">
-                      <Download className="w-4 h-4 text-[#6B7280]" />
-                      <span className="text-sm text-[#2D2D2D]">Esporta i tuoi dati</span>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[#9CA3AF]" />
-                  </button>
+                <div>
+                  <label className="text-xs text-[#9CA3AF] mb-2 block">Fuso Orario</label>
+                  <select className="w-full h-10 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm focus:outline-none">
+                    <option>Europe/Rome (UTC+2)</option>
+                    <option>Europe/London (UTC+1)</option>
+                  </select>
+                </div>
+                <div className="pt-2 border-t border-[#E5EAF2]">
                   <button className="w-full flex items-center justify-between p-3 border border-red-200 rounded-xl hover:bg-red-50 transition-colors">
                     <div className="flex items-center gap-3">
                       <X className="w-4 h-4 text-red-500" />
@@ -311,11 +260,10 @@ export function UserProfilePage() {
                     <ChevronRight className="w-4 h-4 text-red-400" />
                   </button>
                 </div>
-              </Section>
-            </>
+              </div>
+            </Section>
           )}
 
-          {/* SESSIONI */}
           {activeTab === 'sessioni' && (
             <>
               <Section title="Sessioni Attive" icon={<Monitor className="w-4 h-4 text-[#3B82F6]" />}>
@@ -335,27 +283,23 @@ export function UserProfilePage() {
                         </div>
                       </div>
                       {!s.current && (
-                        <button className="text-xs text-red-500 hover:text-red-700 transition-colors px-3 py-1.5 border border-red-200 rounded-lg hover:bg-red-50">
+                        <button className="text-xs text-red-500 px-3 py-1.5 border border-red-200 rounded-lg hover:bg-red-50">
                           Revoca
                         </button>
                       )}
                     </div>
                   ))}
-                  <button className="w-full py-2.5 border border-red-200 text-red-500 rounded-xl text-sm hover:bg-red-50 transition-colors">
-                    Revoca tutte le altre sessioni
-                  </button>
                 </div>
               </Section>
 
-              <Section title="Log Attività Recenti" icon={<Activity className="w-4 h-4 text-[#3B82F6]" />}>
+              <Section title="Log Attività" icon={<Activity className="w-4 h-4 text-[#3B82F6]" />}>
                 <div className="space-y-2">
                   {ACTIVITY_LOG.map((ev, i) => (
                     <div key={i} className="flex items-center gap-3 p-3 bg-[#F7F9FC] rounded-xl">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${ev.type === 'login' ? 'bg-emerald-100' : ev.type === 'security' ? 'bg-red-100' : ev.type === 'edit' ? 'bg-blue-100' : 'bg-purple-100'}`}>
-                        {ev.type === 'login' && <CheckCircle className="w-4 h-4 text-emerald-600" />}
-                        {ev.type === 'security' && <Shield className="w-4 h-4 text-red-600" />}
-                        {ev.type === 'edit' && <Edit2 className="w-4 h-4 text-blue-600" />}
-                        {ev.type === 'export' && <Download className="w-4 h-4 text-purple-600" />}
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${ev.type === 'login' ? 'bg-emerald-100' : 'bg-blue-100'}`}>
+                        {ev.type === 'login'
+                          ? <CheckCircle className="w-4 h-4 text-emerald-600" />
+                          : <Edit2 className="w-4 h-4 text-blue-600" />}
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-medium text-[#2D2D2D]">{ev.action}</p>
@@ -386,7 +330,7 @@ function Section({ title, icon, children }: { title: string; icon: React.ReactNo
   );
 }
 
-function ProfileField({ label, type = 'text', defaultValue }: { label: string; type?: string; defaultValue: string }) {
+function Field({ label, type = 'text', defaultValue }: { label: string; type?: string; defaultValue: string }) {
   return (
     <div>
       <label className="text-xs text-[#9CA3AF] mb-2 block">{label}</label>
