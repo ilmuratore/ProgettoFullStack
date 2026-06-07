@@ -5,50 +5,16 @@ import { PageTabBar, TabConfig } from './ui/PageTabBar';
 type AdminTab = 'utenti' | 'ruoli' | 'impostazioni';
 
 const tabs: TabConfig[] = [
-  { id: 'utenti', label: 'Utenti', icon: Users, count: 12 },
+  { id: 'utenti', label: 'Utenti', icon: Users },
   { id: 'ruoli', label: 'Ruoli & Permessi', icon: ShieldCheck },
   { id: 'impostazioni', label: 'Impostazioni', icon: Settings },
 ];
 
-const utenti = [
-  { id: 1, nome: 'Alessandro Ferrari', email: 'a.ferrari@logichain.it', ruolo: 'Admin', ruoloColor: '#0F172A', ultimoAccesso: '2025-06-05 08:32', attivo: true },
-  { id: 2, nome: 'Sofia Martini', email: 's.martini@logichain.it', ruolo: 'Resp. Acquisti', ruoloColor: '#1D4ED8', ultimoAccesso: '2025-06-05 09:14', attivo: true },
-  { id: 3, nome: 'Marco Rossi', email: 'm.rossi@logichain.it', ruolo: 'Resp. Magazzino', ruoloColor: '#0D9488', ultimoAccesso: '2025-06-05 07:55', attivo: true },
-  { id: 4, nome: 'Laura Bianchi', email: 'l.bianchi@logichain.it', ruolo: 'Operatore', ruoloColor: '#16A34A', ultimoAccesso: '2025-06-04 16:22', attivo: true },
-  { id: 5, nome: 'Giuseppe Verdi', email: 'g.verdi@logichain.it', ruolo: 'Operatore', ruoloColor: '#16A34A', ultimoAccesso: '2025-06-04 14:10', attivo: true },
-  { id: 6, nome: 'Carlo Ricci', email: 'c.ricci@brt.it', ruolo: 'Corriere', ruoloColor: '#EA580C', ultimoAccesso: '2025-06-03 11:45', attivo: true },
-  { id: 7, nome: 'Francesca Romano', email: 'f.romano@logichain.it', ruolo: 'Operatore', ruoloColor: '#16A34A', ultimoAccesso: '2025-05-30 09:00', attivo: false },
-];
+const utenti: {id:number;nome:string;email:string;ruolo:string;ruoloColor:string;ultimoAccesso:string;attivo:boolean}[] = [];
 
-const permessi = [
-  { codice: 'utenti:read', descrizione: 'Visualizza utenti', admin: true, respAcq: false, respMag: false, operatore: false, corriere: false },
-  { codice: 'utenti:write', descrizione: 'Crea/modifica utenti', admin: true, respAcq: false, respMag: false, operatore: false, corriere: false },
-  { codice: 'prodotti:read', descrizione: 'Visualizza prodotti', admin: true, respAcq: true, respMag: true, operatore: true, corriere: false },
-  { codice: 'prodotti:write', descrizione: 'Crea/modifica prodotti', admin: true, respAcq: false, respMag: false, operatore: false, corriere: false },
-  { codice: 'fornitori:read', descrizione: 'Visualizza fornitori', admin: true, respAcq: true, respMag: false, operatore: false, corriere: false },
-  { codice: 'fornitori:write', descrizione: 'Crea/modifica fornitori', admin: true, respAcq: true, respMag: false, operatore: false, corriere: false },
-  { codice: 'magazzino:read', descrizione: 'Visualizza magazzino', admin: true, respAcq: false, respMag: true, operatore: false, corriere: false },
-  { codice: 'magazzino:write', descrizione: 'Gestisce ubicazioni', admin: true, respAcq: false, respMag: true, operatore: false, corriere: false },
-  { codice: 'giacenze:read', descrizione: 'Visualizza giacenze', admin: true, respAcq: false, respMag: true, operatore: true, corriere: false },
-  { codice: 'giacenze:write', descrizione: 'Modifica giacenze', admin: true, respAcq: false, respMag: true, operatore: false, corriere: false },
-  { codice: 'ordini:read', descrizione: 'Visualizza ordini', admin: true, respAcq: true, respMag: true, operatore: true, corriere: false },
-  { codice: 'ordini:write', descrizione: 'Crea/modifica ordini', admin: true, respAcq: false, respMag: true, operatore: true, corriere: false },
-  { codice: 'ordini:approve', descrizione: 'Approva ordini', admin: true, respAcq: false, respMag: false, operatore: false, corriere: false },
-  { codice: 'acquisti:read', descrizione: 'Visualizza acquisti', admin: true, respAcq: true, respMag: false, operatore: false, corriere: false },
-  { codice: 'acquisti:write', descrizione: 'Crea/modifica acquisti', admin: true, respAcq: true, respMag: false, operatore: false, corriere: false },
-  { codice: 'spedizioni:read', descrizione: 'Visualizza spedizioni', admin: true, respAcq: false, respMag: true, operatore: true, corriere: true },
-  { codice: 'spedizioni:write', descrizione: 'Gestisce spedizioni', admin: true, respAcq: false, respMag: true, operatore: false, corriere: true },
-  { codice: 'notifiche:read', descrizione: 'Visualizza notifiche', admin: true, respAcq: true, respMag: true, operatore: true, corriere: true },
-  { codice: 'dashboard:read', descrizione: 'Visualizza dashboard', admin: true, respAcq: true, respMag: true, operatore: false, corriere: false },
-];
+const permessi: {codice:string;descrizione:string;admin:boolean;respAcq:boolean;respMag:boolean;operatore:boolean;corriere:boolean}[] = [];
 
-const ruoli = [
-  { nome: 'Admin', colore: '#0F172A', permessiCount: 30, descrizione: 'Accesso completo a tutte le funzionalità' },
-  { nome: 'Resp. Acquisti', colore: '#1D4ED8', permessiCount: 14, descrizione: 'Gestione ciclo acquisti e fornitori' },
-  { nome: 'Resp. Magazzino', colore: '#0D9488', permessiCount: 11, descrizione: 'Gestione magazzino, giacenze e logistica' },
-  { nome: 'Operatore', colore: '#16A34A', permessiCount: 8, descrizione: 'Inserimento ordini e operazioni picking' },
-  { nome: 'Corriere', colore: '#EA580C', permessiCount: 3, descrizione: 'Aggiornamento stato spedizioni assegnate' },
-];
+const ruoli: {nome:string;colore:string;permessiCount:number;descrizione:string}[] = [];
 
 export function AdministrationPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>('utenti');

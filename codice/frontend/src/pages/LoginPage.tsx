@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { authApi } from '../api/authApi';
 import { useAuthStore } from '../store/authStore';
 
+// ─── ICONE INLINE (nessuna dipendenza esterna) ────────────────────────────────
 function IconUser({ size = 15 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -67,6 +68,7 @@ const ROLE_COLORS: Record<number, { color: string; bg: string }> = {
   5: { color: '#EA580C', bg: '#FEE2E2' },
 };
 
+// Feature list per il panel sinistro
 const FEATURES = ['RBAC Granulare', 'Audit Log', 'Transazioni ACID', 'DDT Automatico', 'Alert Real-time'];
 
 const ROLES_INFO = [
@@ -118,10 +120,12 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
   return (
     <div className="min-h-screen bg-[#F7F9FC] flex">
+      {/* ── LEFT PANEL — branding ── */}
       <div
         className="hidden lg:flex lg:w-1/2 relative overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%)' }}
       >
+        {/* Grid pattern */}
         <div
           className="absolute inset-0"
           style={{
@@ -130,6 +134,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             backgroundSize: '40px 40px',
           }}
         />
+        {/* Glow */}
         <div
           className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full opacity-20"
           style={{ background: 'radial-gradient(circle, #17E88F 0%, transparent 70%)' }}
@@ -140,6 +145,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
           }`}
         >
+          {/* Logo */}
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #17E88F, #0FA67A)' }}>
               <IconPackage size={20} />
@@ -150,6 +156,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             </div>
           </div>
 
+          {/* Copy */}
           <div className="space-y-6">
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#17E88F]/30 bg-[#17E88F]/10">
@@ -174,6 +181,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             </div>
           </div>
 
+          {/* Roles */}
           <div className="space-y-3">
             <p className="text-[#64748B] text-xs font-medium uppercase tracking-wider">5 ruoli operativi</p>
             <div className="space-y-2">
@@ -189,13 +197,14 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         </div>
       </div>
 
+      {/* ── RIGHT PANEL — form ── */}
       <div className="flex-1 flex flex-col justify-center px-6 py-12 lg:px-16">
         <div
           className={`w-full max-w-md mx-auto transition-all duration-700 delay-100 ${
             mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
           }`}
         >
-          
+          {/* Mobile logo */}
           <div className="flex items-center gap-2 mb-8 lg:hidden">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #17E88F, #0FA67A)' }}>
               <IconPackage size={16} />
@@ -209,6 +218,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-[#374151]">Email</label>
               <div className="relative">
@@ -228,6 +238,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               </div>
             </div>
 
+            {/* Password */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-[#374151]">Password</label>
               <div className="relative">
@@ -254,7 +265,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               </div>
             </div>
 
-            
+            {/* Error */}
             {error && (
               <div className="flex items-start gap-2.5 p-3.5 bg-[#FEF2F2] border border-[#FECACA] rounded-xl">
                 <IconX size={14} />
@@ -262,7 +273,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               </div>
             )}
 
-            
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
@@ -286,7 +297,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             </button>
           </form>
 
-          
+          {/* Info ruoli */}
           <div className="mt-6 p-4 bg-white border border-[#E5EAF2] rounded-xl">
             <p className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider mb-3">Ruoli disponibili</p>
             <div className="space-y-1.5">

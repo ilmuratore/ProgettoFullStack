@@ -8,6 +8,10 @@ const ROLE_CONFIG: Record<string, { color: string; bg: string; label: string }> 
   'Corriere':                 { color: '#EA580C', bg: '#FEE2E2', label: 'Corriere'         },
 };
 
+/**
+ * NavBar minimale per uso nelle rotte — già integrata nella Header del Figma.
+ * Esposizione store auth: nome utente, ruolo, logout.
+ */
 export function NavBar() {
   const { utente, logout } = useAuthStore();
   if (!utente) return null;
@@ -18,11 +22,13 @@ export function NavBar() {
 
   return (
     <div className="flex items-center gap-3">
+      {/* Badge ruolo */}
       <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[#E5EAF2] bg-[#F8FAFC]">
         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: conf.color === '#0F172A' ? '#17E88F' : conf.color }} />
         <span className="text-xs font-medium text-[#374151]">{conf.label}</span>
       </div>
 
+      {/* Avatar + nome */}
       <div className="flex items-center gap-2">
         <div
           className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
@@ -35,6 +41,7 @@ export function NavBar() {
         </span>
       </div>
 
+      {/* Logout */}
       <button
         onClick={logout}
         className="flex items-center gap-1.5 px-3 py-2 text-sm text-[#6B7280] hover:text-[#DC2626] hover:bg-[#FEF2F2] rounded-xl border border-[#E5EAF2] transition-all"

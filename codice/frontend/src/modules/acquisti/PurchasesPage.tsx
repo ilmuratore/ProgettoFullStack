@@ -12,17 +12,12 @@ import { PageTabBar, TabConfig } from './ui/PageTabBar';
 type PurchaseTab = 'ordini' | 'ricezioni' | 'kpi';
 
 const tabs: TabConfig[] = [
-  { id: 'ordini', label: 'Ordini', icon: ShoppingCart, count: 34 },
-  { id: 'ricezioni', label: 'Ricezioni', icon: PackageCheck, count: 8 },
+  { id: 'ordini', label: 'Ordini', icon: ShoppingCart },
+  { id: 'ricezioni', label: 'Ricezioni', icon: PackageCheck },
   { id: 'kpi', label: 'KPI Acquisti', icon: BarChart2 },
 ];
 
-const ricezioniData = [
-  { id: 'RIC-001', poId: 'PO-2025-042', fornitore: 'Packaging Solutions Italia S.p.A.', dataRicezione: '2025-06-03', righe: 3, totaleRicevuto: 120, totaleAtteso: 150, ubicazione: 'COR-A / SCA-1', stato: 'Parziale' },
-  { id: 'RIC-002', poId: 'PO-2025-038', fornitore: 'Pallet Systems Europe S.p.A.', dataRicezione: '2025-06-02', righe: 2, totaleRicevuto: 500, totaleAtteso: 500, ubicazione: 'COR-B / SCA-2', stato: 'Completa' },
-  { id: 'RIC-003', poId: 'PO-2025-035', fornitore: 'Etichette Professionali S.r.l.', dataRicezione: '2025-05-30', righe: 1, totaleRicevuto: 1000, totaleAtteso: 1000, ubicazione: 'COR-A / SCA-3', stato: 'Completa' },
-  { id: 'RIC-004', poId: 'PO-2025-031', fornitore: 'Packaging Solutions Italia S.p.A.', dataRicezione: '2025-05-28', righe: 4, totaleRicevuto: 80, totaleAtteso: 200, ubicazione: 'COR-C / SCA-1', stato: 'Parziale' },
-];
+const ricezioniData: {id:string;poId:string;fornitore:string;dataRicezione:string;righe:number;totaleRicevuto:number;totaleAtteso:number;ubicazione:string;stato:string}[] = [];
 
 export function PurchasesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);

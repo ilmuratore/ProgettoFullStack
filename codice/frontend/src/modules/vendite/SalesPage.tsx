@@ -12,38 +12,12 @@ import { PageTabBar, TabConfig } from './ui/PageTabBar';
 type SalesTab = 'ordini' | 'picking' | 'kpi';
 
 const tabs: TabConfig[] = [
-  { id: 'ordini', label: 'Ordini', icon: ShoppingBag, count: 128 },
-  { id: 'picking', label: 'Picking', icon: ListChecks, count: 14 },
+  { id: 'ordini', label: 'Ordini', icon: ShoppingBag },
+  { id: 'picking', label: 'Picking', icon: ListChecks },
   { id: 'kpi', label: 'KPI Vendite', icon: BarChart2 },
 ];
 
-const pickingData = [
-  {
-    id: 'PCK-001',
-    ordine: 'ORD-2025-089',
-    cliente: 'Logistica Express S.r.l.',
-    dataConsegna: '2025-06-05',
-    righe: [
-      { sku: 'PLT-EUR-001', prodotto: 'Pallet Standard EUR 1200x800', ubicazione: 'COR-A / SCA-1 / UBI-01', qtaRichiesta: 20, qtaPrelevata: 20, completato: true },
-      { sku: 'SCT-OND-045', prodotto: 'Scatola Cartone Ondulato 40x30x30', ubicazione: 'COR-A / SCA-2 / UBI-03', qtaRichiesta: 100, qtaPrelevata: 75, completato: false },
-      { sku: 'FLM-EST-012', prodotto: 'Film Estensibile Trasparente 50cm', ubicazione: 'COR-B / SCA-3 / UBI-05', qtaRichiesta: 5, qtaPrelevata: 0, completato: false },
-    ],
-    stato: 'IN_PICKING',
-    operatore: 'Laura Bianchi',
-  },
-  {
-    id: 'PCK-002',
-    ordine: 'ORD-2025-091',
-    cliente: 'Transport Solutions S.p.A.',
-    dataConsegna: '2025-06-06',
-    righe: [
-      { sku: 'PLT-EUR-001', prodotto: 'Pallet Standard EUR 1200x800', ubicazione: 'COR-A / SCA-1 / UBI-02', qtaRichiesta: 50, qtaPrelevata: 50, completato: true },
-      { sku: 'SCT-OND-045', prodotto: 'Scatola Cartone Ondulato 40x30x30', ubicazione: 'COR-A / SCA-2 / UBI-04', qtaRichiesta: 200, qtaPrelevata: 200, completato: true },
-    ],
-    stato: 'PICKING_COMPLETATO',
-    operatore: 'Marco Rossi',
-  },
-];
+const pickingData: {id:string;ordine:string;cliente:string;dataConsegna:string;righe:{sku:string;prodotto:string;ubicazione:string;qtaRichiesta:number;qtaPrelevata:number;completato:boolean}[];stato:string;operatore:string}[] = [];
 
 export function SalesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);

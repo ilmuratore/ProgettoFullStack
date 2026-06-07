@@ -12,18 +12,12 @@ import { PageTabBar, TabConfig } from './ui/PageTabBar';
 type LogisticsTab = 'spedizioni' | 'ddt' | 'kpi';
 
 const tabs: TabConfig[] = [
-  { id: 'spedizioni', label: 'Spedizioni', icon: Truck, count: 87 },
-  { id: 'ddt', label: 'DDT', icon: FileText, count: 312 },
+  { id: 'spedizioni', label: 'Spedizioni', icon: Truck },
+  { id: 'ddt', label: 'DDT', icon: FileText },
   { id: 'kpi', label: 'KPI Logistica', icon: BarChart2 },
 ];
 
-const ddtData = [
-  { id: 'DDT/2025/0312', spedizione: 'SHP-2025-312', ordine: 'ORD-2025-089', cliente: 'Logistica Express S.r.l.', corriere: 'BRT Express', dataEmissione: '2025-06-03', peso: '125 kg', colli: 8, stato: 'CONSEGNATA' },
-  { id: 'DDT/2025/0311', spedizione: 'SHP-2025-311', ordine: 'ORD-2025-085', cliente: 'Transport Solutions S.p.A.', corriere: 'GLS Logistics', dataEmissione: '2025-06-03', peso: '340 kg', colli: 22, stato: 'SPEDITA' },
-  { id: 'DDT/2025/0310', spedizione: 'SHP-2025-310', ordine: 'ORD-2025-081', cliente: 'Supply Chain Pro S.r.l.', corriere: 'DHL Italia', dataEmissione: '2025-06-02', peso: '89 kg', colli: 5, stato: 'CONSEGNATA' },
-  { id: 'DDT/2025/0309', spedizione: 'SHP-2025-309', ordine: 'ORD-2025-078', cliente: 'Logistica Express S.r.l.', corriere: 'BRT Express', dataEmissione: '2025-06-01', peso: '210 kg', colli: 14, stato: 'CONSEGNATA' },
-  { id: 'DDT/2025/0308', spedizione: 'SHP-2025-308', ordine: 'ORD-2025-076', cliente: 'Transport Solutions S.p.A.', corriere: 'GLS Logistics', dataEmissione: '2025-05-31', peso: '55 kg', colli: 3, stato: 'PROBLEMA' },
-];
+const ddtData: {id:string;spedizione:string;ordine:string;cliente:string;corriere:string;dataEmissione:string;peso:string;colli:number;stato:string}[] = [];
 
 const shippingStateBadge = (stato: string) => {
   switch (stato) {

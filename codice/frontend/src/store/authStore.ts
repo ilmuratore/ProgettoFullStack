@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { UtenteAPI } from '../api/authApi';
+import type { UtenteAPI } from '../types/auth';
 
 export const RUOLO_ID_TO_NOME: Record<number, string> = {
   1: 'Admin',
@@ -53,7 +53,7 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  token:  localStorage.getItem('lc_token'),
+  token: localStorage.getItem('lc_token'),
   utente: (() => {
     try { return JSON.parse(localStorage.getItem('lc_utente') ?? 'null'); }
     catch { return null; }

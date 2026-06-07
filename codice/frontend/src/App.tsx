@@ -1,91 +1,125 @@
-import { useState } from 'react';
-import { Package, ClipboardList, AlertTriangle, Truck, Bell, BellDot, Check, Filter, RotateCcw } from 'lucide-react';
-import { Sidebar } from './components/Sidebar';
-import { Header } from './components/Header';
-import { KPICard } from './components/KPICard';
-import { OrdersBarChart } from './components/OrdersBarChart';
-import { OrdersPieChart } from './components/OrdersPieChart';
-import { ActivityTable } from './components/ActivityTable';
-import { WarehouseCapacity } from './components/WarehouseCapacity';
-import { CriticalProductsAlert } from './components/CriticalProductsAlert';
-import { MiniCalendar } from './components/MiniCalendar';
-import { AnagrafichePage } from './components/AnagrafichePage';
-import { WarehousePage } from './components/WarehousePage';
-import { PurchasesPage } from './components/PurchasesPage';
-import { SalesPage } from './components/SalesPage';
-import { LogisticsPage } from './components/LogisticsPage';
-import { AdministrationPage } from './components/AdministrationPage';
-import { PageTabBar } from './components/ui/PageTabBar';
-import { Toaster } from 'sonner';
-import { LoginPage } from '../pages/LoginPage';
-import type { UiUser, Role } from '../types/auth';
+import { useState, useEffect } from 'react';
+import {
+  Package, ClipboardList, AlertTriangle, Truck,
+  Bell, BellDot, Check, Filter, RotateCcw
+} from 'lucide-react';
 
-type Page = 'dashboard' | 'anagrafiche' | 'magazzino' | 'acquisti' | 'vendite' | 'logistica' | 'amministrazione';
+// Layout
+import { Sidebar }               from './components/layout/Sidebar';
+import { Header }                from './components/layout/Header';
+
+// Shared (dashboard)
+import { KPICard }               from './components/shared/KPICard';
+import { OrdersBarChart }        from './components/shared/OrdersBarChart';
+import { OrdersPieChart }        from './components/shared/OrdersPieChart';
+import { ActivityTable }         from './components/shared/ActivityTable';
+import { WarehouseCapacity }     from './components/shared/WarehouseCapacity';
+import { CriticalProductsAlert } from './components/shared/CriticalProductsAlert';
+import { MiniCalendar }          from './components/shared/MiniCalendar';
+
+// Moduli
+import { AnagrafichePage }       from './modules/anagrafiche/AnagrafichePage';
+import { WarehousePage }         from './modules/magazzino/WarehousePage';
+import { PurchasesPage }         from './modules/acquisti/PurchasesPage';
+import { SalesPage }             from './modules/vendite/SalesPage';
+import { LogisticsPage }         from './modules/logistica/LogisticsPage';
+import { AdministrationPage }    from './modules/amministrazione/AdministrationPage';
+
+// UI
+import { PageTabBar }            from './components/ui/PageTabBar';
+import { Toaster }               from 'sonner';
+
+// Store / API / Tipi
+import { useAuthStore, RUOLO_ID_TO_NOME, PAGINE_PER_RUOLO } from './store/authStore';
+import { LoginPage }             from './pages/LoginPage';
+import { authApi }               from './api/authApi';
+import type { UiUser, Role }     from './types/auth';
+
+type Page         = 'dashboard' | 'anagrafiche' | 'magazzino' | 'acquisti' | 'vendite' | 'logistica' | 'amministrazione';
 type DashboardTab = 'dashboard' | 'alert';
-type NotifType = 'SOTTO_SCORTA' | 'RICEZIONE_PARZIALE' | 'PO_IN_RITARDO' | 'CAMBIO_STATO_SPEDIZIONE';
+type NotifType    = 'SOTTO_SCORTA' | 'RICEZIONE_PARZIALE' | 'PO_IN_RITARDO' | 'CAMBIO_STATO_SPEDIZIONE';
 
 interface Notifica {
   id: number; tipo: NotifType; messaggio: string; utente: string; data: string; letta: boolean;
 }
 
-const SIDEBAR_ACCESS: Record<Role, Page[]> = {
-  Admin:                    ['dashboard','anagrafiche','magazzino','acquisti','vendite','logistica','amministrazione'],
-  'Responsabile Acquisti':  ['dashboard','anagrafiche','acquisti'],
-  'Responsabile Magazzino': ['dashboard','magazzino','vendite','logistica'],
-  Operatore:                ['dashboard','anagrafiche','vendite','magazzino'],
-  Corriere:                 ['dashboard','logistica'],
+const AVATAR_BGS: Record<number, string> = {
+  1: '#0F172A', 2: '#1D4ED8', 3: '#0D9488', 4: '#16A34A', 5: '#EA580C',
 };
 
-const ROLE_COLORS: Record<Role, string> = {
-  Admin: '#0F172A', 'Responsabile Acquisti': '#1D4ED8',
-  'Responsabile Magazzino': '#0D9488', Operatore: '#16A34A', Corriere: '#EA580C',
+const notifTypeConfig: Record<NotifType, { label: string; bg: string; text: string; dot: string }> = {
+  SOTTO_SCORTA:            { label: 'Sotto Scorta',  bg: 'bg-[#FEF3C7]', text: 'text-[#D97706]', dot: 'bg-[#D97706]' },
+  RICEZIONE_PARZIALE:      { label: 'Ric. Parziale', bg: 'bg-[#DBEAFE]', text: 'text-[#3B82F6]', dot: 'bg-[#3B82F6]' },
+  PO_IN_RITARDO:           { label: 'PO in Ritardo', bg: 'bg-[#FEE2E2]', text: 'text-[#DC2626]', dot: 'bg-[#DC2626]' },
+  CAMBIO_STATO_SPEDIZIONE: { label: 'Stato Sped.',   bg: 'bg-[#F0FDF7]', text: 'text-[#16A34A]', dot: 'bg-[#16A34A]' },
 };
 
+// Notifiche statiche — rimangono mock fino a M11
 const notificheIniziali: Notifica[] = [
-  { id:1, tipo:'SOTTO_SCORTA',            messaggio:'Film Estensibile Trasparente 50cm (FLM-EST-012) sotto scorta minima. Giacenza: 12, minimo: 50',       utente:'Sistema',       data:'2025-06-05 08:14', letta:false },
-  { id:2, tipo:'PO_IN_RITARDO',           messaggio:'PO-2025-028 — Packaging Solutions Italia S.p.A. scaduto il 02/06/2025. Nessuna conferma ricevuta.',  utente:'Sistema',       data:'2025-06-05 07:00', letta:false },
-  { id:3, tipo:'RICEZIONE_PARZIALE',      messaggio:'PO-2025-042 ricevuto parzialmente: 120/150 unità. Ubicazione COR-A/SCA-1.',                          utente:'Marco Rossi',   data:'2025-06-04 16:45', letta:false },
-  { id:4, tipo:'CAMBIO_STATO_SPEDIZIONE', messaggio:'Spedizione SHP-2025-311 → SPEDITA. Tracking: GLS-IT-98765432. Corriere: GLS Logistics.',             utente:'Sistema',       data:'2025-06-04 14:22', letta:false },
-  { id:5, tipo:'SOTTO_SCORTA',            messaggio:'Etichette Adesive 10x5cm (ETH-ADH-007) sotto scorta minima. Giacenza: 200, minimo: 500',             utente:'Sistema',       data:'2025-06-04 09:30', letta:false },
-  { id:6, tipo:'CAMBIO_STATO_SPEDIZIONE', messaggio:'Spedizione SHP-2025-309 → CONSEGNATA. Firma ricevuta presso cliente.',                               utente:'Carlo Ricci',   data:'2025-06-03 17:10', letta:true  },
-  { id:7, tipo:'RICEZIONE_PARZIALE',      messaggio:'PO-2025-031 ricevuto parzialmente: 80/200 unità. Fornitore: Packaging Solutions Italia.',            utente:'Laura Bianchi', data:'2025-06-03 11:05', letta:true  },
-  { id:8, tipo:'PO_IN_RITARDO',           messaggio:'PO-2025-024 — Etichette Professionali S.r.l. scaduto il 28/05/2025.',                               utente:'Sistema',       data:'2025-06-02 07:00', letta:true  },
+  { id:1, tipo:'SOTTO_SCORTA',            messaggio:'Film Estensibile Trasparente 50cm (FLM-EST-012) sotto scorta minima. Giacenza: 12, minimo: 50',      utente:'Sistema',       data:'2025-06-05 08:14', letta:false },
+  { id:2, tipo:'PO_IN_RITARDO',           messaggio:'PO-2025-028 — Packaging Solutions Italia S.p.A. scaduto il 02/06/2025. Nessuna conferma ricevuta.', utente:'Sistema',       data:'2025-06-05 07:00', letta:false },
+  { id:3, tipo:'RICEZIONE_PARZIALE',      messaggio:'PO-2025-042 ricevuto parzialmente: 120/150 unità. Ubicazione COR-A/SCA-1.',                         utente:'Marco Rossi',   data:'2025-06-04 16:45', letta:false },
+  { id:4, tipo:'CAMBIO_STATO_SPEDIZIONE', messaggio:'Spedizione SHP-2025-311 → SPEDITA. Tracking: GLS-IT-98765432. Corriere: GLS Logistics.',            utente:'Sistema',       data:'2025-06-04 14:22', letta:false },
+  { id:5, tipo:'SOTTO_SCORTA',            messaggio:'Etichette Adesive 10x5cm (ETH-ADH-007) sotto scorta minima. Giacenza: 200, minimo: 500',            utente:'Sistema',       data:'2025-06-04 09:30', letta:false },
+  { id:6, tipo:'CAMBIO_STATO_SPEDIZIONE', messaggio:'Spedizione SHP-2025-309 → CONSEGNATA. Firma ricevuta presso cliente.',                              utente:'Carlo Ricci',   data:'2025-06-03 17:10', letta:true  },
+  { id:7, tipo:'RICEZIONE_PARZIALE',      messaggio:'PO-2025-031 ricevuto parzialmente: 80/200 unità. Fornitore: Packaging Solutions Italia.',           utente:'Laura Bianchi', data:'2025-06-03 11:05', letta:true  },
+  { id:8, tipo:'PO_IN_RITARDO',           messaggio:'PO-2025-024 — Etichette Professionali S.r.l. scaduto il 28/05/2025.',                              utente:'Sistema',       data:'2025-06-02 07:00', letta:true  },
 ];
 
-const notifTypeConfig: Record<NotifType, { label:string; bg:string; text:string; dot:string }> = {
-  SOTTO_SCORTA:            { label:'Sotto Scorta',  bg:'bg-[#FEF3C7]', text:'text-[#D97706]', dot:'bg-[#D97706]' },
-  RICEZIONE_PARZIALE:      { label:'Ric. Parziale', bg:'bg-[#DBEAFE]', text:'text-[#3B82F6]', dot:'bg-[#3B82F6]' },
-  PO_IN_RITARDO:           { label:'PO in Ritardo', bg:'bg-[#FEE2E2]', text:'text-[#DC2626]', dot:'bg-[#DC2626]' },
-  CAMBIO_STATO_SPEDIZIONE: { label:'Stato Sped.',   bg:'bg-[#F0FDF7]', text:'text-[#16A34A]', dot:'bg-[#16A34A]' },
-};
+function Dashboard() {
+  const { utente, logout, setAuth } = useAuthStore();
 
-function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
-  const accessiblePages = SIDEBAR_ACCESS[user.ruolo];
-  const [currentPage, setCurrentPage] = useState<Page>(accessiblePages[0] ?? 'dashboard');
-  const [dashboardTab, setDashboardTab] = useState<DashboardTab>('dashboard');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
-  const [notificheState, setNotificheState] = useState<Notifica[]>(notificheIniziali);
-  const [filterTipo, setFilterTipo] = useState<NotifType | 'tutti'>('tutti');
-  const [filterLetta, setFilterLetta] = useState<'tutti' | 'lette' | 'non_lette'>('tutti');
+  const [currentPage,       setCurrentPage]       = useState<Page>('dashboard');
+  const [dashboardTab,      setDashboardTab]       = useState<DashboardTab>('dashboard');
+  const [sidebarCollapsed,  setSidebarCollapsed]   = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
+  const [notificheState,    setNotificheState]     = useState<Notifica[]>(notificheIniziali);
+  const [filterTipo,        setFilterTipo]         = useState<NotifType | 'tutti'>('tutti');
+  const [filterLetta,       setFilterLetta]        = useState<'tutti' | 'lette' | 'non_lette'>('tutti');
+
+  // Reidrata ruolo dal backend all'avvio (M01: ruolo sempre fresco)
+  useEffect(() => {
+    const token = localStorage.getItem('lc_token');
+    if (!token) return;
+    authApi.me()
+      .then((u) => { setAuth(token, u); })
+      .catch(() => { /* client.ts gestisce già 401 */ });
+  }, []);
+
+  if (!utente) return null;
+
+  const ruoloNome      = (utente.ruolo_nome ?? RUOLO_ID_TO_NOME[utente.ruolo_id] ?? 'Utente') as Role;
+  const accessiblePages = (PAGINE_PER_RUOLO[utente.ruolo_id] ?? ['dashboard']) as Page[];
+  const initials       = `${utente.nome?.[0] ?? ''}${utente.cognome?.[0] ?? ''}`.toUpperCase();
+
+  const uiUser: UiUser = {
+    id:       utente.id,
+    nome:     utente.nome,
+    cognome:  utente.cognome,
+    email:    utente.email,
+    password: '',
+    ruolo:    ruoloNome,
+    avatar:   initials,
+    avatarBg: AVATAR_BGS[utente.ruolo_id] ?? '#6B7280',
+  };
 
   const handleNavigate = (page: string) => {
     if (accessiblePages.includes(page as Page)) setCurrentPage(page as Page);
   };
 
-  const markAsRead = (id: number) => setNotificheState(prev => prev.map(n => n.id === id ? { ...n, letta: true } : n));
-  const markAllAsRead = () => setNotificheState(prev => prev.map(n => ({ ...n, letta: true })));
-  const nonLette = notificheState.filter(n => !n.letta).length;
+  const markAsRead  = (id: number) => setNotificheState(prev => prev.map(n => n.id === id ? { ...n, letta: true } : n));
+  const markAllRead = () => setNotificheState(prev => prev.map(n => ({ ...n, letta: true })));
+  const nonLette    = notificheState.filter(n => !n.letta).length;
 
   const filteredNotifiche = notificheState.filter(n => {
     if (filterTipo !== 'tutti' && n.tipo !== filterTipo) return false;
-    if (filterLetta === 'lette' && !n.letta) return false;
-    if (filterLetta === 'non_lette' && n.letta) return false;
+    if (filterLetta === 'lette'     && !n.letta) return false;
+    if (filterLetta === 'non_lette' &&  n.letta) return false;
     return true;
   });
 
   const alertTabConfig = [
-    { id: 'dashboard', label: 'Dashboard', icon: Package },
-    { id: 'alert', label: 'Alert & Notifiche', icon: Bell, count: nonLette > 0 ? nonLette : undefined },
+    { id: 'dashboard', label: 'Dashboard',        icon: Package },
+    { id: 'alert',     label: 'Alert & Notifiche', icon: Bell, count: nonLette > 0 ? nonLette : undefined },
   ];
 
   return (
@@ -95,15 +129,15 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
         onNavigate={handleNavigate}
         activePage={currentPage}
         onCollapsedChange={setSidebarCollapsed}
-        user={user}
+        user={uiUser}
         accessiblePages={accessiblePages}
-        onLogout={onLogout}
+        onLogout={logout}
       />
       <Header
         onNavigate={handleNavigate}
         sidebarCollapsed={sidebarCollapsed}
-        user={user}
-        onLogout={onLogout}
+        user={uiUser}
+        onLogout={logout}
       />
 
       <main className={`mt-16 p-6 transition-all duration-300 ${sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]'}`}>
@@ -113,13 +147,16 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
               <div>
                 <h1 className="text-2xl font-semibold text-[#2D2D2D]">Generale</h1>
                 <p className="text-sm text-[#6B7280] mt-1">
-                  Benvenuto, <span className="font-medium text-[#374151]">{user.nome} {user.cognome}</span>
+                  Benvenuto, <span className="font-medium text-[#374151]">{utente.nome} {utente.cognome}</span>
                   {' · '}
-                  <span className="font-medium" style={{ color: ROLE_COLORS[user.ruolo] }}>{user.ruolo}</span>
+                  <span className="font-medium text-[#374151]">{ruoloNome}</span>
                 </p>
               </div>
               {dashboardTab === 'alert' && nonLette > 0 && (
-                <button onClick={markAllAsRead} className="px-4 py-2 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-[#F7F9FC] transition-all flex items-center gap-2 text-sm">
+                <button
+                  onClick={markAllRead}
+                  className="px-4 py-2 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-[#F7F9FC] transition-all flex items-center gap-2 text-sm"
+                >
                   <Check className="w-4 h-4" />Segna tutte come lette
                 </button>
               )}
@@ -229,7 +266,14 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
 }
 
 export default function App() {
-  const [loggedUser, setLoggedUser] = useState<User | null>(null);
-  if (!loggedUser) return <LoginPage onLogin={(u) => setLoggedUser(u)} />;
-  return <Dashboard user={loggedUser} onLogout={() => setLoggedUser(null)} />;
+  const { token, utente } = useAuthStore();
+
+  if (token && utente) return <Dashboard />;
+
+  return (
+    <>
+      <Toaster position="top-right" richColors />
+      <LoginPage onLoginSuccess={() => { /* store già aggiornato da setAuth in LoginPage */ }} />
+    </>
+  );
 }

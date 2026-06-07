@@ -79,40 +79,15 @@ interface Corriere {
   stato: 'Attivo' | 'Sospeso';
 }
 
-const clienti: Cliente[] = [
-  { id: 1, ragioneSociale: 'Logistica Express S.r.l.', codice: 'CLI-001', pIva: 'IT02345678901', citta: 'Milano', email: 'info@logisticaexpress.it', telefono: '+39 02 1234567', fatturato: '€ 850.000', stato: 'Attivo' },
-  { id: 2, ragioneSociale: 'Transport Solutions S.p.A.', codice: 'CLI-002', pIva: 'IT03456789012', citta: 'Roma', email: 'contact@transportsolutions.it', telefono: '+39 06 7654321', fatturato: '€ 1.200.000', stato: 'Attivo' },
-  { id: 3, ragioneSociale: 'Supply Chain Pro S.r.l.', codice: 'CLI-006', pIva: 'IT07890123456', citta: 'Firenze', email: 'contact@supplychainpro.it', telefono: '+39 055 1357924', fatturato: '€ 1.450.000', stato: 'Attivo' },
-];
+const clienti: Cliente[] = [];
 
-const fornitori: Fornitore[] = [
-  { id: 1, ragioneSociale: 'Packaging Solutions Italia S.p.A.', codice: 'FOR-001', pIva: 'IT12345678901', citta: 'Milano', email: 'vendite@packagingsolutions.it', telefono: '+39 02 9876543', categoria: 'Imballaggi', stato: 'Attivo' },
-  { id: 2, ragioneSociale: 'Pallet Systems Europe S.p.A.', codice: 'FOR-003', pIva: 'IT34567890123', citta: 'Brescia', email: 'info@palletsystems.it', telefono: '+39 030 7654321', categoria: 'Pallet', stato: 'Attivo' },
-  { id: 3, ragioneSociale: 'Etichette Professionali S.r.l.', codice: 'FOR-004', pIva: 'IT45678901234', citta: 'Padova', email: 'commerciale@etichettepro.it', telefono: '+39 049 3698521', categoria: 'Etichette', stato: 'Attivo' },
-];
+const fornitori: Fornitore[] = [];
 
-const prodotti: Prodotto[] = [
-  { id: 1, nome: 'Pallet Standard EUR 1200x800', sku: 'PLT-EUR-001', categoria: 'Pallet', prezzo: '€ 12,50' },
-  { id: 2, nome: 'Scatola Cartone Ondulato 40x30x30', sku: 'SCT-OND-045', categoria: 'Scatole', prezzo: '€ 0,85' },
-  { id: 3, nome: 'Film Estensibile Trasparente 50cm', sku: 'FLM-EST-012', categoria: 'Film', prezzo: '€ 18,90' },
-  { id: 4, nome: 'Etichette Adesive 10x5cm', sku: 'ETH-ADH-007', categoria: 'Etichette', prezzo: '€ 0,15' },
-  { id: 5, nome: 'Nastro Adesivo Trasparente 50mm', sku: 'NST-TRS-022', categoria: 'Nastri', prezzo: '€ 2,30' },
-];
+const prodotti: Prodotto[] = [];
 
-const categorie: Categoria[] = [
-  { id: 1, nome: 'Pallet', padre: null, prodottiCount: 15 },
-  { id: 2, nome: 'Pallet Legno', padre: 'Pallet', prodottiCount: 8 },
-  { id: 3, nome: 'Pallet Plastica', padre: 'Pallet', prodottiCount: 7 },
-  { id: 4, nome: 'Scatole', padre: null, prodottiCount: 24 },
-  { id: 5, nome: 'Scatole Cartone', padre: 'Scatole', prodottiCount: 18 },
-  { id: 6, nome: 'Scatole Plastica', padre: 'Scatole', prodottiCount: 6 },
-];
+const categorie: Categoria[] = [];
 
-const corrieri: Corriere[] = [
-  { id: 1, nome: 'BRT Express', codice: 'BRT', email: 'operativo@brt.it', telefono: '+39 02 123456', spedizioniAttive: 45, stato: 'Attivo' },
-  { id: 2, nome: 'GLS Logistics', codice: 'GLS', email: 'servizio@gls.it', telefono: '+39 06 654321', spedizioniAttive: 32, stato: 'Attivo' },
-  { id: 3, nome: 'DHL Italia', codice: 'DHL', email: 'italy@dhl.com', telefono: '+39 011 987654', spedizioniAttive: 28, stato: 'Attivo' },
-];
+const corrieri: Corriere[] = [];
 
 export function AnagrafichePage() {
   const [activeTab, setActiveTab] = useState<TabType>('prodotti');

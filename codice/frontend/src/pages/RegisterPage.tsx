@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { authApi } from '../api/authApi';
-import type { RegisterData, UtenteAPI } from '../api/authApi';
+import type { RegisterData } from '../api/authApi';
+import type { UtenteAPI } from '../types/auth';
 import { toast } from 'sonner';
 
 const RUOLI = [
@@ -80,7 +81,7 @@ export function RegisterPage({ onSuccess, onCancel }: RegisterPageProps) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        
+        {/* Nome + Cognome */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-[#374151]">Nome *</label>
@@ -114,7 +115,7 @@ export function RegisterPage({ onSuccess, onCancel }: RegisterPageProps) {
           </div>
         </div>
 
-        
+        {/* Email */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-[#374151]">Email *</label>
           <input
@@ -132,7 +133,7 @@ export function RegisterPage({ onSuccess, onCancel }: RegisterPageProps) {
           )}
         </div>
 
-        
+        {/* Password */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-[#374151]">Password *</label>
           <input
@@ -150,7 +151,7 @@ export function RegisterPage({ onSuccess, onCancel }: RegisterPageProps) {
           )}
         </div>
 
-       
+        {/* Ruolo */}
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-[#374151]">Ruolo *</label>
           <select
@@ -165,14 +166,14 @@ export function RegisterPage({ onSuccess, onCancel }: RegisterPageProps) {
           </select>
         </div>
 
-        
+        {/* Global error */}
         {globalError && (
           <div className="p-3 bg-[#FEF2F2] border border-[#FECACA] rounded-xl">
             <p className="text-sm text-[#DC2626]">{globalError}</p>
           </div>
         )}
 
-        
+        {/* Actions */}
         <div className="flex gap-3 pt-2">
           {onCancel && (
             <button

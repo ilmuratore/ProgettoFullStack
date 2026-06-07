@@ -1,15 +1,7 @@
 import { api } from './client';
+import type { UtenteAPI } from '../types/auth';
 
-export interface UtenteAPI {
-  id: number;
-  nome: string;
-  cognome: string;
-  email: string;
-  ruolo_id: number;
-  ruolo_nome: string;
-  created_at: string;
-  updated_at: string;
-}
+export type { UtenteAPI };
 
 export interface LoginResponse {
   token: string;
@@ -25,6 +17,9 @@ export interface RegisterData {
 }
 
 export const authApi = {
-  login: (email: string, password: string) => api.post<LoginResponse>('/auth/login', { email, password }),
-  register: (data: RegisterData) => api.post<UtenteAPI>('/auth/register', data), me: () => api.get<UtenteAPI>('/auth/me'),
+  login:    (email: string, password: string) =>
+              api.post<LoginResponse>('/auth/login', { email, password }),
+  register: (data: RegisterData) =>
+              api.post<UtenteAPI>('/auth/register', data),
+  me:       () => api.get<UtenteAPI>('/auth/me'),
 };

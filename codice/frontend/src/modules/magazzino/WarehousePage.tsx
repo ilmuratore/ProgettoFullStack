@@ -11,17 +11,13 @@ import { PageTabBar, TabConfig } from './ui/PageTabBar';
 type WarehouseTab = 'struttura' | 'giacenze' | 'movimenti' | 'rettifiche';
 
 const tabs: TabConfig[] = [
-  { id: 'struttura', label: 'Struttura', icon: GitMerge, count: 3 },
-  { id: 'giacenze', label: 'Giacenze', icon: Package, count: 247 },
-  { id: 'movimenti', label: 'Movimenti', icon: ArrowLeftRight, count: 84 },
-  { id: 'rettifiche', label: 'Rettifiche', icon: ClipboardEdit, count: 12 },
+  { id: 'struttura', label: 'Struttura', icon: GitMerge },
+  { id: 'giacenze', label: 'Giacenze', icon: Package },
+  { id: 'movimenti', label: 'Movimenti', icon: ArrowLeftRight },
+  { id: 'rettifiche', label: 'Rettifiche', icon: ClipboardEdit },
 ];
 
-const rettificheData = [
-  { id: 1, prodotto: 'Pallet Standard EUR 1200x800', sku: 'PLT-EUR-001', ubicazione: 'COR-A / SCA-1 / UBI-01', quantitaPrecedente: 450, quantitaNuova: 420, nota: 'Rettifica inventario annuale - discrepanza riscontrata', utente: 'Marco Rossi', data: '2025-06-01 14:32' },
-  { id: 2, prodotto: 'Film Estensibile Trasparente 50cm', sku: 'FLM-EST-012', ubicazione: 'COR-B / SCA-3 / UBI-05', quantitaPrecedente: 12, quantitaNuova: 8, nota: 'Danneggiamento rotoli durante movimentazione', utente: 'Marco Rossi', data: '2025-05-28 09:15' },
-  { id: 3, prodotto: 'Scatola Cartone Ondulato 40x30x30', sku: 'SCT-OND-045', ubicazione: 'COR-A / SCA-2 / UBI-03', quantitaPrecedente: 2500, quantitaNuova: 2480, nota: 'Rettifica post conteggio fisico', utente: 'Laura Bianchi', data: '2025-05-25 16:45' },
-];
+const rettificheData: {id:number;prodotto:string;sku:string;ubicazione:string;quantitaPrecedente:number;quantitaNuova:number;nota:string;utente:string;data:string}[] = [];
 
 export function WarehousePage() {
   const [activeTab, setActiveTab] = useState<WarehouseTab>('struttura');
