@@ -30,6 +30,10 @@ app.use((req, _res, next) => {
 
 app.get('/', (_req, res) => res.json({ status: 'success', version: '2.0.0' }));
 
+const { mountSwagger } = require('./src/config/swagger');
+mountSwagger(app);
+
+
 // -----------------------------------------------------------------
 // Routes (decommentare man mano che i moduli vengono implementati)
 // -----------------------------------------------------------------

@@ -1,0 +1,1879 @@
+openapi: 3.0.3
+
+info:
+  title: LogiChain ERP — API
+  version: "1.0.0"
+  description: |
+    API REST per LogiChain ERP — milestone M01–M06.
+
+    ## Autenticazione
+    Tutte le rotte (eccetto `POST /auth/login`) richiedono un token JWT nell'header:
+    ```
+    Authorization: Bearer <token>
+    ```
+    Il token si ottiene dal login. Ha scadenza configurata lato server.
+
+    ## Formato risposte
+    Ogni risposta segue sempre uno di questi due formati:
+
+    **Successo**
+    ```json
+    { "status": "success", "data": { ... } }
+    ```
+
+    **Errore**
+    ```json
+    { "status": "error", "code": "CODICE_ERRORE", "message": "Descrizione", "details": [] }
+    ```
+
+    ## Codici errore applicativi
+    | Codice | HTTP | Descrizione |
+    |---|---|---|
+    | `VALIDATION_ERROR` | 400 | Campi mancanti o non validi |
+    | `AUTH_REQUIRED` | 401 | Token mancante o scaduto |
+    | `ACCESS_DENIED` | 403 | Permesso insufficiente |
+    | `RESOURCE_NOT_FOUND` | 404 | Risorsa non trovata |
+    | `DUPLICATE_ENTRY` | 409 | Violazione unicità (SKU, P.IVA, codice...) |
+    | `INTERNAL_SERVER_ERROR` | 500 | Errore generico server |
+
+    ## RBAC — Permessi per modulo
+    | Permesso | Modulo |
+    |---|---|
+    | `utenti:write` | Registrazione nuovi utenti |
+    | `prodotti:read` / `prodotti:write` / `prodotti:delete` | Prodotti |
+    | `fornitori:read` / `fornitori:write` / `fornitori:delete` | Fornitori |
+    | `clienti:read` / `clienti:write` / `clienti:delete` | Clienti |
+    | `corrieri:read` / `corrieri:write` / `corrieri:delete` | Corrieri |
+    | `dipendenti:read` / `dipendenti:write` / `dipendenti:delete` | Dipendenti |
+    | `magazzino:read` / `magazzino:write` | Magazzini e Ubicazioni |
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Sviluppo locale
+  - url: http://localhost:4010/api/v1
+    description: Mock server Prism (per frontend senza backend)
+
+tags:
+  - name: Auth
+    description: Autenticazione e profilo utente
+  - name: Prodotti
+    description: Anagrafica prodotti e listino prezzi (M02)
+  - name: Fornitori
+    description: Anagrafica fornitori (M03)
+  - name: Clienti
+    description: Anagrafica clienti (M04)
+  - name: Corrieri
+    description: Anagrafica aziende corriere (M05)
+  - name: Dipendenti
+    description: Anagrafica personale operativo interno (M05)
+  - name: Magazzini
+    description: Gestione magazzini e ubicazioni (M06)
+  - name: Ubicazioni
+    description: Slot fisici all'interno dei magazzini (M06)
+
+# ─────────────────────────────────────────────
+# COMPONENTI RIUTILIZZABILI
+# ─────────────────────────────────────────────
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Token mancante o non valido
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            status: error
+            code: AUTH_REQUIRED
+            message: Token non fornito o scaduto
+            details: []
+
+    Forbidden:
+      description: Permesso insufficiente
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            status: error
+            code: ACCESS_DENIED
+            message: Permesso insufficiente per questa operazione
+            details: []
+
+    NotFound:
+      description: Risorsa non trovata
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            status: error
+            code: RESOURCE_NOT_FOUND
+            message: Risorsa non trovata
+            details: []
+
+    ValidationError:
+      description: Dati non validi
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            status: error
+            code: VALIDATION_ERROR
+            message: Dati non validi
+            details:
+              - field: nome
+                message: Campo obbligatorio
+
+    DuplicateEntry:
+      description: Violazione unicità
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            status: error
+            code: DUPLICATE_ENTRY
+            message: Valore già esistente
+            details: []
+
+    NoContent:
+      description: Eliminazione completata (nessun body)
+
+  schemas:
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [error]
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+
+    # ── AUTH ──────────────────────────────────
+
+    Utente:
+      type: object
+      properties:
+        id:          { type: integer, example: 1 }
+        nome:        { type: string,  example: Marco }
+        cognome:     { type: string,  example: Bianchi }
+        email:       { type: string,  format: email, example: marco.bianchi@logichain.it }
+        ruolo_id:    { type: integer, example: 2 }
+        ruolo_nome:  { type: string,  example: Responsabile Acquisti }
+        created_at:  { type: string,  format: date-time }
+        updated_at:  { type: string,  format: date-time }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:    { type: string, format: email, example: admin@logichain.it }
+        password: { type: string, minLength: 6,  example: password123 }
+
+    LoginResponse:
+      type: object
+      properties:
+        token:  { type: string, example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... }
+        utente: { $ref: '#/components/schemas/Utente' }
+
+    RegisterRequest:
+      type: object
+      required: [nome, cognome, email, password, ruolo_id]
+      properties:
+        nome:     { type: string,  example: Laura }
+        cognome:  { type: string,  example: Ferretti }
+        email:    { type: string,  format: email, example: laura.ferretti@logichain.it }
+        password: { type: string,  minLength: 6, example: sicura456 }
+        ruolo_id: { type: integer, example: 3 }
+
+    # ── PRODOTTI ──────────────────────────────
+
+    Prodotto:
+      type: object
+      properties:
+        id:              { type: integer, example: 7 }
+        sku:             { type: string,  example: VLV-001 }
+        nome:            { type: string,  example: Valvola a sfera 1/2" }
+        descrizione:     { type: string,  example: Valvola in ottone per impianti idraulici, nullable: true }
+        categoria_id:    { type: integer, example: 3, nullable: true }
+        categoria_nome:  { type: string,  example: Valvolame, nullable: true }
+        unita_misura:    { type: string,  example: pz, nullable: true }
+        peso_kg:         { type: number,  format: float, example: 0.35, nullable: true }
+        scorta_minima:   { type: integer, example: 50 }
+        prezzo:          { type: number,  format: float, example: 12.50 }
+        data_agg_prezzo: { type: string,  format: date-time, example: "2026-05-15T10:30:00.000Z" }
+        attivo:          { type: boolean, example: true }
+        created_at:      { type: string,  format: date-time }
+        updated_at:      { type: string,  format: date-time }
+
+    ProdottoListino:
+      description: Vista ridotta usata nella lista prodotti (M02 — findListino)
+      type: object
+      properties:
+        id:              { type: integer, example: 7 }
+        sku:             { type: string,  example: VLV-001 }
+        nome:            { type: string,  example: "Valvola a sfera 1/2\"" }
+        prezzo:          { type: number,  format: float, example: 12.50 }
+        data_agg_prezzo: { type: string,  format: date-time, example: "2026-05-15T10:30:00.000Z" }
+
+    ProdottoCreateRequest:
+      type: object
+      required: [nome, sku, prezzo]
+      properties:
+        nome:   { type: string, example: "Tubo in acciaio inox DN50" }
+        sku:    { type: string, example: TUB-INOX-050 }
+        prezzo: { type: number, minimum: 0.01, example: 48.00 }
+
+    ProdottoUpdateRequest:
+      type: object
+      description: Tutti i campi sono opzionali. Inviare solo quelli da modificare.
+      properties:
+        nome:   { type: string, example: "Tubo in acciaio inox DN50 — rev." }
+        sku:    { type: string, example: TUB-INOX-050-R }
+        prezzo: { type: number, minimum: 0.01, example: 52.00 }
+
+    # ── FORNITORI ─────────────────────────────
+
+    Fornitore:
+      type: object
+      properties:
+        id:                    { type: integer, example: 3 }
+        ragione_sociale:       { type: string,  example: "Tecnofluid S.r.l." }
+        piva:                  { type: string,  example: "02345678901", nullable: true }
+        indirizzo:             { type: string,  example: "Via dell'Industria 22, 20090 Segrate MI", nullable: true }
+        email:                 { type: string,  format: email, example: acquisti@tecnofluid.it, nullable: true }
+        telefono:              { type: string,  example: "02 9876543", nullable: true }
+        lead_time_giorni:      { type: integer, example: 7, nullable: true }
+        source:                { type: string,  enum: [manual, ecosystem], example: manual }
+        sito_web:              { type: string,  example: "https://www.tecnofluid.it", nullable: true }
+        descrizione_aziendale: { type: string,  example: "Distributore di componentistica idraulica e pneumatica per l'industria manifatturiera.", nullable: true }
+        attivo:                { type: boolean, example: true }
+        created_at:            { type: string,  format: date-time }
+        updated_at:            { type: string,  format: date-time }
+
+    FornitoreCreateRequest:
+      type: object
+      required: [ragione_sociale, piva]
+      description: |
+        `source` non va mai inviato — viene forzato a `manual` dal server.
+      properties:
+        ragione_sociale:       { type: string, example: "Metalli & Co. S.p.A." }
+        piva:                  { type: string, example: "07654321098" }
+        indirizzo:             { type: string, example: "Via Roma 5, 25100 Brescia BS" }
+        email:                 { type: string, format: email, example: info@metallieco.it }
+        telefono:              { type: string, example: "030 1234567" }
+        sito_web:              { type: string, example: "https://www.metallieco.it" }
+        descrizione_aziendale: { type: string, example: "Fornitura di acciai speciali e leghe per l'industria." }
+
+    FornitoreUpdateRequest:
+      type: object
+      description: |
+        Tutti i campi sono opzionali. Inviare solo quelli da modificare.
+        **Attenzione**: i fornitori con `source=ecosystem` restituiscono 403 su questo endpoint.
+      properties:
+        ragione_sociale:       { type: string, example: "Metalli & Co. S.p.A. — aggiornato" }
+        piva:                  { type: string, example: "07654321098" }
+        indirizzo:             { type: string, example: "Via Nuova 10, 25100 Brescia BS" }
+        email:                 { type: string, format: email, example: nuovo@metallieco.it }
+        telefono:              { type: string, example: "030 9876543" }
+        sito_web:              { type: string, example: "https://www.metallieco.it" }
+        descrizione_aziendale: { type: string, example: "Descrizione aggiornata." }
+
+    # ── CLIENTI ───────────────────────────────
+
+    Cliente:
+      type: object
+      properties:
+        id:              { type: integer, example: 5 }
+        ragione_sociale: { type: string,  example: "Officine Manzoni S.r.l." }
+        piva_cf:         { type: string,  example: "03456789012", nullable: true }
+        email:           { type: string,  format: email, example: ordini@manzoni.it, nullable: true }
+        telefono:        { type: string,  example: "035 456789", nullable: true }
+        source:          { type: string,  enum: [manual, ecosystem], example: manual }
+        attivo:          { type: boolean, example: true }
+        created_at:      { type: string,  format: date-time }
+        updated_at:      { type: string,  format: date-time }
+
+    ClienteCreateRequest:
+      type: object
+      required: [ragione_sociale, piva_cf]
+      properties:
+        ragione_sociale: { type: string, example: "Costruzioni Riviera S.r.l." }
+        piva_cf:         { type: string, example: "08765432109" }
+        email:           { type: string, format: email, example: info@costruzioniriviera.it }
+        telefono:        { type: string, example: "0185 12345" }
+
+    ClienteUpdateRequest:
+      type: object
+      description: Tutti i campi sono opzionali.
+      properties:
+        ragione_sociale: { type: string, example: "Costruzioni Riviera S.r.l. — aggiornato" }
+        piva_cf:         { type: string, example: "08765432109" }
+        email:           { type: string, format: email, example: nuovo@costruzioniriviera.it }
+        telefono:        { type: string, example: "0185 99999" }
+
+    # ── CORRIERI ──────────────────────────────
+
+    Corriere:
+      type: object
+      properties:
+        id:       { type: integer, example: 2 }
+        codice:   { type: string,  example: BRT }
+        nome:     { type: string,  example: "BRT Bartolini" }
+        telefono: { type: string,  example: "02 1234567", nullable: true }
+        email:    { type: string,  format: email, example: operativo.nord@brt.it, nullable: true }
+        attivo:   { type: boolean, example: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    CorriereCreateRequest:
+      type: object
+      required: [codice, nome]
+      properties:
+        codice:   { type: string, example: GLS }
+        nome:     { type: string, example: "GLS Italy S.r.l." }
+        telefono: { type: string, example: "800 123456" }
+        email:    { type: string, format: email, example: clienti@gls-italy.com }
+
+    CorriereUpdateRequest:
+      type: object
+      description: Tutti i campi sono opzionali.
+      properties:
+        codice:   { type: string, example: GLS-IT }
+        nome:     { type: string, example: "GLS Italy S.r.l. — aggiornato" }
+        telefono: { type: string, example: "800 999888" }
+        email:    { type: string, format: email, example: nuovo@gls-italy.com }
+
+    # ── DIPENDENTI ────────────────────────────
+
+    Dipendente:
+      type: object
+      properties:
+        id:              { type: integer, example: 4 }
+        nome:            { type: string,  example: Giuseppe }
+        cognome:         { type: string,  example: Esposito }
+        codice_fiscale:  { type: string,  example: SPSGPP85M12F839W }
+        ruolo_operativo: { type: string,  example: "Magazziniere", nullable: true }
+        data_assunzione: { type: string,  format: date, example: "2021-03-01", nullable: true }
+        utente_id:       { type: integer, example: 6, nullable: true }
+        created_at:      { type: string,  format: date-time }
+        updated_at:      { type: string,  format: date-time }
+
+    DipendenteCreateRequest:
+      type: object
+      required: [nome, cognome, codice_fiscale]
+      properties:
+        nome:            { type: string,  example: Federica }
+        cognome:         { type: string,  example: Russo }
+        codice_fiscale:  { type: string,  example: RSSFRC92A41L219K }
+        ruolo_operativo: { type: string,  example: "Addetto spedizioni" }
+        data_assunzione: { type: string,  format: date, example: "2024-01-15" }
+        utente_id:       { type: integer, example: 8, nullable: true }
+
+    DipendenteUpdateRequest:
+      type: object
+      description: Tutti i campi sono opzionali.
+      properties:
+        nome:            { type: string,  example: Federica }
+        cognome:         { type: string,  example: Russo }
+        codice_fiscale:  { type: string,  example: RSSFRC92A41L219K }
+        ruolo_operativo: { type: string,  example: "Responsabile spedizioni" }
+        data_assunzione: { type: string,  format: date, example: "2024-01-15" }
+        utente_id:       { type: integer, example: 8, nullable: true }
+
+    # ── MAGAZZINI ─────────────────────────────
+
+    Ubicazione:
+      type: object
+      properties:
+        id:                      { type: integer, example: 12 }
+        magazzino_id:            { type: integer, example: 1 }
+        corsia:                  { type: integer, example: 2 }
+        scaffale:                { type: integer, example: 5 }
+        codice:                  { type: string,  example: "1-02-05" }
+        codice_composto:         { type: string,  example: "MAG-A / 1-02-05", description: "Campo calcolato aggiunto dal service — non presente nel DB" }
+        attivo:                  { type: boolean, example: true }
+        temperatura_controllata: { type: boolean, example: false }
+        totale_giacenza:         { type: integer, example: 120, description: "Presente solo nel dettaglio magazzino (GET /:id)" }
+        created_at:              { type: string,  format: date-time }
+        updated_at:              { type: string,  format: date-time }
+
+    Magazzino:
+      type: object
+      properties:
+        id:        { type: integer, example: 1 }
+        codice:    { type: string,  example: MAG-A }
+        nome:      { type: string,  example: "Magazzino principale Sesto" }
+        indirizzo: { type: string,  example: "Via dell'Artigianato 14", nullable: true }
+        cap:       { type: string,  example: "20099", nullable: true }
+        citta:     { type: string,  example: "Sesto San Giovanni", nullable: true }
+        provincia: { type: string,  example: MI, nullable: true }
+        paese:     { type: string,  example: Italia, nullable: true }
+        attivo:    { type: boolean, example: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    MagazzinoConUbicazioni:
+      allOf:
+        - $ref: '#/components/schemas/Magazzino'
+        - type: object
+          properties:
+            ubicazioni:
+              type: array
+              items: { $ref: '#/components/schemas/Ubicazione' }
+
+    MagazzinoCreateRequest:
+      type: object
+      required: [codice, nome]
+      description: |
+        `codice` non è modificabile dopo la creazione.
+        I campi indirizzo strutturato (cap, citta, provincia, paese) non sono nel blueprint
+        di validazione — includili nel body se necessario, il service li gestisce da `req.body`.
+      properties:
+        codice:    { type: string, example: MAG-B }
+        nome:      { type: string, example: "Magazzino secondario Monza" }
+        indirizzo: { type: string, example: "Via Borgazzi 45" }
+        cap:       { type: string, example: "20900" }
+        citta:     { type: string, example: Monza }
+        provincia: { type: string, example: MB }
+        paese:     { type: string, example: Italia }
+
+    MagazzinoUpdateRequest:
+      type: object
+      description: Tutti i campi sono opzionali. `codice` non è modificabile.
+      properties:
+        nome:      { type: string, example: "Magazzino secondario Monza — aggiornato" }
+        indirizzo: { type: string, example: "Via Borgazzi 100" }
+
+    UbicazioneCreateRequest:
+      type: object
+      required: [corsia, scaffale]
+      properties:
+        corsia:                  { type: integer, minimum: 1, example: 3 }
+        scaffale:                { type: integer, minimum: 1, example: 7 }
+        temperatura_controllata: { type: boolean, example: false }
+
+    UbicazioneUpdateTemperaturaRequest:
+      type: object
+      required: [temperatura_controllata]
+      properties:
+        temperatura_controllata: { type: boolean, example: true }
+
+# ─────────────────────────────────────────────
+# SECURITY DEFAULT
+# ─────────────────────────────────────────────
+security:
+  - BearerAuth: []
+
+# ─────────────────────────────────────────────
+# PATHS
+# ─────────────────────────────────────────────
+paths:
+
+  # ══════════════════════════════════════════
+  # M01 — AUTH
+  # ══════════════════════════════════════════
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login utente
+      description: Restituisce un token JWT e il profilo dell'utente autenticato.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+            examples:
+              admin:
+                summary: Login admin
+                value: { email: admin@logichain.it, password: password123 }
+              operatore:
+                summary: Login operatore
+                value: { email: giuseppe.esposito@logichain.it, password: sicura456 }
+      responses:
+        "200":
+          description: Login riuscito
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/LoginResponse' }
+              example:
+                status: success
+                data:
+                  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNzE3ODUwMDAwfQ.abc123
+                  utente:
+                    id: 1
+                    nome: Admin
+                    cognome: LogiChain
+                    email: admin@logichain.it
+                    ruolo_id: 1
+                    ruolo_nome: Admin
+                    created_at: "2026-01-10T08:00:00.000Z"
+                    updated_at: "2026-01-10T08:00:00.000Z"
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401":
+          description: Credenziali errate
+          content:
+            application/json:
+              example:
+                status: error
+                code: AUTH_REQUIRED
+                message: Credenziali non valide
+                details: []
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Registra un nuovo utente
+      description: |
+        Richiede permesso `utenti:write` (solo Admin).
+        Crea un nuovo account utente nel sistema.
+      x-required-permission: utenti:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+            example:
+              nome: Laura
+              cognome: Ferretti
+              email: laura.ferretti@logichain.it
+              password: sicura456
+              ruolo_id: 3
+      responses:
+        "201":
+          description: Utente creato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Utente' }
+              example:
+                status: success
+                data:
+                  id: 9
+                  nome: Laura
+                  cognome: Ferretti
+                  email: laura.ferretti@logichain.it
+                  ruolo_id: 3
+                  ruolo_nome: Responsabile Magazzino
+                  created_at: "2026-06-07T09:15:00.000Z"
+                  updated_at: "2026-06-07T09:15:00.000Z"
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "409":
+          description: Email già registrata
+          content:
+            application/json:
+              example:
+                status: error
+                code: DUPLICATE_ENTRY
+                message: Email già in uso
+                details: []
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Profilo utente corrente
+      description: Restituisce i dati dell'utente associato al token JWT.
+      responses:
+        "200":
+          description: Profilo utente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Utente' }
+              example:
+                status: success
+                data:
+                  id: 2
+                  nome: Marco
+                  cognome: Bianchi
+                  email: marco.bianchi@logichain.it
+                  ruolo_id: 2
+                  ruolo_nome: Responsabile Acquisti
+                  created_at: "2026-02-01T08:00:00.000Z"
+                  updated_at: "2026-02-01T08:00:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+
+  # ══════════════════════════════════════════
+  # M02 — PRODOTTI
+  # ══════════════════════════════════════════
+
+  /prodotti:
+    get:
+      tags: [Prodotti]
+      summary: Lista prodotti attivi (listino)
+      description: |
+        Restituisce la lista dei prodotti attivi.
+        Vista ridotta: `id`, `sku`, `nome`, `prezzo`, `data_agg_prezzo`.
+        Richiede permesso `prodotti:read`.
+      x-required-permission: prodotti:read
+      responses:
+        "200":
+          description: Lista prodotti
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ProdottoListino' }
+              example:
+                status: success
+                data:
+                  - { id: 1, sku: VLV-001, nome: "Valvola a sfera 1/2\"", prezzo: 12.50, data_agg_prezzo: "2026-05-15T10:30:00.000Z" }
+                  - { id: 2, sku: TUB-INOX-050, nome: "Tubo in acciaio inox DN50", prezzo: 48.00, data_agg_prezzo: "2026-04-20T14:00:00.000Z" }
+                  - { id: 3, sku: GUA-NBR-32, nome: "Guarnizione NBR 32mm", prezzo: 2.80, data_agg_prezzo: "2026-03-01T09:00:00.000Z" }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+    post:
+      tags: [Prodotti]
+      summary: Crea un nuovo prodotto
+      description: |
+        Richiede permesso `prodotti:write`.
+        `sku` deve essere univoco tra i prodotti attivi.
+      x-required-permission: prodotti:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProdottoCreateRequest' }
+            example:
+              nome: "Raccordo a T 3/4\""
+              sku: RAC-T-034
+              prezzo: 6.90
+      responses:
+        "201":
+          description: Prodotto creato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/ProdottoListino' }
+              example:
+                status: success
+                data:
+                  id: 8
+                  sku: RAC-T-034
+                  nome: "Raccordo a T 3/4\""
+                  prezzo: 6.90
+                  data_agg_prezzo: "2026-06-07T11:00:00.000Z"
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "409": { $ref: '#/components/responses/DuplicateEntry' }
+
+  /prodotti/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 1
+
+    get:
+      tags: [Prodotti]
+      summary: Dettaglio prodotto
+      description: |
+        Restituisce il profilo completo del prodotto incluso join categoria.
+        Richiede permesso `prodotti:read`.
+      x-required-permission: prodotti:read
+      responses:
+        "200":
+          description: Dettaglio prodotto
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Prodotto' }
+              example:
+                status: success
+                data:
+                  id: 1
+                  sku: VLV-001
+                  nome: "Valvola a sfera 1/2\""
+                  descrizione: "Valvola in ottone per impianti idraulici. Temperatura max 120°C."
+                  categoria_id: 3
+                  categoria_nome: Valvolame
+                  unita_misura: pz
+                  peso_kg: 0.35
+                  scorta_minima: 50
+                  prezzo: 12.50
+                  data_agg_prezzo: "2026-05-15T10:30:00.000Z"
+                  attivo: true
+                  created_at: "2026-01-20T09:00:00.000Z"
+                  updated_at: "2026-05-15T10:30:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+    patch:
+      tags: [Prodotti]
+      summary: Aggiorna prodotto (parziale)
+      description: |
+        Richiede permesso `prodotti:write`.
+        Inviare solo i campi da modificare.
+        Se `prezzo` viene modificato, `data_agg_prezzo` viene aggiornata automaticamente dal trigger DB.
+      x-required-permission: prodotti:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProdottoUpdateRequest' }
+            example:
+              prezzo: 14.00
+      responses:
+        "200":
+          description: Prodotto aggiornato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/ProdottoListino' }
+              example:
+                status: success
+                data:
+                  id: 1
+                  sku: VLV-001
+                  nome: "Valvola a sfera 1/2\""
+                  prezzo: 14.00
+                  data_agg_prezzo: "2026-06-07T12:00:00.000Z"
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/DuplicateEntry' }
+
+    delete:
+      tags: [Prodotti]
+      summary: Elimina prodotto (soft delete)
+      description: |
+        Richiede permesso `prodotti:delete`.
+        Imposta `attivo=false`. Il prodotto non appare più nella lista.
+      x-required-permission: prodotti:delete
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  # ══════════════════════════════════════════
+  # M03 — FORNITORI
+  # ══════════════════════════════════════════
+
+  /fornitori:
+    get:
+      tags: [Fornitori]
+      summary: Lista fornitori
+      description: |
+        Restituisce tutti i fornitori (attivi e disattivi).
+        Richiede permesso `fornitori:read`.
+      x-required-permission: fornitori:read
+      responses:
+        "200":
+          description: Lista fornitori
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Fornitore' }
+              example:
+                status: success
+                data:
+                  - id: 1
+                    ragione_sociale: "Tecnofluid S.r.l."
+                    piva: "02345678901"
+                    indirizzo: "Via dell'Industria 22, 20090 Segrate MI"
+                    email: acquisti@tecnofluid.it
+                    telefono: "02 9876543"
+                    lead_time_giorni: 7
+                    source: manual
+                    sito_web: "https://www.tecnofluid.it"
+                    descrizione_aziendale: "Distributore di componentistica idraulica e pneumatica."
+                    attivo: true
+                    created_at: "2026-02-10T10:00:00.000Z"
+                    updated_at: "2026-02-10T10:00:00.000Z"
+                  - id: 2
+                    ragione_sociale: "EcoSupply Network"
+                    piva: null
+                    indirizzo: null
+                    email: support@ecosupply.net
+                    telefono: null
+                    lead_time_giorni: 14
+                    source: ecosystem
+                    sito_web: "https://www.ecosupply.net"
+                    descrizione_aziendale: "Fornitore dell'ecosistema LogiChain."
+                    attivo: true
+                    created_at: "2026-03-01T08:00:00.000Z"
+                    updated_at: "2026-03-01T08:00:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+    post:
+      tags: [Fornitori]
+      summary: Crea un nuovo fornitore
+      description: |
+        Richiede permesso `fornitori:write`.
+        `source` viene sempre forzato a `manual` dal server — non inviarlo nel body.
+      x-required-permission: fornitori:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FornitoreCreateRequest' }
+            example:
+              ragione_sociale: "Metalli & Co. S.p.A."
+              piva: "07654321098"
+              indirizzo: "Via Roma 5, 25100 Brescia BS"
+              email: info@metallieco.it
+              telefono: "030 1234567"
+              sito_web: "https://www.metallieco.it"
+              descrizione_aziendale: "Fornitura di acciai speciali e leghe per l'industria."
+      responses:
+        "201":
+          description: Fornitore creato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Fornitore' }
+              example:
+                status: success
+                data:
+                  id: 4
+                  ragione_sociale: "Metalli & Co. S.p.A."
+                  piva: "07654321098"
+                  indirizzo: "Via Roma 5, 25100 Brescia BS"
+                  email: info@metallieco.it
+                  telefono: "030 1234567"
+                  lead_time_giorni: null
+                  source: manual
+                  sito_web: "https://www.metallieco.it"
+                  descrizione_aziendale: "Fornitura di acciai speciali e leghe per l'industria."
+                  attivo: true
+                  created_at: "2026-06-07T11:30:00.000Z"
+                  updated_at: "2026-06-07T11:30:00.000Z"
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "409": { $ref: '#/components/responses/DuplicateEntry' }
+
+  /fornitori/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 1
+
+    get:
+      tags: [Fornitori]
+      summary: Dettaglio fornitore
+      x-required-permission: fornitori:read
+      responses:
+        "200":
+          description: Dettaglio fornitore
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Fornitore' }
+              example:
+                status: success
+                data:
+                  id: 1
+                  ragione_sociale: "Tecnofluid S.r.l."
+                  piva: "02345678901"
+                  indirizzo: "Via dell'Industria 22, 20090 Segrate MI"
+                  email: acquisti@tecnofluid.it
+                  telefono: "02 9876543"
+                  lead_time_giorni: 7
+                  source: manual
+                  sito_web: "https://www.tecnofluid.it"
+                  descrizione_aziendale: "Distributore di componentistica idraulica e pneumatica per l'industria manifatturiera."
+                  attivo: true
+                  created_at: "2026-02-10T10:00:00.000Z"
+                  updated_at: "2026-02-10T10:00:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+    patch:
+      tags: [Fornitori]
+      summary: Aggiorna fornitore (parziale)
+      description: |
+        Richiede permesso `fornitori:write`.
+        **Attenzione**: se il fornitore ha `source=ecosystem` il server risponde 403.
+        Il pulsante Modifica deve essere nascosto lato frontend per i fornitori ecosystem.
+      x-required-permission: fornitori:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FornitoreUpdateRequest' }
+            example:
+              email: nuovo@tecnofluid.it
+              telefono: "02 0000000"
+      responses:
+        "200":
+          description: Fornitore aggiornato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Fornitore' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403":
+          description: |
+            Permesso insufficiente **oppure** fornitore con `source=ecosystem` (non modificabile)
+          content:
+            application/json:
+              example:
+                status: error
+                code: ACCESS_DENIED
+                message: I fornitori dell'ecosistema non possono essere modificati manualmente
+                details: []
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/DuplicateEntry' }
+
+    delete:
+      tags: [Fornitori]
+      summary: Elimina fornitore (soft delete)
+      description: |
+        Richiede permesso `fornitori:delete`.
+        Soft delete (`attivo=false`) per entrambi i `source`. Non rimuove il fornitore dall'ecosistema globale.
+      x-required-permission: fornitori:delete
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  # ══════════════════════════════════════════
+  # M04 — CLIENTI
+  # ══════════════════════════════════════════
+
+  /clienti:
+    get:
+      tags: [Clienti]
+      summary: Lista clienti
+      x-required-permission: clienti:read
+      responses:
+        "200":
+          description: Lista clienti
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Cliente' }
+              example:
+                status: success
+                data:
+                  - id: 1
+                    ragione_sociale: "Officine Manzoni S.r.l."
+                    piva_cf: "03456789012"
+                    email: ordini@manzoni.it
+                    telefono: "035 456789"
+                    source: manual
+                    attivo: true
+                    created_at: "2026-03-15T08:00:00.000Z"
+                    updated_at: "2026-03-15T08:00:00.000Z"
+                  - id: 2
+                    ragione_sociale: "Fratelli Conti S.n.c."
+                    piva_cf: "05678901234"
+                    email: info@fratelliconti.it
+                    telefono: "0331 987654"
+                    source: manual
+                    attivo: true
+                    created_at: "2026-04-01T09:30:00.000Z"
+                    updated_at: "2026-04-01T09:30:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+    post:
+      tags: [Clienti]
+      summary: Crea un nuovo cliente
+      x-required-permission: clienti:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClienteCreateRequest' }
+            example:
+              ragione_sociale: "Costruzioni Riviera S.r.l."
+              piva_cf: "08765432109"
+              email: info@costruzioniriviera.it
+              telefono: "0185 12345"
+      responses:
+        "201":
+          description: Cliente creato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Cliente' }
+              example:
+                status: success
+                data:
+                  id: 6
+                  ragione_sociale: "Costruzioni Riviera S.r.l."
+                  piva_cf: "08765432109"
+                  email: info@costruzioniriviera.it
+                  telefono: "0185 12345"
+                  source: manual
+                  attivo: true
+                  created_at: "2026-06-07T14:00:00.000Z"
+                  updated_at: "2026-06-07T14:00:00.000Z"
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "409": { $ref: '#/components/responses/DuplicateEntry' }
+
+  /clienti/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 1
+
+    get:
+      tags: [Clienti]
+      summary: Dettaglio cliente
+      x-required-permission: clienti:read
+      responses:
+        "200":
+          description: Dettaglio cliente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Cliente' }
+              example:
+                status: success
+                data:
+                  id: 1
+                  ragione_sociale: "Officine Manzoni S.r.l."
+                  piva_cf: "03456789012"
+                  email: ordini@manzoni.it
+                  telefono: "035 456789"
+                  source: manual
+                  attivo: true
+                  created_at: "2026-03-15T08:00:00.000Z"
+                  updated_at: "2026-03-15T08:00:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+    patch:
+      tags: [Clienti]
+      summary: Aggiorna cliente (parziale)
+      x-required-permission: clienti:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClienteUpdateRequest' }
+            example:
+              email: nuovo@manzoni.it
+              telefono: "035 000000"
+      responses:
+        "200":
+          description: Cliente aggiornato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Cliente' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/DuplicateEntry' }
+
+    delete:
+      tags: [Clienti]
+      summary: Elimina cliente (soft delete)
+      description: Soft delete sempre consentito. Lo storico transazionale (ordini, spedizioni) viene preservato.
+      x-required-permission: clienti:delete
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  # ══════════════════════════════════════════
+  # M05 — CORRIERI
+  # ══════════════════════════════════════════
+
+  /corrieri:
+    get:
+      tags: [Corrieri]
+      summary: Lista corrieri
+      x-required-permission: corrieri:read
+      responses:
+        "200":
+          description: Lista corrieri
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Corriere' }
+              example:
+                status: success
+                data:
+                  - { id: 1, codice: BRT, nome: "BRT Bartolini", telefono: "02 1234567", email: operativo.nord@brt.it, attivo: true, created_at: "2026-01-15T08:00:00.000Z", updated_at: "2026-01-15T08:00:00.000Z" }
+                  - { id: 2, codice: GLS, nome: "GLS Italy S.r.l.", telefono: "800 123456", email: clienti@gls-italy.com, attivo: true, created_at: "2026-01-15T08:00:00.000Z", updated_at: "2026-01-15T08:00:00.000Z" }
+                  - { id: 3, codice: SDA, nome: "SDA Express Courier", telefono: "800 336699", email: info@sda.it, attivo: false, created_at: "2026-01-15T08:00:00.000Z", updated_at: "2026-05-01T10:00:00.000Z" }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+    post:
+      tags: [Corrieri]
+      summary: Crea un nuovo corriere
+      x-required-permission: corrieri:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CorriereCreateRequest' }
+            example:
+              codice: DHL
+              nome: "DHL Express Italy S.r.l."
+              telefono: "02 9999888"
+              email: business@dhl.it
+      responses:
+        "201":
+          description: Corriere creato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Corriere' }
+              example:
+                status: success
+                data:
+                  id: 4
+                  codice: DHL
+                  nome: "DHL Express Italy S.r.l."
+                  telefono: "02 9999888"
+                  email: business@dhl.it
+                  attivo: true
+                  created_at: "2026-06-07T15:00:00.000Z"
+                  updated_at: "2026-06-07T15:00:00.000Z"
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "409": { $ref: '#/components/responses/DuplicateEntry' }
+
+  /corrieri/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 1
+
+    get:
+      tags: [Corrieri]
+      summary: Dettaglio corriere
+      x-required-permission: corrieri:read
+      responses:
+        "200":
+          description: Dettaglio corriere
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Corriere' }
+              example:
+                status: success
+                data:
+                  id: 1
+                  codice: BRT
+                  nome: "BRT Bartolini"
+                  telefono: "02 1234567"
+                  email: operativo.nord@brt.it
+                  attivo: true
+                  created_at: "2026-01-15T08:00:00.000Z"
+                  updated_at: "2026-01-15T08:00:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+    patch:
+      tags: [Corrieri]
+      summary: Aggiorna corriere (parziale)
+      x-required-permission: corrieri:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CorriereUpdateRequest' }
+            example:
+              email: nuovo@brt.it
+      responses:
+        "200":
+          description: Corriere aggiornato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Corriere' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/DuplicateEntry' }
+
+    delete:
+      tags: [Corrieri]
+      summary: Elimina corriere (soft delete)
+      x-required-permission: corrieri:delete
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  # ══════════════════════════════════════════
+  # M05 — DIPENDENTI
+  # ══════════════════════════════════════════
+
+  /dipendenti:
+    get:
+      tags: [Dipendenti]
+      summary: Lista dipendenti
+      x-required-permission: dipendenti:read
+      responses:
+        "200":
+          description: Lista dipendenti
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Dipendente' }
+              example:
+                status: success
+                data:
+                  - { id: 1, nome: Giuseppe, cognome: Esposito, codice_fiscale: SPSGPP85M12F839W, ruolo_operativo: Magazziniere, data_assunzione: "2021-03-01", utente_id: 6, created_at: "2026-01-10T08:00:00.000Z", updated_at: "2026-01-10T08:00:00.000Z" }
+                  - { id: 2, nome: Federica, cognome: Russo, codice_fiscale: RSSFRC92A41L219K, ruolo_operativo: "Addetto spedizioni", data_assunzione: "2024-01-15", utente_id: null, created_at: "2026-01-10T08:00:00.000Z", updated_at: "2026-01-10T08:00:00.000Z" }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+    post:
+      tags: [Dipendenti]
+      summary: Crea un nuovo dipendente
+      x-required-permission: dipendenti:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DipendenteCreateRequest' }
+            example:
+              nome: Antonio
+              cognome: Lombardi
+              codice_fiscale: LMBNTM90B15L736P
+              ruolo_operativo: "Picker"
+              data_assunzione: "2026-05-01"
+              utente_id: null
+      responses:
+        "201":
+          description: Dipendente creato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Dipendente' }
+              example:
+                status: success
+                data:
+                  id: 5
+                  nome: Antonio
+                  cognome: Lombardi
+                  codice_fiscale: LMBNTM90B15L736P
+                  ruolo_operativo: Picker
+                  data_assunzione: "2026-05-01"
+                  utente_id: null
+                  created_at: "2026-06-07T15:30:00.000Z"
+                  updated_at: "2026-06-07T15:30:00.000Z"
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "409": { $ref: '#/components/responses/DuplicateEntry' }
+
+  /dipendenti/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 1
+
+    get:
+      tags: [Dipendenti]
+      summary: Dettaglio dipendente
+      x-required-permission: dipendenti:read
+      responses:
+        "200":
+          description: Dettaglio dipendente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Dipendente' }
+              example:
+                status: success
+                data:
+                  id: 1
+                  nome: Giuseppe
+                  cognome: Esposito
+                  codice_fiscale: SPSGPP85M12F839W
+                  ruolo_operativo: Magazziniere
+                  data_assunzione: "2021-03-01"
+                  utente_id: 6
+                  created_at: "2026-01-10T08:00:00.000Z"
+                  updated_at: "2026-01-10T08:00:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+    patch:
+      tags: [Dipendenti]
+      summary: Aggiorna dipendente (parziale)
+      x-required-permission: dipendenti:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DipendenteUpdateRequest' }
+            example:
+              ruolo_operativo: "Responsabile magazzino"
+      responses:
+        "200":
+          description: Dipendente aggiornato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Dipendente' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/DuplicateEntry' }
+
+    delete:
+      tags: [Dipendenti]
+      summary: Elimina dipendente (hard delete fisico)
+      description: |
+        **Attenzione — hard delete fisico**, non soft delete.
+        La tabella `dipendenti` non ha campo `attivo`.
+        Le spedizioni collegate hanno `corriere_id` impostato a NULL automaticamente (ON DELETE SET NULL).
+      x-required-permission: dipendenti:delete
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  # ══════════════════════════════════════════
+  # M06 — MAGAZZINI
+  # ══════════════════════════════════════════
+
+  /magazzini:
+    get:
+      tags: [Magazzini]
+      summary: Lista magazzini
+      description: Restituisce tutti i magazzini inclusi i disattivi (management view).
+      x-required-permission: magazzino:read
+      responses:
+        "200":
+          description: Lista magazzini
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Magazzino' }
+              example:
+                status: success
+                data:
+                  - id: 1
+                    codice: MAG-A
+                    nome: "Magazzino principale Sesto"
+                    indirizzo: "Via dell'Artigianato 14"
+                    cap: "20099"
+                    citta: "Sesto San Giovanni"
+                    provincia: MI
+                    paese: Italia
+                    attivo: true
+                    created_at: "2026-01-10T08:00:00.000Z"
+                    updated_at: "2026-01-10T08:00:00.000Z"
+                  - id: 2
+                    codice: MAG-B
+                    nome: "Magazzino secondario Monza"
+                    indirizzo: "Via Borgazzi 45"
+                    cap: "20900"
+                    citta: Monza
+                    provincia: MB
+                    paese: Italia
+                    attivo: false
+                    created_at: "2026-02-01T08:00:00.000Z"
+                    updated_at: "2026-05-10T12:00:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+    post:
+      tags: [Magazzini]
+      summary: Crea un nuovo magazzino
+      description: |
+        `codice` deve essere univoco e non è modificabile dopo la creazione.
+      x-required-permission: magazzino:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MagazzinoCreateRequest' }
+            example:
+              codice: MAG-C
+              nome: "Deposito Cologno"
+              indirizzo: "Via Edison 3"
+              cap: "20093"
+              citta: "Cologno Monzese"
+              provincia: MI
+              paese: Italia
+      responses:
+        "201":
+          description: Magazzino creato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Magazzino' }
+              example:
+                status: success
+                data:
+                  id: 3
+                  codice: MAG-C
+                  nome: "Deposito Cologno"
+                  indirizzo: "Via Edison 3"
+                  cap: "20093"
+                  citta: "Cologno Monzese"
+                  provincia: MI
+                  paese: Italia
+                  attivo: true
+                  created_at: "2026-06-07T16:00:00.000Z"
+                  updated_at: "2026-06-07T16:00:00.000Z"
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "409": { $ref: '#/components/responses/DuplicateEntry' }
+
+  /magazzini/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 1
+
+    get:
+      tags: [Magazzini]
+      summary: Dettaglio magazzino con ubicazioni
+      description: |
+        Restituisce il magazzino con l'albero completo delle ubicazioni.
+        Ogni ubicazione include `totale_giacenza` (somma delle giacenze nello slot).
+      x-required-permission: magazzino:read
+      responses:
+        "200":
+          description: Dettaglio magazzino con ubicazioni
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/MagazzinoConUbicazioni' }
+              example:
+                status: success
+                data:
+                  id: 1
+                  codice: MAG-A
+                  nome: "Magazzino principale Sesto"
+                  indirizzo: "Via dell'Artigianato 14"
+                  cap: "20099"
+                  citta: "Sesto San Giovanni"
+                  provincia: MI
+                  paese: Italia
+                  attivo: true
+                  created_at: "2026-01-10T08:00:00.000Z"
+                  updated_at: "2026-01-10T08:00:00.000Z"
+                  ubicazioni:
+                    - id: 1
+                      magazzino_id: 1
+                      corsia: 1
+                      scaffale: 1
+                      codice: 1-01-01
+                      codice_composto: "MAG-A / 1-01-01"
+                      attivo: true
+                      temperatura_controllata: false
+                      totale_giacenza: 250
+                      created_at: "2026-01-10T08:00:00.000Z"
+                      updated_at: "2026-01-10T08:00:00.000Z"
+                    - id: 2
+                      magazzino_id: 1
+                      corsia: 1
+                      scaffale: 2
+                      codice: 1-01-02
+                      codice_composto: "MAG-A / 1-01-02"
+                      attivo: true
+                      temperatura_controllata: true
+                      totale_giacenza: 0
+                      created_at: "2026-01-10T08:00:00.000Z"
+                      updated_at: "2026-01-10T08:00:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+    patch:
+      tags: [Magazzini]
+      summary: Aggiorna magazzino
+      description: |
+        Aggiorna `nome` e/o `indirizzo`. `codice` non è modificabile.
+      x-required-permission: magazzino:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MagazzinoUpdateRequest' }
+            example:
+              nome: "Magazzino principale Sesto — ampliato"
+      responses:
+        "200":
+          description: Magazzino aggiornato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Magazzino' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /magazzini/{id}/toggle:
+    patch:
+      tags: [Magazzini]
+      summary: Toggle attivo/disattivo magazzino
+      description: Inverte il valore del campo `attivo`. Nessun body richiesto.
+      x-required-permission: magazzino:write
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 2
+      responses:
+        "200":
+          description: Stato aggiornato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Magazzino' }
+              example:
+                status: success
+                data:
+                  id: 2
+                  codice: MAG-B
+                  nome: "Magazzino secondario Monza"
+                  indirizzo: "Via Borgazzi 45"
+                  cap: "20900"
+                  citta: Monza
+                  provincia: MB
+                  paese: Italia
+                  attivo: true
+                  created_at: "2026-02-01T08:00:00.000Z"
+                  updated_at: "2026-06-07T16:30:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /magazzini/{magId}/ubicazioni:
+    post:
+      tags: [Ubicazioni]
+      summary: Crea una nuova ubicazione in un magazzino
+      description: |
+        Rotta nested sotto `/magazzini/:magId/ubicazioni`.
+        Il `codice` dell'ubicazione viene calcolato e storato automaticamente dal service.
+        La combinazione `(corsia, scaffale)` deve essere univoca nel magazzino.
+      x-required-permission: magazzino:write
+      parameters:
+        - name: magId
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UbicazioneCreateRequest' }
+            example:
+              corsia: 3
+              scaffale: 7
+              temperatura_controllata: false
+      responses:
+        "201":
+          description: Ubicazione creata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Ubicazione' }
+              example:
+                status: success
+                data:
+                  id: 15
+                  magazzino_id: 1
+                  corsia: 3
+                  scaffale: 7
+                  codice: 1-03-07
+                  codice_composto: "MAG-A / 1-03-07"
+                  attivo: true
+                  temperatura_controllata: false
+                  created_at: "2026-06-07T16:45:00.000Z"
+                  updated_at: "2026-06-07T16:45:00.000Z"
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404":
+          description: Magazzino non trovato
+          content:
+            application/json:
+              example:
+                status: error
+                code: RESOURCE_NOT_FOUND
+                message: Magazzino non trovato
+                details: []
+        "409":
+          description: Slot già occupato (stessa corsia+scaffale nel magazzino)
+          content:
+            application/json:
+              example:
+                status: error
+                code: DUPLICATE_ENTRY
+                message: "Ubicazione corsia 3 scaffale 7 già esistente in questo magazzino"
+                details: []
+
+  # ══════════════════════════════════════════
+  # M06 — UBICAZIONI (rotte standalone)
+  # ══════════════════════════════════════════
+
+  /ubicazioni/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 1
+
+    get:
+      tags: [Ubicazioni]
+      summary: Dettaglio ubicazione
+      x-required-permission: magazzino:read
+      responses:
+        "200":
+          description: Dettaglio ubicazione
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Ubicazione' }
+              example:
+                status: success
+                data:
+                  id: 1
+                  magazzino_id: 1
+                  corsia: 1
+                  scaffale: 1
+                  codice: 1-01-01
+                  codice_composto: "MAG-A / 1-01-01"
+                  attivo: true
+                  temperatura_controllata: false
+                  created_at: "2026-01-10T08:00:00.000Z"
+                  updated_at: "2026-01-10T08:00:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+    patch:
+      tags: [Ubicazioni]
+      summary: Aggiorna temperatura_controllata
+      description: |
+        Aggiorna **esclusivamente** il campo `temperatura_controllata`.
+        Campo obbligatorio (boolean).
+      x-required-permission: magazzino:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UbicazioneUpdateTemperaturaRequest' }
+            example:
+              temperatura_controllata: true
+      responses:
+        "200":
+          description: Ubicazione aggiornata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Ubicazione' }
+              example:
+                status: success
+                data:
+                  id: 1
+                  magazzino_id: 1
+                  corsia: 1
+                  scaffale: 1
+                  codice: 1-01-01
+                  codice_composto: "MAG-A / 1-01-01"
+                  attivo: true
+                  temperatura_controllata: true
+                  created_at: "2026-01-10T08:00:00.000Z"
+                  updated_at: "2026-06-07T17:00:00.000Z"
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /ubicazioni/{id}/toggle:
+    patch:
+      tags: [Ubicazioni]
+      summary: Toggle attivo/disattivo ubicazione
+      description: Inverte il valore del campo `attivo`. Nessun body richiesto.
+      x-required-permission: magazzino:write
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 1
+      responses:
+        "200":
+          description: Stato aggiornato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Ubicazione' }
+              example:
+                status: success
+                data:
+                  id: 1
+                  magazzino_id: 1
+                  corsia: 1
+                  scaffale: 1
+                  codice: 1-01-01
+                  codice_composto: "MAG-A / 1-01-01"
+                  attivo: false
+                  temperatura_controllata: false
+                  created_at: "2026-01-10T08:00:00.000Z"
+                  updated_at: "2026-06-07T17:10:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
