@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, Users, ShieldCheck, Settings, Edit, Trash2, ToggleLeft, ToggleRight, KeyRound, Check, X, Bell, Building2, AlertTriangle } from 'lucide-react';
-import { PageTabBar, TabConfig } from './ui/PageTabBar';
+import { PageTabBar, TabConfig } from '../../components/ui/PageTabBar';
 
 type AdminTab = 'utenti' | 'ruoli' | 'impostazioni';
 

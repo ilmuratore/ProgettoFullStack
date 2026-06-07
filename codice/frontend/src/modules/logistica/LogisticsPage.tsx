@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Plus, Truck, FileText, BarChart2, Download, Eye } from 'lucide-react';
-import { LogisticsKPIs } from './logistics/LogisticsKPIs';
-import { ShipmentsTable } from './logistics/ShipmentsTable';
-import { LogisticsWidgets } from './logistics/LogisticsWidgets';
-import { CourierPerformance } from './logistics/CourierPerformance';
-import { AdvancedKPIs } from './logistics/AdvancedKPIs';
-import { ShipmentDrawer } from './logistics/ShipmentDrawer';
-import { NewShipmentModal } from './logistics/NewShipmentModal';
-import { PageTabBar, TabConfig } from './ui/PageTabBar';
+import { LogisticsKPIs } from '../logistica/components/LogisticsKPIs';
+import { ShipmentsTable } from '../logistica/components/ShipmentsTable';
+import { LogisticsWidgets } from '../logistica/components/LogisticsWidgets';
+import { CourierPerformance } from '../logistica/components/CourierPerformance';
+import { AdvancedKPIs } from '../logistica/components/AdvancedKPIs';
+import { ShipmentDrawer } from '../logistica/components/ShipmentDrawer';
+import { NewShipmentModal } from '../logistica/components/NewShipmentModal';
+import { PageTabBar, TabConfig } from '../../components/ui/PageTabBar';
 
 type LogisticsTab = 'spedizioni' | 'ddt' | 'kpi';
 

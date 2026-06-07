@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Plus, GitMerge, Package, ArrowLeftRight, ClipboardEdit } from 'lucide-react';
-import { WarehouseKPIs } from './warehouse/WarehouseKPIs';
-import { WarehouseTreeView } from './warehouse/WarehouseTreeView';
-import { WarehouseWidgets } from './warehouse/WarehouseWidgets';
-import { StockTable } from './warehouse/StockTable';
-import { StockMovementsTimeline } from './warehouse/StockMovementsTimeline';
-import { NewMovementModal } from './warehouse/NewMovementModal';
-import { PageTabBar, TabConfig } from './ui/PageTabBar';
+import { WarehouseKPIs } from './components/WarehouseKPIs';
+import { WarehouseTreeView } from './components/WarehouseTreeView';
+import { WarehouseWidgets } from './components/WarehouseWidgets';
+import { StockTable } from './components/StockTable';
+import { StockMovementsTimeline } from './components/StockMovementsTimeline';
+import { NewMovementModal } from './components/NewMovementModal';
+import { PageTabBar, TabConfig } from '../../components/ui/PageTabBar';
 
 type WarehouseTab = 'struttura' | 'giacenze' | 'movimenti' | 'rettifiche';
 

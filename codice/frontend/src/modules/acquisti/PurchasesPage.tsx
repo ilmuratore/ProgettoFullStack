@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Plus, ShoppingCart, PackageCheck, BarChart2, CheckCircle2, Clock } from 'lucide-react';
-import { PurchaseKPIs } from './purchases/PurchaseKPIs';
-import { PurchaseOrdersTable } from './purchases/PurchaseOrdersTable';
-import { PurchaseWidgets } from './purchases/PurchaseWidgets';
-import { GoodsReceiptsTimeline } from './purchases/GoodsReceiptsTimeline';
-import { SuppliersPerformance } from './purchases/SuppliersPerformance';
-import { OrderDetailDrawer } from './purchases/OrderDetailDrawer';
-import { NewPurchaseOrderModal } from './purchases/NewPurchaseOrderModal';
-import { PageTabBar, TabConfig } from './ui/PageTabBar';
+import { PurchaseKPIs } from './components/PurchaseKPIs';
+import { PurchaseOrdersTable } from './components/PurchaseOrdersTable';
+import { PurchaseWidgets } from './components/PurchaseWidgets';
+import { GoodsReceiptsTimeline } from './components/GoodsReceiptsTimeline';
+import { SuppliersPerformance } from './components/SuppliersPerformance';
+import { OrderDetailDrawer } from './components/OrderDetailDrawer';
+import { NewPurchaseOrderModal } from './components/NewPurchaseOrderModal';
+import { PageTabBar, TabConfig } from '../../components/ui/PageTabBar';
 
 type PurchaseTab = 'ordini' | 'ricezioni' | 'kpi';
 
