@@ -56,10 +56,25 @@ function PageProtectedRoute({ pageId, children }: { pageId: string; children: Re
  
   const { token, utente } = useAuthStore();
   if (!token || !utente) return <Navigate to="/login" replace />;
-  const accessiblePages = PAGINE_PER_RUOLO[utente.ruolo_id] ?? ['dashboard'];
+  const ruoloMap: Record<string, number> = {
+  Admin: 1,
+  'Responsabile Acquisti': 2,
+  'Responsabile Magazzino': 3,
+  Operatore: 4,
+  Corriere: 5,
+};
+
+const ruoloId =
+  utente.ruolo_id ??
+  ruoloMap[utente.ruolo ?? ''];
+
+const accessiblePages =
+  PAGINE_PER_RUOLO[ruoloId] ?? ['dashboard'];
   console.log('Utente:', utente);
   console.log('Ruolo:', utente?.ruolo_id);
   console.log('Pagine:', PAGINE_PER_RUOLO[utente?.ruolo_id]);
+  console.log("UTENTE COMPLETO", utente);
+  console.log("CHIAVI", Object.keys(utente || {}));
   if (!accessiblePages.includes(pageId)) return <Navigate to="/" replace />;
   return <>{children}</>;
   
@@ -102,7 +117,14 @@ function AppShell({ children }: { children: React.ReactNode }) {
 
   if (!utente) return null;
 
-  const ruoloNome       = (utente.ruolo_nome ?? RUOLO_ID_TO_NOME[utente.ruolo_id] ?? 'Utente') as Role;
+  const ruoloNome =
+  (
+    utente.ruolo_nome ??
+    utente.ruolo ??
+    RUOLO_ID_TO_NOME[utente.ruolo_id] ??
+    'Utente'
+  ) as Role;
+  const ruolo = utente.ruolo ?? utente.ruolo_nome;
   const accessiblePages = (PAGINE_PER_RUOLO[utente.ruolo_id] ?? ['dashboard']) as string[];
   const initials        = `${utente.nome?.[0] ?? ''}${utente.cognome?.[0] ?? ''}`.toUpperCase();
   const activePage      = PATH_TO_PAGE[location.pathname] ?? 'dashboard';
