@@ -1,0 +1,1119 @@
+{
+  "info": {
+    "name": "LogiChain V2 — M06 Magazzino & Ubicazioni",
+    "_postman_id": "logichain-m06-magazzino",
+    "description": "Suite di verifica backend M06 (Gestione Magazzino & Ubicazioni).\n\nCOME USARLA:\n1) Avvia il backend (npm run dev) dopo aver applicato tutte le migration fino a 052_indexes_magazzino.js.\n2) Nel .env imposta ADMIN_EMAIL e ADMIN_PASSWORD, poi:\n   npm run seed_ruoli_permessi && npm run seed_admin\n3) Allinea le variabili di collection admin_email/admin_password a quelle del .env.\n4) Apri Runner -> seleziona questa collection -> Run.\n\nIl Setup registra gli utenti di test con email univiche via timestamp (ri-eseguibile).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "id": "99d33051-1e36-46f4-b8c9-2c2b53c4486f",
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "default"
+    },
+    {
+      "id": "34960de5-7883-44b4-b73c-a592b877ce2c",
+      "key": "admin_email",
+      "value": "admin@logichain.it",
+      "type": "default"
+    },
+    {
+      "id": "bf545a61-cf3b-486b-93b5-d4ac806c3e95",
+      "key": "admin_password",
+      "value": "Admin123!",
+      "type": "default"
+    },
+    {
+      "id": "798a02f5-2c34-4b34-927a-b88a5f6328dd",
+      "key": "resp_magazzino_email",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "4e90828b-504b-4a6f-98e0-7972a754650a",
+      "key": "resp_magazzino_password",
+      "value": "Test1234!",
+      "type": "default"
+    },
+    {
+      "id": "13668aca-41b5-4eb0-b2a0-72e8a2e5a649",
+      "key": "operatore_email",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "9ca5e306-54fc-4fa7-ae40-9a5792719a1d",
+      "key": "operatore_password",
+      "value": "Test1234!",
+      "type": "default"
+    },
+    {
+      "id": "148b59a8-45af-4c75-badb-fab067a96632",
+      "key": "token_admin",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "d210ac14-5bcf-4a58-8ea5-ef3075a4b4d3",
+      "key": "token_resp_mag",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "5ab0e250-f73e-41bc-9ee5-6b924b5b0169",
+      "key": "token_no_access",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "039e6b56-b713-43b3-8f9c-e012c3b44fd5",
+      "key": "magazzino_id",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "79ce7973-edc9-47a9-9d44-2f2c2cd32120",
+      "key": "ubicazione_id",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "4cc73d27-5e90-4e33-b2ae-0564ed81b400",
+      "key": "runId",
+      "value": "",
+      "type": "default"
+    }
+  ],
+  "item": [
+    {
+      "id": "dbf72047-439c-430b-95cd-7d989e0bdc76",
+      "name": "Setup — Autenticazione",
+      "item": [
+        {
+          "id": "79f268bf-6869-49b5-928e-52403e1a67b9",
+          "name": "Login Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "id": "5e65c927-2faf-466a-8b06-4931211b54d3",
+                "exec": [
+                  "var run = Date.now().toString();",
+                  "pm.collectionVariables.set('runId', run);",
+                  "pm.collectionVariables.set('resp_magazzino_email', 'test.m06.rmag.' + run + '@logichain.it');",
+                  "pm.collectionVariables.set('operatore_email',      'test.m06.oper.' + run + '@logichain.it');"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "id": "d2cdf6f1-b0f5-400d-9610-fc642a59a592",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Login Admin -> 200', () => pm.response.to.have.status(200));",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_admin', b.data.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "836d9712-893b-47a7-a21d-fcefa3a93209",
+          "name": "Register Responsabile Magazzino (ruolo_id 3)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Magazzino\",\n  \"email\": \"{{resp_magazzino_email}}\",\n  \"password\": \"{{resp_magazzino_password}}\",\n  \"ruolo_id\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "bd04cc79-4eaf-4cfb-8d03-8cb8bd84c3c9",
+                "exec": [
+                  "pm.test('Setup: Register Resp. Magazzino -> 201 o 409', () => pm.expect([201,409]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "7f8e57a5-1a13-4f03-889a-c0de6e4d7012",
+          "name": "Register Operatore (ruolo_id 4, no magazzino:write)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Op\",\n  \"cognome\": \"Eratore\",\n  \"email\": \"{{operatore_email}}\",\n  \"password\": \"{{operatore_password}}\",\n  \"ruolo_id\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "1e63d452-e195-4f47-9b6d-f16fe5f1a1a2",
+                "exec": [
+                  "pm.test('Setup: Register Operatore -> 201 o 409', () => pm.expect([201,409]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "0591827d-2fee-4341-bcfb-56289e105672",
+          "name": "Login Responsabile Magazzino (token_resp_mag)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{resp_magazzino_email}}\",\n  \"password\": \"{{resp_magazzino_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "732c0403-e93c-4fa1-a0cc-2c17bc3cd98f",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Login Resp. Magazzino -> 200', () => pm.response.to.have.status(200));",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_resp_mag', b.data.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "id": "047d6d67-62f8-4b39-ab57-49f80073e40f",
+          "name": "Login Operatore (token_no_access)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{operatore_email}}\",\n  \"password\": \"{{operatore_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "b77da41d-fb40-4105-ad82-fa52e7fe18e7",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Login Operatore -> 200', () => pm.response.to.have.status(200));",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_no_access', b.data.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Magazzini — 13 test",
+      "item": [
+        {
+          "name": "01 GET /magazzini — lista (inclusi disattivi)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('status success', () => pm.expect(d.status).to.eql('success'));",
+                  "pm.test('data è array', () => pm.expect(d.data).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/magazzini",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "02 POST /magazzini — crea magazzino valido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json();",
+                  "pm.test('status success', () => pm.expect(d.status).to.eql('success'));",
+                  "pm.test('codice corretto', () => pm.expect(d.data.codice).to.eql('MAG-TEST'));",
+                  "pm.test('attivo true', () => pm.expect(d.data.attivo).to.be.true);",
+                  "pm.collectionVariables.set('magazzino_id', d.data.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/magazzini",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"codice\":\"MAG-TEST\",\"nome\":\"Magazzino Test\",\"indirizzo\":\"Via Test 1, Milano\"}"
+            }
+          }
+        },
+        {
+          "name": "03 POST /magazzini — codice duplicato → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "const d = pm.response.json();",
+                  "pm.test('DUPLICATE_ENTRY', () => pm.expect(d.code).to.eql('DUPLICATE_ENTRY'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/magazzini",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"codice\":\"MAG-TEST\",\"nome\":\"Altro Magazzino\"}"
+            }
+          }
+        },
+        {
+          "name": "04 POST /magazzini — campo obbligatorio mancante → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "const d = pm.response.json();",
+                  "pm.test('VALIDATION_ERROR', () => pm.expect(d.code).to.eql('VALIDATION_ERROR'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/magazzini",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"codice\":\"MAG-X\"}"
+            }
+          }
+        },
+        {
+          "name": "05 GET /magazzini/:id — dettaglio con ubicazioni vuote",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('status success', () => pm.expect(d.status).to.eql('success'));",
+                  "pm.test('ubicazioni è array vuoto', () => pm.expect(d.data.ubicazioni).to.be.an('array').that.is.empty);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "06 GET /magazzini/:id — id inesistente → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "const d = pm.response.json();",
+                  "pm.test('RESOURCE_NOT_FOUND', () => pm.expect(d.code).to.eql('RESOURCE_NOT_FOUND'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/magazzini/99999",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "07 PATCH /magazzini/:id — modifica nome",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('nome aggiornato', () => pm.expect(d.data.nome).to.eql('Magazzino Aggiornato'));",
+                  "pm.test('codice invariato', () => pm.expect(d.data.codice).to.eql('MAG-TEST'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"nome\":\"Magazzino Aggiornato\"}"
+            }
+          }
+        },
+        {
+          "name": "08 PATCH /magazzini/:id — codice nel body ignorato",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('codice NON modificato', () => pm.expect(d.data.codice).to.eql('MAG-TEST'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"codice\":\"HACKEDCODICE\",\"nome\":\"Test Hack\"}"
+            }
+          }
+        },
+        {
+          "name": "09 PATCH /magazzini/:id — body vuoto → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "const d = pm.response.json();",
+                  "pm.test('VALIDATION_ERROR', () => pm.expect(d.code).to.eql('VALIDATION_ERROR'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "10 PATCH /magazzini/:id/toggle — disattiva",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('attivo false', () => pm.expect(d.data.attivo).to.be.false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/toggle",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "11 PATCH /magazzini/:id/toggle — riattiva",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('attivo true', () => pm.expect(d.data.attivo).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/toggle",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "12 GET /magazzini — senza token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/magazzini"
+          }
+        },
+        {
+          "name": "13 POST /magazzini — token Operatore → 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));",
+                  "const d = pm.response.json();",
+                  "pm.test('ACCESS_DENIED', () => pm.expect(d.code).to.eql('ACCESS_DENIED'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/magazzini",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_no_access}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"codice\":\"MAG-HACK\",\"nome\":\"Hack\"}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ubicazioni — 12 test",
+      "item": [
+        {
+          "name": "01 POST /magazzini/:magId/ubicazioni — crea valida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json();",
+                  "pm.test('status success', () => pm.expect(d.status).to.eql('success'));",
+                  "pm.test('codice_composto presente', () => pm.expect(d.data).to.have.property('codice_composto'));",
+                  "const magId = pm.collectionVariables.get('magazzino_id');",
+                  "pm.test('codice_composto formato corretto', () => pm.expect(d.data.codice_composto).to.eql(`${magId}-03-05`));",
+                  "pm.test('attivo true', () => pm.expect(d.data.attivo).to.be.true);",
+                  "pm.collectionVariables.set('ubicazione_id', d.data.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"corsia\":3,\"scaffale\":5,\"temperatura_controllata\":false}"
+            }
+          }
+        },
+        {
+          "name": "02 POST /magazzini/:magId/ubicazioni — slot duplicato → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "const d = pm.response.json();",
+                  "pm.test('DUPLICATE_ENTRY', () => pm.expect(d.code).to.eql('DUPLICATE_ENTRY'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"corsia\":3,\"scaffale\":5}"
+            }
+          }
+        },
+        {
+          "name": "03 POST /magazzini/99999/ubicazioni — magazzino inesistente → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "const d = pm.response.json();",
+                  "pm.test('RESOURCE_NOT_FOUND', () => pm.expect(d.code).to.eql('RESOURCE_NOT_FOUND'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/magazzini/99999/ubicazioni",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"corsia\":1,\"scaffale\":1}"
+            }
+          }
+        },
+        {
+          "name": "04 POST /magazzini/:magId/ubicazioni — campo mancante → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "const d = pm.response.json();",
+                  "pm.test('VALIDATION_ERROR', () => pm.expect(d.code).to.eql('VALIDATION_ERROR'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"corsia\":1}"
+            }
+          }
+        },
+        {
+          "name": "05 GET /ubicazioni/:id — dettaglio con codice_composto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('codice_composto presente', () => pm.expect(d.data).to.have.property('codice_composto'));",
+                  "pm.test('formato codice_composto', () => pm.expect(d.data.codice_composto).to.match(/^\\d+-\\d{2}-\\d{2}$/));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/ubicazioni/{{ubicazione_id}}",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "06 GET /ubicazioni/99999 — id inesistente → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "const d = pm.response.json();",
+                  "pm.test('RESOURCE_NOT_FOUND', () => pm.expect(d.code).to.eql('RESOURCE_NOT_FOUND'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/ubicazioni/99999",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "07 GET /magazzini/:id — albero con ubicazione e totale_giacenza",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('ubicazioni ha 1 elemento', () => pm.expect(d.data.ubicazioni).to.have.lengthOf(1));",
+                  "const u = d.data.ubicazioni[0];",
+                  "pm.test('codice_composto presente', () => pm.expect(u).to.have.property('codice_composto'));",
+                  "pm.test('totale_giacenza presente', () => pm.expect(u).to.have.property('totale_giacenza'));",
+                  "pm.test('totale_giacenza = 0', () => pm.expect(Number(u.totale_giacenza)).to.eql(0));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "08 PATCH /ubicazioni/:id — modifica temperatura_controllata",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('temperatura aggiornata', () => pm.expect(d.data.temperatura_controllata).to.be.true);",
+                  "pm.test('codice_composto presente', () => pm.expect(d.data).to.have.property('codice_composto'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/api/v1/ubicazioni/{{ubicazione_id}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"temperatura_controllata\":true}"
+            }
+          }
+        },
+        {
+          "name": "09 PATCH /ubicazioni/:id/toggle — disattiva",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('attivo false', () => pm.expect(d.data.attivo).to.be.false);",
+                  "pm.test('codice_composto presente', () => pm.expect(d.data).to.have.property('codice_composto'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/api/v1/ubicazioni/{{ubicazione_id}}/toggle",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "10 PATCH /ubicazioni/:id/toggle — riattiva",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test('attivo true', () => pm.expect(d.data.attivo).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "url": "{{base_url}}/api/v1/ubicazioni/{{ubicazione_id}}/toggle",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "11 GET /ubicazioni/:id — senza token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/ubicazioni/{{ubicazione_id}}"
+          }
+        },
+        {
+          "name": "POST 12 POST /magazzini/:magId/ubicazioni — token Operatore → 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));",
+                  "const d = pm.response.json();",
+                  "pm.test('ACCESS_DENIED', () => pm.expect(d.code).to.eql('ACCESS_DENIED'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_no_access}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"corsia\":9,\"scaffale\":9}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
