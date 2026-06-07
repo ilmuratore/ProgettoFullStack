@@ -16,7 +16,6 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const body = await res.json();
 
   if (res.status === 401) {
-    // Token scaduto — pulizia e redirect login
     localStorage.removeItem('lc_token');
     localStorage.removeItem('lc_utente');
     window.location.href = '/';

@@ -26,14 +26,16 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ProductFormModal } from '../anagrafiche/components/ProductFormModal';
 import { CategoryFormModal, type CategoryFormData } from '../anagrafiche/components/CategoryFormModal';
 import { SupplierFormModal } from '../anagrafiche/components/SupplierFormModal';
-import { ClientFormModal, type ClientFormData } from '../anagrafiche/components/ClientFormModal';
+import { ClientFormModal } from '../anagrafiche/components/ClientFormModal';
 import { CourierFormModal, type CourierFormData } from '../anagrafiche/components/CourierFormModal';
 import { toast } from 'sonner';
 import { prodottiApi } from '../../api/prodottiApi';
 import { fornitoriApi } from '../../api/fornitoriApi';
+import { clientiApi } from '../../api/clientiApi';
 import { useAuthStore } from '../../store/authStore';
 import type { ProdottoListino, ProdottoCreateRequest, ProdottoUpdateRequest } from '../../types/prodotti';
 import type { Fornitore, FornitoreCreateRequest, FornitoreUpdateRequest } from '../../types/fornitori';
+import type { Cliente, ClienteCreateRequest, ClienteUpdateRequest } from '../../types/clienti';
 
 type TabType = 'prodotti' | 'categorie' | 'fornitori' | 'clienti' | 'corrieri';
 
@@ -42,15 +44,6 @@ interface Categoria {
   nome: string;
   padre: string | null;
   prodottiCount: number;
-}
-
-interface Cliente {
-  id: number;
-  ragioneSociale: string;
-  pIva: string;
-  email: string;
-  telefono: string;
-  stato: 'Attivo' | 'Sospeso' | 'Inattivo';
 }
 
 interface Corriere {
@@ -92,40 +85,42 @@ export function AnagrafichePage() {
   const [fornitori, setFornitori] = useState<Fornitore[]>([]);
   const [loadingFornitori, setLoadingFornitori] = useState(false);
 
+  const [clienti, setClienti] = useState<Cliente[]>([]);
+  const [loadingClienti, setLoadingClienti] = useState(false);
+
   const [categorieState, setCategorieState] = useState<Categoria[]>([]);
-  const [clientiState, setClientiState] = useState<Cliente[]>([]);
   const [corrieriState, setCorrieriState] = useState<Corriere[]>([]);
 
   const fetchProdotti = useCallback(async () => {
     setLoadingProdotti(true);
-    try {
-      setProdotti(await prodottiApi.list());
-    } catch (err: any) {
-      toast.error('Errore caricamento prodotti', { description: err?.message });
-    } finally {
-      setLoadingProdotti(false);
-    }
+    try { setProdotti(await prodottiApi.list()); }
+    catch (err: any) { toast.error('Errore caricamento prodotti', { description: err?.message }); }
+    finally { setLoadingProdotti(false); }
   }, []);
 
   const fetchFornitori = useCallback(async () => {
     setLoadingFornitori(true);
-    try {
-      setFornitori(await fornitoriApi.list());
-    } catch (err: any) {
-      toast.error('Errore caricamento fornitori', { description: err?.message });
-    } finally {
-      setLoadingFornitori(false);
-    }
+    try { setFornitori(await fornitoriApi.list()); }
+    catch (err: any) { toast.error('Errore caricamento fornitori', { description: err?.message }); }
+    finally { setLoadingFornitori(false); }
+  }, []);
+
+  const fetchClienti = useCallback(async () => {
+    setLoadingClienti(true);
+    try { setClienti(await clientiApi.list()); }
+    catch (err: any) { toast.error('Errore caricamento clienti', { description: err?.message }); }
+    finally { setLoadingClienti(false); }
   }, []);
 
   useEffect(() => { fetchProdotti(); }, [fetchProdotti]);
   useEffect(() => { fetchFornitori(); }, [fetchFornitori]);
+  useEffect(() => { fetchClienti(); }, [fetchClienti]);
 
   const tabs = [
     { id: 'prodotti' as TabType, label: 'Prodotti', icon: Package, count: prodotti.length },
     { id: 'categorie' as TabType, label: 'Categorie', icon: Tag, count: categorieState.filter(c => !c.padre).length },
     { id: 'fornitori' as TabType, label: 'Fornitori', icon: Building2, count: fornitori.length },
-    { id: 'clienti' as TabType, label: 'Clienti', icon: User, count: clientiState.length },
+    { id: 'clienti' as TabType, label: 'Clienti', icon: User, count: clienti.length },
     { id: 'corrieri' as TabType, label: 'Corrieri', icon: Truck, count: corrieriState.length },
   ];
 
@@ -141,7 +136,7 @@ export function AnagrafichePage() {
     }
   };
 
-  const getStatoBadgeColor = (attivo: boolean) =>
+  const getBadgeAttivo = (attivo: boolean) =>
     attivo ? 'bg-[#DCFCE7] text-[#16A34A]' : 'bg-[#FEE2E2] text-[#DC2626]';
 
   const handleNewClick = () => {
@@ -176,9 +171,7 @@ export function AnagrafichePage() {
         await prodottiApi.remove(id);
         setProdotti(prev => prev.filter(p => p.id !== id));
         toast.success('Prodotto eliminato');
-      } catch (err: any) {
-        toast.error('Eliminazione fallita', { description: err?.message });
-      }
+      } catch (err: any) { toast.error('Eliminazione fallita', { description: err?.message }); }
       return;
     }
 
@@ -187,9 +180,16 @@ export function AnagrafichePage() {
         await fornitoriApi.remove(id);
         setFornitori(prev => prev.filter(f => f.id !== id));
         toast.success('Fornitore eliminato');
-      } catch (err: any) {
-        toast.error('Eliminazione fallita', { description: err?.message });
-      }
+      } catch (err: any) { toast.error('Eliminazione fallita', { description: err?.message }); }
+      return;
+    }
+
+    if (activeTab === 'clienti') {
+      try {
+        await clientiApi.remove(id);
+        setClienti(prev => prev.filter(c => c.id !== id));
+        toast.success('Cliente eliminato');
+      } catch (err: any) { toast.error('Eliminazione fallita', { description: err?.message }); }
       return;
     }
 
@@ -197,18 +197,13 @@ export function AnagrafichePage() {
       case 'categorie':
         setCategorieState(prev => prev.filter(c => c.id !== id));
         toast.success('Categoria eliminata'); break;
-      case 'clienti':
-        setClientiState(prev => prev.filter(c => c.id !== id));
-        toast.success('Cliente eliminato'); break;
       case 'corrieri':
         setCorrieriState(prev => prev.filter(c => c.id !== id));
         toast.success('Corriere eliminato'); break;
     }
   };
 
-  const handleView = (_item: any) => {
-    toast.info('Funzionalità di dettaglio in arrivo');
-  };
+  const handleView = (_item: any) => { toast.info('Funzionalità di dettaglio in arrivo'); };
 
   const handleAddSubcategory = (parentName: string) => {
     setParentCategoryForSub(parentName);
@@ -216,10 +211,7 @@ export function AnagrafichePage() {
     setCategoryModalOpen(true);
   };
 
-  const handleSaveProduct = async (
-    data: ProdottoCreateRequest | ProdottoUpdateRequest,
-    id?: number
-  ) => {
+  const handleSaveProduct = async (data: ProdottoCreateRequest | ProdottoUpdateRequest, id?: number) => {
     try {
       if (editMode === 'create') {
         const created = await prodottiApi.create(data as ProdottoCreateRequest);
@@ -231,18 +223,13 @@ export function AnagrafichePage() {
         toast.success('Prodotto aggiornato');
       }
     } catch (err: any) {
-      const msg = err?.code === 'DUPLICATE_ENTRY'
-        ? 'SKU già in uso da un altro prodotto attivo'
-        : err?.message ?? 'Errore nel salvataggio';
+      const msg = err?.code === 'DUPLICATE_ENTRY' ? 'SKU già in uso' : err?.message ?? 'Errore nel salvataggio';
       toast.error('Salvataggio fallito', { description: msg });
       throw err;
     }
   };
 
-  const handleSaveSupplier = async (
-    data: FornitoreCreateRequest | FornitoreUpdateRequest,
-    id?: number
-  ) => {
+  const handleSaveSupplier = async (data: FornitoreCreateRequest | FornitoreUpdateRequest, id?: number) => {
     try {
       if (editMode === 'create') {
         const created = await fornitoriApi.create(data as FornitoreCreateRequest);
@@ -254,10 +241,27 @@ export function AnagrafichePage() {
         toast.success('Fornitore aggiornato');
       }
     } catch (err: any) {
-      const msg = err?.code === 'DUPLICATE_ENTRY'
-        ? 'P.IVA già associata a un altro fornitore'
-        : err?.code === 'ACCESS_DENIED'
-        ? 'I fornitori dell\'ecosistema non possono essere modificati'
+      const msg = err?.code === 'DUPLICATE_ENTRY' ? 'P.IVA già associata a un altro fornitore'
+        : err?.code === 'ACCESS_DENIED' ? 'I fornitori dell\'ecosistema non possono essere modificati'
+        : err?.message ?? 'Errore nel salvataggio';
+      toast.error('Salvataggio fallito', { description: msg });
+      throw err;
+    }
+  };
+
+  const handleSaveClient = async (data: ClienteCreateRequest | ClienteUpdateRequest, id?: number) => {
+    try {
+      if (editMode === 'create') {
+        const created = await clientiApi.create(data as ClienteCreateRequest);
+        setClienti(prev => [...prev, created]);
+        toast.success('Cliente creato');
+      } else if (id !== undefined) {
+        const updated = await clientiApi.update(id, data as ClienteUpdateRequest);
+        setClienti(prev => prev.map(c => (c.id === id ? updated : c)));
+        toast.success('Cliente aggiornato');
+      }
+    } catch (err: any) {
+      const msg = err?.code === 'DUPLICATE_ENTRY' ? 'P.IVA/CF già associato a un altro cliente'
         : err?.message ?? 'Errore nel salvataggio';
       toast.error('Salvataggio fallito', { description: msg });
       throw err;
@@ -272,17 +276,6 @@ export function AnagrafichePage() {
     } else {
       setCategorieState(prev => prev.map(c => (c.id === selectedItem?.id ? { ...c, nome: data.nome } : c)));
       toast.success('Categoria aggiornata');
-    }
-  };
-
-  const handleSaveClient = (data: ClientFormData) => {
-    if (editMode === 'create') {
-      const newId = Math.max(0, ...clientiState.map(c => c.id)) + 1;
-      setClientiState(prev => [...prev, { id: newId, ...data }]);
-      toast.success('Cliente creato');
-    } else {
-      setClientiState(prev => prev.map(c => (c.id === selectedItem?.id ? { ...c, ...data } : c)));
-      toast.success('Cliente aggiornato');
     }
   };
 
@@ -311,8 +304,10 @@ export function AnagrafichePage() {
           (f.email ?? '').toLowerCase().includes(q)
         );
       case 'clienti':
-        return clientiState.filter(c =>
-          c.ragioneSociale.toLowerCase().includes(q) || (c.pIva ?? '').toLowerCase().includes(q)
+        return clienti.filter(c =>
+          c.ragione_sociale.toLowerCase().includes(q) ||
+          (c.piva_cf ?? '').toLowerCase().includes(q) ||
+          (c.email ?? '').toLowerCase().includes(q)
         );
       case 'corrieri':
         return corrieriState.filter(c =>
@@ -348,19 +343,16 @@ export function AnagrafichePage() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40">
         <DropdownMenuItem onClick={() => handleView(item)} className="cursor-pointer">
-          <Eye className="w-4 h-4 mr-2" />
-          Visualizza
+          <Eye className="w-4 h-4 mr-2" />Visualizza
         </DropdownMenuItem>
         {!hideEdit && canWrite(tabEntity) && (
           <DropdownMenuItem onClick={() => handleEdit(item)} className="cursor-pointer">
-            <Edit className="w-4 h-4 mr-2" />
-            Modifica
+            <Edit className="w-4 h-4 mr-2" />Modifica
           </DropdownMenuItem>
         )}
         {canDelete(tabEntity) && (
           <DropdownMenuItem onClick={() => handleDelete(item.id)} className="cursor-pointer text-red-600">
-            <Trash2 className="w-4 h-4 mr-2" />
-            Elimina
+            <Trash2 className="w-4 h-4 mr-2" />Elimina
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
@@ -442,14 +434,10 @@ export function AnagrafichePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {loadingProdotti ? (
-                    <SkeletonRows cols={5} />
-                  ) : filteredProdotti.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="py-12 text-center text-[#6B7280] text-sm">
-                        {searchQuery ? 'Nessun prodotto corrisponde alla ricerca' : 'Nessun prodotto. Clicca "Nuovo Prodotto" per iniziare.'}
-                      </td>
-                    </tr>
+                  {loadingProdotti ? <SkeletonRows cols={5} /> : filteredProdotti.length === 0 ? (
+                    <tr><td colSpan={5} className="py-12 text-center text-[#6B7280] text-sm">
+                      {searchQuery ? 'Nessun prodotto corrisponde alla ricerca' : 'Nessun prodotto. Clicca "Nuovo Prodotto" per iniziare.'}
+                    </td></tr>
                   ) : filteredProdotti.map((p, i) => (
                     <tr key={p.id} className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
                       <td className="py-3 px-4 font-medium text-[#2D2D2D]">{p.nome}</td>
@@ -467,9 +455,7 @@ export function AnagrafichePage() {
           {activeTab === 'categorie' && (
             <div className="space-y-4">
               {filteredCategorie.filter(c => !c.padre).length === 0 && (
-                <p className="py-12 text-center text-[#6B7280] text-sm">
-                  Nessuna categoria. Integrazione con milestone dedicata.
-                </p>
+                <p className="py-12 text-center text-[#6B7280] text-sm">Nessuna categoria. Integrazione con milestone dedicata.</p>
               )}
               {filteredCategorie.filter(c => !c.padre).map((categoria) => {
                 const subcategories = categorieState.filter(c => c.padre === categoria.nome);
@@ -485,10 +471,7 @@ export function AnagrafichePage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleAddSubcategory(categoria.nome)}
-                          className="px-3 py-1.5 text-xs bg-white border border-[#E5EAF2] text-[#6B7280] rounded-lg hover:bg-[#F7F9FC] transition-all"
-                        >
+                        <button onClick={() => handleAddSubcategory(categoria.nome)} className="px-3 py-1.5 text-xs bg-white border border-[#E5EAF2] text-[#6B7280] rounded-lg hover:bg-[#F7F9FC] transition-all">
                           Aggiungi Sottocategoria
                         </button>
                         <KebabMenu item={categoria} />
@@ -527,75 +510,44 @@ export function AnagrafichePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {loadingFornitori ? (
-                    <SkeletonRows cols={7} />
-                  ) : filteredFornitori.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="py-12 text-center text-[#6B7280] text-sm">
-                        {searchQuery ? 'Nessun fornitore corrisponde alla ricerca' : 'Nessun fornitore. Clicca "Nuovo Fornitore" per iniziare.'}
-                      </td>
-                    </tr>
+                  {loadingFornitori ? <SkeletonRows cols={7} /> : filteredFornitori.length === 0 ? (
+                    <tr><td colSpan={7} className="py-12 text-center text-[#6B7280] text-sm">
+                      {searchQuery ? 'Nessun fornitore corrisponde alla ricerca' : 'Nessun fornitore. Clicca "Nuovo Fornitore" per iniziare.'}
+                    </td></tr>
                   ) : filteredFornitori.map((f, i) => (
                     <tr key={f.id} className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
                       <td className="py-3 px-4">
                         <div className="font-medium text-[#2D2D2D]">{f.ragione_sociale}</div>
                         {f.sito_web && (
-                          <a
-                            href={f.sito_web}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-xs text-[#17E88F] hover:underline mt-0.5"
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                            {f.sito_web.replace(/^https?:\/\//, '')}
+                          <a href={f.sito_web} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-[#17E88F] hover:underline mt-0.5">
+                            <ExternalLink className="w-3 h-3" />{f.sito_web.replace(/^https?:\/\//, '')}
                           </a>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-sm text-[#6B7280] font-mono">
-                        {f.piva ?? <span className="text-[#9CA3AF] italic">—</span>}
-                      </td>
+                      <td className="py-3 px-4 text-sm text-[#6B7280] font-mono">{f.piva ?? <span className="text-[#9CA3AF] italic">—</span>}</td>
                       <td className="py-3 px-4">
                         <div className="space-y-1">
-                          {f.email && (
-                            <div className="flex items-center gap-2 text-xs text-[#6B7280]">
-                              <Mail className="w-3 h-3 shrink-0" />{f.email}
-                            </div>
-                          )}
-                          {f.telefono && (
-                            <div className="flex items-center gap-2 text-xs text-[#6B7280]">
-                              <Phone className="w-3 h-3 shrink-0" />{f.telefono}
-                            </div>
-                          )}
+                          {f.email && <div className="flex items-center gap-2 text-xs text-[#6B7280]"><Mail className="w-3 h-3 shrink-0" />{f.email}</div>}
+                          {f.telefono && <div className="flex items-center gap-2 text-xs text-[#6B7280]"><Phone className="w-3 h-3 shrink-0" />{f.telefono}</div>}
                           {!f.email && !f.telefono && <span className="text-xs text-[#9CA3AF] italic">—</span>}
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        {f.indirizzo ? (
-                          <div className="flex items-center gap-2 text-sm text-[#6B7280]">
-                            <MapPin className="w-3 h-3 shrink-0" />
-                            <span className="truncate max-w-[160px]">{f.indirizzo}</span>
-                          </div>
-                        ) : <span className="text-sm text-[#9CA3AF] italic">—</span>}
+                        {f.indirizzo
+                          ? <div className="flex items-center gap-2 text-sm text-[#6B7280]"><MapPin className="w-3 h-3 shrink-0" /><span className="truncate max-w-[160px]">{f.indirizzo}</span></div>
+                          : <span className="text-sm text-[#9CA3AF] italic">—</span>}
                       </td>
                       <td className="py-3 px-4">
-                        {f.source === 'ecosystem' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#EEF2FF] text-[#6366F1]">
-                            <Globe className="w-3 h-3" /> Ecosistema
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-[#F3F4F6] text-[#6B7280]">
-                            Manuale
-                          </span>
-                        )}
+                        {f.source === 'ecosystem'
+                          ? <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#EEF2FF] text-[#6366F1]"><Globe className="w-3 h-3" /> Ecosistema</span>
+                          : <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-[#F3F4F6] text-[#6B7280]">Manuale</span>}
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getStatoBadgeColor(f.attivo)}`}>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getBadgeAttivo(f.attivo)}`}>
                           {f.attivo ? 'Attivo' : 'Disattivo'}
                         </span>
                       </td>
-                      <td className="py-3 px-4">
-                        <KebabMenu item={f} hideEdit={f.source === 'ecosystem'} />
-                      </td>
+                      <td className="py-3 px-4"><KebabMenu item={f} hideEdit={f.source === 'ecosystem'} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -611,16 +563,42 @@ export function AnagrafichePage() {
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Ragione Sociale</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">P. IVA / CF</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Contatti</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Sorgente</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Stato</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Azioni</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td colSpan={5} className="py-12 text-center text-[#6B7280] text-sm">
-                      Integrazione clienti disponibile con milestone M04.
-                    </td>
-                  </tr>
+                  {loadingClienti ? <SkeletonRows cols={6} /> : filteredClienti.length === 0 ? (
+                    <tr><td colSpan={6} className="py-12 text-center text-[#6B7280] text-sm">
+                      {searchQuery ? 'Nessun cliente corrisponde alla ricerca' : 'Nessun cliente. Clicca "Nuovo Cliente" per iniziare.'}
+                    </td></tr>
+                  ) : filteredClienti.map((c, i) => (
+                    <tr key={c.id} className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
+                      <td className="py-3 px-4 font-medium text-[#2D2D2D]">{c.ragione_sociale}</td>
+                      <td className="py-3 px-4 text-sm text-[#6B7280] font-mono">
+                        {c.piva_cf ?? <span className="text-[#9CA3AF] italic">—</span>}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="space-y-1">
+                          {c.email && <div className="flex items-center gap-2 text-xs text-[#6B7280]"><Mail className="w-3 h-3 shrink-0" />{c.email}</div>}
+                          {c.telefono && <div className="flex items-center gap-2 text-xs text-[#6B7280]"><Phone className="w-3 h-3 shrink-0" />{c.telefono}</div>}
+                          {!c.email && !c.telefono && <span className="text-xs text-[#9CA3AF] italic">—</span>}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        {c.source === 'ecosystem'
+                          ? <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#EEF2FF] text-[#6366F1]"><Globe className="w-3 h-3" /> Ecosistema</span>
+                          : <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-[#F3F4F6] text-[#6B7280]">Manuale</span>}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getBadgeAttivo(c.attivo)}`}>
+                          {c.attivo ? 'Attivo' : 'Disattivo'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4"><KebabMenu item={c} /></td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -640,11 +618,9 @@ export function AnagrafichePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td colSpan={6} className="py-12 text-center text-[#6B7280] text-sm">
-                      Integrazione corrieri disponibile con milestone M05.
-                    </td>
-                  </tr>
+                  <tr><td colSpan={6} className="py-12 text-center text-[#6B7280] text-sm">
+                    Integrazione corrieri disponibile con milestone M05.
+                  </td></tr>
                 </tbody>
               </table>
             </div>
@@ -691,7 +667,6 @@ export function AnagrafichePage() {
         onSave={handleSaveClient}
         initialData={selectedItem}
         mode={editMode}
-        nextId={clientiState.length + 1}
       />
       <CourierFormModal
         open={courierModalOpen}
