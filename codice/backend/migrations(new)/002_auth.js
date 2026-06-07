@@ -69,7 +69,7 @@ exports.up = (pgm) => {
     pgm.createTrigger('notifiche', 'set_updated_at', TRIGGER);
 
     pgm.createIndex('notifiche', ['utente_id', 'letto'],  { name: 'idx_notifiche_utente_letto' });
-    pgm.createIndex('notifiche', 'created_at',            { name: 'idx_notifiche_created_at' });
+    pgm.sql("CREATE INDEX idx_notifiche_created_at ON notifiche USING btree (created_at DESC)");
 };
 
 exports.down = (pgm) => {
