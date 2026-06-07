@@ -14,7 +14,7 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(helmet());
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: [ process.env.CORS_ORIGIN || 'http://localhost:5173', 'http://127.0.0.1:5173'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -29,6 +29,10 @@ app.use((req, _res, next) => {
 });
 
 app.get('/', (_req, res) => res.json({ status: 'success', version: '2.0.0' }));
+
+const { mountSwagger } = require('./src/config/swagger');
+mountSwagger(app);
+
 
 // -----------------------------------------------------------------
 // Routes (decommentare man mano che i moduli vengono implementati)
