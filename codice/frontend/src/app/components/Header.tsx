@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Search, ChevronRight, LogOut, User, Shield, BellRing, Settings, FileText, HelpCircle, ChevronDown } from 'lucide-react';
 import { GlobalSearch } from './GlobalSearch';
 import { NotificationsPanel } from './NotificationsPanel';
-import type { User as AuthUser } from './LogiChain_Auth';
+import type { UiUser as AuthUser } from '../../types/auth';
 
 // ─── Colori ruolo per il badge header ─────────────────────────────────────────
 const ROLE_CONFIG: Record<string, { color: string; bg: string; label: string }> = {

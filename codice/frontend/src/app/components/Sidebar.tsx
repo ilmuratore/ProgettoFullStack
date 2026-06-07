@@ -13,7 +13,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import type { User } from './LogiChain_Auth';
+import type { UiUser } from '../../types/auth';
 
 // ─── Tipo pagina ──────────────────────────────────────────────────────────────
 type Page = 'dashboard' | 'anagrafiche' | 'magazzino' | 'acquisti' | 'vendite' | 'logistica' | 'amministrazione';
@@ -23,7 +23,7 @@ interface SidebarProps {
   activePage?: string;
   onCollapsedChange?: (collapsed: boolean) => void;
   // Nuovi props per l'integrazione con il sistema auth
-  user?: User;
+  user?: UiUser;
   accessiblePages?: Page[];
   onLogout?: () => void;
 }

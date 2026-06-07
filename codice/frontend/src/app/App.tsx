@@ -17,8 +17,8 @@ import { LogisticsPage } from './components/LogisticsPage';
 import { AdministrationPage } from './components/AdministrationPage';
 import { PageTabBar } from './components/ui/PageTabBar';
 import { Toaster } from 'sonner';
-import { LoginPage } from './components/LogiChain_Auth';
-import type { User, Role } from './components/LogiChain_Auth';
+import { LoginPage } from '../pages/LoginPage';
+import type { UiUser, Role } from '../types/auth';
 
 type Page = 'dashboard' | 'anagrafiche' | 'magazzino' | 'acquisti' | 'vendite' | 'logistica' | 'amministrazione';
 type DashboardTab = 'dashboard' | 'alert';
