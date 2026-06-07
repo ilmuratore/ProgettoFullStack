@@ -5,11 +5,14 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
-    host: '127.0.0.1',
+    host: '0.0.0.0',
     port: 5173,
+    allowedHosts: [
+      'queensland-express-showers-belts.trycloudflare.com'
+    ],
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: process.env.VITE_API_URL || 'http://backend:3000',
         changeOrigin: true,
       },
     },
