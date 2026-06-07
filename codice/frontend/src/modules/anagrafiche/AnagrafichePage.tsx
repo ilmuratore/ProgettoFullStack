@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Search,
   Plus,
@@ -17,56 +17,40 @@ import {
   User,
   Truck,
   ChevronRight,
-  ChevronDown
+  Tag,
+  Globe,
+  ExternalLink,
 } from 'lucide-react';
 import { PageTabBar } from '../../components/ui/PageTabBar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
-import { ProductFormModal, type ProductFormData } from '../anagrafiche/components/ProductFormModal';
+import { ProductFormModal } from '../anagrafiche/components/ProductFormModal';
 import { CategoryFormModal, type CategoryFormData } from '../anagrafiche/components/CategoryFormModal';
-import { SupplierFormModal, type SupplierFormData } from '../anagrafiche/components/SupplierFormModal';
+import { SupplierFormModal } from '../anagrafiche/components/SupplierFormModal';
 import { ClientFormModal, type ClientFormData } from '../anagrafiche/components/ClientFormModal';
-import { CourierFormModal, type CourierFormData} from '../anagrafiche/components/CourierFormModal';
+import { CourierFormModal, type CourierFormData } from '../anagrafiche/components/CourierFormModal';
 import { toast } from 'sonner';
+import { prodottiApi } from '../../api/prodottiApi';
+import { fornitoriApi } from '../../api/fornitoriApi';
+import { useAuthStore } from '../../store/authStore';
+import type { ProdottoListino, ProdottoCreateRequest, ProdottoUpdateRequest } from '../../types/prodotti';
+import type { Fornitore, FornitoreCreateRequest, FornitoreUpdateRequest } from '../../types/fornitori';
 
 type TabType = 'prodotti' | 'categorie' | 'fornitori' | 'clienti' | 'corrieri';
-
-interface Cliente {
-  id: number;
-  ragioneSociale: string;
-  codice: string;
-  pIva: string;
-  citta: string;
-  email: string;
-  telefono: string;
-  fatturato: string;
-  stato: 'Attivo' | 'Sospeso' | 'Inattivo';
-}
-
-interface Fornitore {
-  id: number;
-  ragioneSociale: string;
-  codice: string;
-  pIva: string;
-  citta: string;
-  email: string;
-  telefono: string;
-  categoria: string;
-  stato: 'Attivo' | 'Sospeso' | 'Inattivo';
-}
-
-interface Prodotto {
-  id: number;
-  nome: string;
-  sku: string;
-  categoria: string;
-  prezzo: string;
-}
 
 interface Categoria {
   id: number;
   nome: string;
   padre: string | null;
   prodottiCount: number;
+}
+
+interface Cliente {
+  id: number;
+  ragioneSociale: string;
+  pIva: string;
+  email: string;
+  telefono: string;
+  stato: 'Attivo' | 'Sospeso' | 'Inattivo';
 }
 
 interface Corriere {
@@ -79,21 +63,18 @@ interface Corriere {
   stato: 'Attivo' | 'Sospeso';
 }
 
-const clienti: Cliente[] = [];
+const formatPrezzo = (n: number) =>
+  new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n);
 
-const fornitori: Fornitore[] = [];
-
-const prodotti: Prodotto[] = [];
-
-const categorie: Categoria[] = [];
-
-const corrieri: Corriere[] = [];
+const formatData = (iso: string) =>
+  new Date(iso).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 export function AnagrafichePage() {
+  const { hasPermesso } = useAuthStore();
+
   const [activeTab, setActiveTab] = useState<TabType>('prodotti');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Modal states
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
@@ -105,72 +86,73 @@ export function AnagrafichePage() {
   const [categoryModalMode, setCategoryModalMode] = useState<'create' | 'edit' | 'subcategory'>('create');
   const [parentCategoryForSub, setParentCategoryForSub] = useState<string>('');
 
-  // Data states
-  const [prodottiState, setProdottiState] = useState(prodotti);
-  const [categorieState, setCategorieState] = useState(categorie);
-  const [fornitoriState, setFornitoriState] = useState(fornitori);
-  const [clientiState, setClientiState] = useState(clienti);
-  const [corrieriState, setCorrieriState] = useState(corrieri);
+  const [prodotti, setProdotti] = useState<ProdottoListino[]>([]);
+  const [loadingProdotti, setLoadingProdotti] = useState(false);
+
+  const [fornitori, setFornitori] = useState<Fornitore[]>([]);
+  const [loadingFornitori, setLoadingFornitori] = useState(false);
+
+  const [categorieState, setCategorieState] = useState<Categoria[]>([]);
+  const [clientiState, setClientiState] = useState<Cliente[]>([]);
+  const [corrieriState, setCorrieriState] = useState<Corriere[]>([]);
+
+  const fetchProdotti = useCallback(async () => {
+    setLoadingProdotti(true);
+    try {
+      setProdotti(await prodottiApi.list());
+    } catch (err: any) {
+      toast.error('Errore caricamento prodotti', { description: err?.message });
+    } finally {
+      setLoadingProdotti(false);
+    }
+  }, []);
+
+  const fetchFornitori = useCallback(async () => {
+    setLoadingFornitori(true);
+    try {
+      setFornitori(await fornitoriApi.list());
+    } catch (err: any) {
+      toast.error('Errore caricamento fornitori', { description: err?.message });
+    } finally {
+      setLoadingFornitori(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchProdotti(); }, [fetchProdotti]);
+  useEffect(() => { fetchFornitori(); }, [fetchFornitori]);
 
   const tabs = [
-    { id: 'prodotti' as TabType, label: 'Prodotti', icon: Package, count: prodottiState.length },
-    { id: 'categorie' as TabType, label: 'Categorie', icon: Building2, count: categorieState.filter(c => !c.padre).length },
-    { id: 'fornitori' as TabType, label: 'Fornitori', icon: Building2, count: fornitoriState.length },
+    { id: 'prodotti' as TabType, label: 'Prodotti', icon: Package, count: prodotti.length },
+    { id: 'categorie' as TabType, label: 'Categorie', icon: Tag, count: categorieState.filter(c => !c.padre).length },
+    { id: 'fornitori' as TabType, label: 'Fornitori', icon: Building2, count: fornitori.length },
     { id: 'clienti' as TabType, label: 'Clienti', icon: User, count: clientiState.length },
     { id: 'corrieri' as TabType, label: 'Corrieri', icon: Truck, count: corrieriState.length },
   ];
 
-  const getStatoBadgeColor = (stato: string) => {
-    switch (stato) {
-      case 'Attivo':
-      case 'Disponibile':
-        return 'bg-[#DCFCE7] text-[#16A34A]';
-      case 'Sospeso':
-      case 'In Arrivo':
-        return 'bg-[#FEF3C7] text-[#D97706]';
-      case 'Inattivo':
-      case 'Esaurito':
-        return 'bg-[#FEE2E2] text-[#DC2626]';
-      default:
-        return 'bg-[#F3F4F6] text-[#6B7280]';
-    }
-  };
-
-  const getTabLabel = () => {
-    const tab = tabs.find(t => t.id === activeTab);
-    return tab ? tab.label : '';
-  };
+  const getTabLabel = () => tabs.find(t => t.id === activeTab)?.label ?? '';
 
   const getNewButtonLabel = () => {
     switch (activeTab) {
-      case 'prodotti': return 'Nuovo Prodotto';
+      case 'prodotti':  return 'Nuovo Prodotto';
       case 'categorie': return 'Nuova Categoria';
       case 'fornitori': return 'Nuovo Fornitore';
-      case 'clienti': return 'Nuovo Cliente';
-      case 'corrieri': return 'Nuovo Corriere';
+      case 'clienti':   return 'Nuovo Cliente';
+      case 'corrieri':  return 'Nuovo Corriere';
     }
   };
+
+  const getStatoBadgeColor = (attivo: boolean) =>
+    attivo ? 'bg-[#DCFCE7] text-[#16A34A]' : 'bg-[#FEE2E2] text-[#DC2626]';
 
   const handleNewClick = () => {
     setEditMode('create');
     setSelectedItem(null);
     switch (activeTab) {
-      case 'prodotti':
-        setProductModalOpen(true);
-        break;
-      case 'categorie':
-        setCategoryModalMode('create');
-        setCategoryModalOpen(true);
-        break;
-      case 'fornitori':
-        setSupplierModalOpen(true);
-        break;
-      case 'clienti':
-        setClientModalOpen(true);
-        break;
-      case 'corrieri':
-        setCourierModalOpen(true);
-        break;
+      case 'prodotti':  setProductModalOpen(true); break;
+      case 'categorie': setCategoryModalMode('create'); setCategoryModalOpen(true); break;
+      case 'fornitori': setSupplierModalOpen(true); break;
+      case 'clienti':   setClientModalOpen(true); break;
+      case 'corrieri':  setCourierModalOpen(true); break;
     }
   };
 
@@ -178,54 +160,54 @@ export function AnagrafichePage() {
     setEditMode('edit');
     setSelectedItem(item);
     switch (activeTab) {
-      case 'prodotti':
-        setProductModalOpen(true);
-        break;
-      case 'categorie':
-        setCategoryModalMode('edit');
-        setCategoryModalOpen(true);
-        break;
-      case 'fornitori':
-        setSupplierModalOpen(true);
-        break;
-      case 'clienti':
-        setClientModalOpen(true);
-        break;
-      case 'corrieri':
-        setCourierModalOpen(true);
-        break;
+      case 'prodotti':  setProductModalOpen(true); break;
+      case 'categorie': setCategoryModalMode('edit'); setCategoryModalOpen(true); break;
+      case 'fornitori': setSupplierModalOpen(true); break;
+      case 'clienti':   setClientModalOpen(true); break;
+      case 'corrieri':  setCourierModalOpen(true); break;
     }
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (!confirm('Sei sicuro di voler eliminare questo elemento?')) return;
 
+    if (activeTab === 'prodotti') {
+      try {
+        await prodottiApi.remove(id);
+        setProdotti(prev => prev.filter(p => p.id !== id));
+        toast.success('Prodotto eliminato');
+      } catch (err: any) {
+        toast.error('Eliminazione fallita', { description: err?.message });
+      }
+      return;
+    }
+
+    if (activeTab === 'fornitori') {
+      try {
+        await fornitoriApi.remove(id);
+        setFornitori(prev => prev.filter(f => f.id !== id));
+        toast.success('Fornitore eliminato');
+      } catch (err: any) {
+        toast.error('Eliminazione fallita', { description: err?.message });
+      }
+      return;
+    }
+
     switch (activeTab) {
-      case 'prodotti':
-        setProdottiState(prev => prev.filter(p => p.id !== id));
-        toast.success('Prodotto eliminato con successo');
-        break;
       case 'categorie':
         setCategorieState(prev => prev.filter(c => c.id !== id));
-        toast.success('Categoria eliminata con successo');
-        break;
-      case 'fornitori':
-        setFornitoriState(prev => prev.filter(f => f.id !== id));
-        toast.success('Fornitore eliminato con successo');
-        break;
+        toast.success('Categoria eliminata'); break;
       case 'clienti':
         setClientiState(prev => prev.filter(c => c.id !== id));
-        toast.success('Cliente eliminato con successo');
-        break;
+        toast.success('Cliente eliminato'); break;
       case 'corrieri':
         setCorrieriState(prev => prev.filter(c => c.id !== id));
-        toast.success('Corriere eliminato con successo');
-        break;
+        toast.success('Corriere eliminato'); break;
     }
   };
 
-  const handleView = (item: any) => {
-    toast.info('Funzionalità di visualizzazione dettagliata in arrivo');
+  const handleView = (_item: any) => {
+    toast.info('Funzionalità di dettaglio in arrivo');
   };
 
   const handleAddSubcategory = (parentName: string) => {
@@ -234,105 +216,130 @@ export function AnagrafichePage() {
     setCategoryModalOpen(true);
   };
 
-  // Save handlers
-  const handleSaveProduct = (data: ProductFormData) => {
-    if (editMode === 'create') {
-      const newId = Math.max(...prodottiState.map(p => p.id)) + 1;
-      setProdottiState(prev => [...prev, { id: newId, ...data }]);
-      toast.success('Prodotto creato con successo');
-    } else {
-      setProdottiState(prev => prev.map(p => p.id === selectedItem?.id ? { ...p, ...data } : p));
-      toast.success('Prodotto aggiornato con successo');
+  const handleSaveProduct = async (
+    data: ProdottoCreateRequest | ProdottoUpdateRequest,
+    id?: number
+  ) => {
+    try {
+      if (editMode === 'create') {
+        const created = await prodottiApi.create(data as ProdottoCreateRequest);
+        setProdotti(prev => [...prev, created]);
+        toast.success('Prodotto creato');
+      } else if (id !== undefined) {
+        const updated = await prodottiApi.update(id, data as ProdottoUpdateRequest);
+        setProdotti(prev => prev.map(p => (p.id === id ? updated : p)));
+        toast.success('Prodotto aggiornato');
+      }
+    } catch (err: any) {
+      const msg = err?.code === 'DUPLICATE_ENTRY'
+        ? 'SKU già in uso da un altro prodotto attivo'
+        : err?.message ?? 'Errore nel salvataggio';
+      toast.error('Salvataggio fallito', { description: msg });
+      throw err;
+    }
+  };
+
+  const handleSaveSupplier = async (
+    data: FornitoreCreateRequest | FornitoreUpdateRequest,
+    id?: number
+  ) => {
+    try {
+      if (editMode === 'create') {
+        const created = await fornitoriApi.create(data as FornitoreCreateRequest);
+        setFornitori(prev => [...prev, created]);
+        toast.success('Fornitore creato');
+      } else if (id !== undefined) {
+        const updated = await fornitoriApi.update(id, data as FornitoreUpdateRequest);
+        setFornitori(prev => prev.map(f => (f.id === id ? updated : f)));
+        toast.success('Fornitore aggiornato');
+      }
+    } catch (err: any) {
+      const msg = err?.code === 'DUPLICATE_ENTRY'
+        ? 'P.IVA già associata a un altro fornitore'
+        : err?.code === 'ACCESS_DENIED'
+        ? 'I fornitori dell\'ecosistema non possono essere modificati'
+        : err?.message ?? 'Errore nel salvataggio';
+      toast.error('Salvataggio fallito', { description: msg });
+      throw err;
     }
   };
 
   const handleSaveCategory = (data: CategoryFormData) => {
     if (categoryModalMode === 'create' || categoryModalMode === 'subcategory') {
-      const newId = Math.max(...categorieState.map(c => c.id)) + 1;
+      const newId = Math.max(0, ...categorieState.map(c => c.id)) + 1;
       setCategorieState(prev => [...prev, { id: newId, nome: data.nome, padre: data.padre || null, prodottiCount: 0 }]);
-      toast.success('Categoria creata con successo');
+      toast.success('Categoria creata');
     } else {
-      setCategorieState(prev => prev.map(c => c.id === selectedItem?.id ? { ...c, nome: data.nome } : c));
-      toast.success('Categoria aggiornata con successo');
-    }
-  };
-
-  const handleSaveSupplier = (data: SupplierFormData) => {
-    if (editMode === 'create') {
-      const newId = Math.max(...fornitoriState.map(f => f.id)) + 1;
-      setFornitoriState(prev => [...prev, { id: newId, ...data }]);
-      toast.success('Fornitore creato con successo');
-    } else {
-      setFornitoriState(prev => prev.map(f => f.id === selectedItem?.id ? { ...f, ...data } : f));
-      toast.success('Fornitore aggiornato con successo');
+      setCategorieState(prev => prev.map(c => (c.id === selectedItem?.id ? { ...c, nome: data.nome } : c)));
+      toast.success('Categoria aggiornata');
     }
   };
 
   const handleSaveClient = (data: ClientFormData) => {
     if (editMode === 'create') {
-      const newId = Math.max(...clientiState.map(c => c.id)) + 1;
+      const newId = Math.max(0, ...clientiState.map(c => c.id)) + 1;
       setClientiState(prev => [...prev, { id: newId, ...data }]);
-      toast.success('Cliente creato con successo');
+      toast.success('Cliente creato');
     } else {
-      setClientiState(prev => prev.map(c => c.id === selectedItem?.id ? { ...c, ...data } : c));
-      toast.success('Cliente aggiornato con successo');
+      setClientiState(prev => prev.map(c => (c.id === selectedItem?.id ? { ...c, ...data } : c)));
+      toast.success('Cliente aggiornato');
     }
   };
 
   const handleSaveCourier = (data: CourierFormData) => {
     if (editMode === 'create') {
-      const newId = Math.max(...corrieriState.map(c => c.id)) + 1;
+      const newId = Math.max(0, ...corrieriState.map(c => c.id)) + 1;
       setCorrieriState(prev => [...prev, { id: newId, ...data }]);
-      toast.success('Corriere creato con successo');
+      toast.success('Corriere creato');
     } else {
-      setCorrieriState(prev => prev.map(c => c.id === selectedItem?.id ? { ...c, ...data } : c));
-      toast.success('Corriere aggiornato con successo');
+      setCorrieriState(prev => prev.map(c => (c.id === selectedItem?.id ? { ...c, ...data } : c)));
+      toast.success('Corriere aggiornato');
     }
   };
 
-  // Filtering
   const getFilteredData = () => {
-    const query = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase();
     switch (activeTab) {
       case 'prodotti':
-        return prodottiState.filter(p =>
-          p.nome.toLowerCase().includes(query) ||
-          p.sku.toLowerCase().includes(query) ||
-          p.categoria.toLowerCase().includes(query)
-        );
+        return prodotti.filter(p => p.nome.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
       case 'categorie':
-        return categorieState.filter(c => c.nome.toLowerCase().includes(query));
+        return categorieState.filter(c => c.nome.toLowerCase().includes(q));
       case 'fornitori':
-        return fornitoriState.filter(f =>
-          f.ragioneSociale.toLowerCase().includes(query) ||
-          f.codice.toLowerCase().includes(query) ||
-          f.pIva.toLowerCase().includes(query)
+        return fornitori.filter(f =>
+          f.ragione_sociale.toLowerCase().includes(q) ||
+          (f.piva ?? '').toLowerCase().includes(q) ||
+          (f.email ?? '').toLowerCase().includes(q)
         );
       case 'clienti':
         return clientiState.filter(c =>
-          c.ragioneSociale.toLowerCase().includes(query) ||
-          c.codice.toLowerCase().includes(query) ||
-          c.pIva.toLowerCase().includes(query)
+          c.ragioneSociale.toLowerCase().includes(q) || (c.pIva ?? '').toLowerCase().includes(q)
         );
       case 'corrieri':
         return corrieriState.filter(c =>
-          c.nome.toLowerCase().includes(query) ||
-          c.codice.toLowerCase().includes(query)
+          c.nome.toLowerCase().includes(q) || c.codice.toLowerCase().includes(q)
         );
       default:
         return [];
     }
   };
 
-  const filteredData = getFilteredData();
-  const filteredProdotti = activeTab === 'prodotti' ? filteredData as Prodotto[] : [];
-  const filteredCategorie = activeTab === 'categorie' ? filteredData as Categoria[] : [];
-  const filteredFornitori = activeTab === 'fornitori' ? filteredData as Fornitore[] : [];
-  const filteredClienti = activeTab === 'clienti' ? filteredData as Cliente[] : [];
-  const filteredCorrieri = activeTab === 'corrieri' ? filteredData as Corriere[] : [];
+  const filteredData      = getFilteredData();
+  const filteredProdotti  = activeTab === 'prodotti'  ? (filteredData as ProdottoListino[]) : [];
+  const filteredCategorie = activeTab === 'categorie' ? (filteredData as Categoria[]) : [];
+  const filteredFornitori = activeTab === 'fornitori' ? (filteredData as Fornitore[]) : [];
+  const filteredClienti   = activeTab === 'clienti'   ? (filteredData as Cliente[]) : [];
+  const filteredCorrieri  = activeTab === 'corrieri'  ? (filteredData as Corriere[]) : [];
 
-  // Kebab Menu Component
-  const KebabMenu = ({ item }: { item: any }) => (
+  const canWrite  = (entity: string) => hasPermesso(`${entity}:write`);
+  const canDelete = (entity: string) => hasPermesso(`${entity}:delete`);
+
+  const tabEntity =
+    activeTab === 'prodotti'  ? 'prodotti'  :
+    activeTab === 'fornitori' ? 'fornitori' :
+    activeTab === 'clienti'   ? 'clienti'   :
+    activeTab === 'corrieri'  ? 'corrieri'  : 'prodotti';
+
+  const KebabMenu = ({ item, hideEdit }: { item: any; hideEdit?: boolean }) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="p-1.5 hover:bg-[#F7F9FC] text-[#6B7280] rounded-lg transition-all">
@@ -344,16 +351,34 @@ export function AnagrafichePage() {
           <Eye className="w-4 h-4 mr-2" />
           Visualizza
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleEdit(item)} className="cursor-pointer">
-          <Edit className="w-4 h-4 mr-2" />
-          Modifica
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleDelete(item.id)} className="cursor-pointer text-red-600">
-          <Trash2 className="w-4 h-4 mr-2" />
-          Elimina
-        </DropdownMenuItem>
+        {!hideEdit && canWrite(tabEntity) && (
+          <DropdownMenuItem onClick={() => handleEdit(item)} className="cursor-pointer">
+            <Edit className="w-4 h-4 mr-2" />
+            Modifica
+          </DropdownMenuItem>
+        )}
+        {canDelete(tabEntity) && (
+          <DropdownMenuItem onClick={() => handleDelete(item.id)} className="cursor-pointer text-red-600">
+            <Trash2 className="w-4 h-4 mr-2" />
+            Elimina
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+
+  const SkeletonRows = ({ cols }: { cols: number }) => (
+    <>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <tr key={i} className="border-b border-[#E5EAF2]">
+          {Array.from({ length: cols }).map((_, j) => (
+            <td key={j} className="py-3 px-4">
+              <div className="h-4 bg-[#E5EAF2] rounded animate-pulse" style={{ width: j === 0 ? '60%' : '45%' }} />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
   );
 
   return (
@@ -361,26 +386,26 @@ export function AnagrafichePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-[#2D2D2D]">
-            Gestione Anagrafiche - {getTabLabel()}
+            Gestione Anagrafiche — {getTabLabel()}
           </h1>
           <p className="text-sm text-[#6B7280] mt-1">Gestisci clienti, fornitori, prodotti e categorie</p>
         </div>
         <div className="flex items-center gap-3">
           <button className="px-4 py-2 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-[#F7F9FC] transition-all flex items-center gap-2">
-            <Upload className="w-4 h-4" />
-            Importa
+            <Upload className="w-4 h-4" /> Importa
           </button>
           <button className="px-4 py-2 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-[#F7F9FC] transition-all flex items-center gap-2">
-            <Download className="w-4 h-4" />
-            Esporta
+            <Download className="w-4 h-4" /> Esporta
           </button>
-          <button
-            onClick={handleNewClick}
-            className="px-4 py-2 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2 font-medium"
-          >
-            <Plus className="w-4 h-4" />
-            {getNewButtonLabel()}
-          </button>
+          {(activeTab === 'categorie' || canWrite(tabEntity)) && (
+            <button
+              onClick={handleNewClick}
+              className="px-4 py-2 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2 font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              {getNewButtonLabel()}
+            </button>
+          )}
         </div>
       </div>
 
@@ -400,12 +425,10 @@ export function AnagrafichePage() {
               />
             </div>
             <button className="px-4 py-2 bg-[#F7F9FC] border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-white transition-all flex items-center gap-2">
-              <Filter className="w-4 h-4" />
-              Filtri
+              <Filter className="w-4 h-4" /> Filtri
             </button>
           </div>
 
-          {/* TAB PRODOTTI - Listino Prezzi */}
           {activeTab === 'prodotti' && (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -413,32 +436,27 @@ export function AnagrafichePage() {
                   <tr className="border-b border-[#E5EAF2]">
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Nome Prodotto</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">SKU</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Categoria</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Prezzo</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-[#6B7280]">Prezzo</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Agg. Prezzo</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Azioni</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredProdotti.map((prodotto, index) => (
-                    <tr
-                      key={prodotto.id}
-                      className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${
-                        index % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'
-                      }`}
-                    >
-                      <td className="py-3 px-4">
-                        <div className="font-medium text-[#2D2D2D]">{prodotto.nome}</div>
+                  {loadingProdotti ? (
+                    <SkeletonRows cols={5} />
+                  ) : filteredProdotti.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center text-[#6B7280] text-sm">
+                        {searchQuery ? 'Nessun prodotto corrisponde alla ricerca' : 'Nessun prodotto. Clicca "Nuovo Prodotto" per iniziare.'}
                       </td>
-                      <td className="py-3 px-4 text-sm text-[#6B7280] font-mono">{prodotto.sku}</td>
-                      <td className="py-3 px-4">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-[#EEF2FF] text-[#6366F1]">
-                          {prodotto.categoria}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-sm font-medium text-[#2D2D2D]">{prodotto.prezzo}</td>
-                      <td className="py-3 px-4">
-                        <KebabMenu item={prodotto} />
-                      </td>
+                    </tr>
+                  ) : filteredProdotti.map((p, i) => (
+                    <tr key={p.id} className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
+                      <td className="py-3 px-4 font-medium text-[#2D2D2D]">{p.nome}</td>
+                      <td className="py-3 px-4 text-sm text-[#6B7280] font-mono">{p.sku}</td>
+                      <td className="py-3 px-4 text-sm font-semibold text-[#2D2D2D] text-right">{formatPrezzo(p.prezzo)}</td>
+                      <td className="py-3 px-4 text-sm text-[#6B7280]">{formatData(p.data_agg_prezzo)}</td>
+                      <td className="py-3 px-4"><KebabMenu item={p} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -446,13 +464,16 @@ export function AnagrafichePage() {
             </div>
           )}
 
-          {/* TAB CATEGORIE */}
           {activeTab === 'categorie' && (
             <div className="space-y-4">
+              {filteredCategorie.filter(c => !c.padre).length === 0 && (
+                <p className="py-12 text-center text-[#6B7280] text-sm">
+                  Nessuna categoria. Integrazione con milestone dedicata.
+                </p>
+              )}
               {filteredCategorie.filter(c => !c.padre).map((categoria) => {
                 const subcategories = categorieState.filter(c => c.padre === categoria.nome);
-                const totalCount = categoria.prodottiCount + subcategories.reduce((sum, sub) => sum + sub.prodottiCount, 0);
-
+                const totalCount = categoria.prodottiCount + subcategories.reduce((s, sub) => s + sub.prodottiCount, 0);
                 return (
                   <div key={categoria.id} className="border border-[#E5EAF2] rounded-xl overflow-hidden">
                     <div className="flex items-center justify-between p-4 bg-[#F7F9FC]">
@@ -491,65 +512,89 @@ export function AnagrafichePage() {
             </div>
           )}
 
-          {/* TAB FORNITORI */}
           {activeTab === 'fornitori' && (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-[#E5EAF2]">
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Ragione Sociale</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Codice</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">P. IVA</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Città</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Contatti</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Categoria</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Indirizzo</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Sorgente</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Stato</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Azioni</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredFornitori.map((fornitore, index) => (
-                    <tr
-                      key={fornitore.id}
-                      className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${
-                        index % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'
-                      }`}
-                    >
-                      <td className="py-3 px-4">
-                        <div className="font-medium text-[#2D2D2D]">{fornitore.ragioneSociale}</div>
+                  {loadingFornitori ? (
+                    <SkeletonRows cols={7} />
+                  ) : filteredFornitori.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-[#6B7280] text-sm">
+                        {searchQuery ? 'Nessun fornitore corrisponde alla ricerca' : 'Nessun fornitore. Clicca "Nuovo Fornitore" per iniziare.'}
                       </td>
-                      <td className="py-3 px-4 text-sm text-[#6B7280] font-mono">{fornitore.codice}</td>
-                      <td className="py-3 px-4 text-sm text-[#6B7280]">{fornitore.pIva}</td>
+                    </tr>
+                  ) : filteredFornitori.map((f, i) => (
+                    <tr key={f.id} className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
                       <td className="py-3 px-4">
-                        <div className="flex items-center gap-2 text-sm text-[#6B7280]">
-                          <MapPin className="w-3 h-3" />
-                          {fornitore.citta}
-                        </div>
+                        <div className="font-medium text-[#2D2D2D]">{f.ragione_sociale}</div>
+                        {f.sito_web && (
+                          <a
+                            href={f.sito_web}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs text-[#17E88F] hover:underline mt-0.5"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            {f.sito_web.replace(/^https?:\/\//, '')}
+                          </a>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-[#6B7280] font-mono">
+                        {f.piva ?? <span className="text-[#9CA3AF] italic">—</span>}
                       </td>
                       <td className="py-3 px-4">
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-xs text-[#6B7280]">
-                            <Mail className="w-3 h-3" />
-                            {fornitore.email}
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-[#6B7280]">
-                            <Phone className="w-3 h-3" />
-                            {fornitore.telefono}
-                          </div>
+                          {f.email && (
+                            <div className="flex items-center gap-2 text-xs text-[#6B7280]">
+                              <Mail className="w-3 h-3 shrink-0" />{f.email}
+                            </div>
+                          )}
+                          {f.telefono && (
+                            <div className="flex items-center gap-2 text-xs text-[#6B7280]">
+                              <Phone className="w-3 h-3 shrink-0" />{f.telefono}
+                            </div>
+                          )}
+                          {!f.email && !f.telefono && <span className="text-xs text-[#9CA3AF] italic">—</span>}
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-[#EEF2FF] text-[#6366F1]">
-                          {fornitore.categoria}
+                        {f.indirizzo ? (
+                          <div className="flex items-center gap-2 text-sm text-[#6B7280]">
+                            <MapPin className="w-3 h-3 shrink-0" />
+                            <span className="truncate max-w-[160px]">{f.indirizzo}</span>
+                          </div>
+                        ) : <span className="text-sm text-[#9CA3AF] italic">—</span>}
+                      </td>
+                      <td className="py-3 px-4">
+                        {f.source === 'ecosystem' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#EEF2FF] text-[#6366F1]">
+                            <Globe className="w-3 h-3" /> Ecosistema
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-[#F3F4F6] text-[#6B7280]">
+                            Manuale
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getStatoBadgeColor(f.attivo)}`}>
+                          {f.attivo ? 'Attivo' : 'Disattivo'}
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getStatoBadgeColor(fornitore.stato)}`}>
-                          {fornitore.stato}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <KebabMenu item={fornitore} />
+                        <KebabMenu item={f} hideEdit={f.source === 'ecosystem'} />
                       </td>
                     </tr>
                   ))}
@@ -558,70 +603,29 @@ export function AnagrafichePage() {
             </div>
           )}
 
-          {/* TAB CLIENTI */}
           {activeTab === 'clienti' && (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-[#E5EAF2]">
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Ragione Sociale</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Codice</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">P. IVA</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Città</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">P. IVA / CF</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Contatti</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Fatturato</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Stato</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Azioni</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredClienti.map((cliente, index) => (
-                    <tr
-                      key={cliente.id}
-                      className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${
-                        index % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'
-                      }`}
-                    >
-                      <td className="py-3 px-4">
-                        <div className="font-medium text-[#2D2D2D]">{cliente.ragioneSociale}</div>
-                      </td>
-                      <td className="py-3 px-4 text-sm text-[#6B7280] font-mono">{cliente.codice}</td>
-                      <td className="py-3 px-4 text-sm text-[#6B7280]">{cliente.pIva}</td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2 text-sm text-[#6B7280]">
-                          <MapPin className="w-3 h-3" />
-                          {cliente.citta}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-xs text-[#6B7280]">
-                            <Mail className="w-3 h-3" />
-                            {cliente.email}
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-[#6B7280]">
-                            <Phone className="w-3 h-3" />
-                            {cliente.telefono}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-sm font-medium text-[#2D2D2D]">{cliente.fatturato}</td>
-                      <td className="py-3 px-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getStatoBadgeColor(cliente.stato)}`}>
-                          {cliente.stato}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <KebabMenu item={cliente} />
-                      </td>
-                    </tr>
-                  ))}
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-[#6B7280] text-sm">
+                      Integrazione clienti disponibile con milestone M04.
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
           )}
 
-          {/* TAB CORRIERI */}
           {activeTab === 'corrieri' && (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -631,50 +635,16 @@ export function AnagrafichePage() {
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Codice</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Email</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Telefono</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Spedizioni Attive</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Stato</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Azioni</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredCorrieri.map((corriere, index) => (
-                    <tr
-                      key={corriere.id}
-                      className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${
-                        index % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'
-                      }`}
-                    >
-                      <td className="py-3 px-4">
-                        <div className="font-medium text-[#2D2D2D]">{corriere.nome}</div>
-                      </td>
-                      <td className="py-3 px-4 text-sm text-[#6B7280] font-mono">{corriere.codice}</td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2 text-sm text-[#6B7280]">
-                          <Mail className="w-3 h-3" />
-                          {corriere.email}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2 text-sm text-[#6B7280]">
-                          <Phone className="w-3 h-3" />
-                          {corriere.telefono}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-[#DBEAFE] text-[#3B82F6]">
-                          {corriere.spedizioniAttive} attive
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getStatoBadgeColor(corriere.stato)}`}>
-                          {corriere.stato}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <KebabMenu item={corriere} />
-                      </td>
-                    </tr>
-                  ))}
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-[#6B7280] text-sm">
+                      Integrazione corrieri disponibile con milestone M05.
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -685,24 +655,14 @@ export function AnagrafichePage() {
               Mostrando <span className="font-medium text-[#2D2D2D]">{filteredData.length}</span> risultati
             </div>
             <div className="flex items-center gap-2">
-              <button className="px-3 py-1.5 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-lg hover:bg-[#F7F9FC] transition-all text-sm">
-                Precedente
-              </button>
-              <button className="px-3 py-1.5 bg-[#17E88F] text-white rounded-lg font-medium text-sm">
-                1
-              </button>
-              <button className="px-3 py-1.5 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-lg hover:bg-[#F7F9FC] transition-all text-sm">
-                2
-              </button>
-              <button className="px-3 py-1.5 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-lg hover:bg-[#F7F9FC] transition-all text-sm">
-                Successivo
-              </button>
+              <button className="px-3 py-1.5 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-lg hover:bg-[#F7F9FC] transition-all text-sm">Precedente</button>
+              <button className="px-3 py-1.5 bg-[#17E88F] text-white rounded-lg font-medium text-sm">1</button>
+              <button className="px-3 py-1.5 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-lg hover:bg-[#F7F9FC] transition-all text-sm">Successivo</button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Modals */}
       <ProductFormModal
         open={productModalOpen}
         onClose={() => setProductModalOpen(false)}
@@ -724,7 +684,6 @@ export function AnagrafichePage() {
         onSave={handleSaveSupplier}
         initialData={selectedItem}
         mode={editMode}
-        nextId={fornitoriState.length + 1}
       />
       <ClientFormModal
         open={clientModalOpen}
