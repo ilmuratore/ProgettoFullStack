@@ -44,6 +44,21 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var run = Date.now().toString();",
+                  "pm.collectionVariables.set('runId', run);",
+                  "pm.collectionVariables.set('resp_acquisti_email',  'test.m03.racq.' + run + '@logichain.it');",
+                  "pm.collectionVariables.set('operatore_email',      'test.m03.oper.' + run + '@logichain.it');",
+                  "pm.collectionVariables.set('resp_magazzino_email', 'test.m03.rmag.' + run + '@logichain.it');",
+                  "pm.collectionVariables.set('test_piva_fornitore',  '3' + run.slice(-10));",
+                  "pm.collectionVariables.set('test_piva_fornitore2', '4' + run.slice(-10));"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
@@ -412,7 +427,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"ragione_sociale\": \"Acme Srl\",\n  \"piva\": \"12345678901\",\n  \"email\": \"info@acme.it\"\n}",
+              "raw": "{\n  \"ragione_sociale\": \"Acme Srl\",\n  \"piva\": \"{{test_piva_fornitore}}\",\n  \"email\": \"info@acme.it\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -462,7 +477,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"ragione_sociale\": \"Test\",\n  \"piva\": \"11111111111\",\n  \"source\": \"ecosystem\"\n}",
+              "raw": "{\n  \"ragione_sociale\": \"Test\",\n  \"piva\": \"{{test_piva_fornitore2}}\",\n  \"source\": \"ecosystem\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1156,7 +1171,7 @@
     },
     {
       "key": "resp_acquisti_email",
-      "value": "resp.acquisti@logichain.it",
+      "value": "",
       "type": "string"
     },
     {
@@ -1166,7 +1181,7 @@
     },
     {
       "key": "operatore_email",
-      "value": "operatore@logichain.it",
+      "value": "",
       "type": "string"
     },
     {
@@ -1176,7 +1191,7 @@
     },
     {
       "key": "resp_magazzino_email",
-      "value": "resp.magazzino@logichain.it",
+      "value": "",
       "type": "string"
     },
     {
@@ -1213,6 +1228,21 @@
       "key": "fornitore_eco_id",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "runId",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "test_piva_fornitore",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "test_piva_fornitore2",
+      "value": "",
+      "type": "default"
     }
   ]
 }

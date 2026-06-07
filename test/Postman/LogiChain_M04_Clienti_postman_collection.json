@@ -100,6 +100,16 @@
       "key": "runId",
       "value": "",
       "type": "default"
+    },
+    {
+      "key": "test_piva_cf",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "test_piva_cf2",
+      "value": "",
+      "type": "default"
     }
   ],
   "item": [
@@ -150,7 +160,9 @@
                   "pm.collectionVariables.set('runId', run);",
                   "pm.collectionVariables.set('resp_acquisti_email',    'test.m04.racq.'  + run + '@logichain.it');",
                   "pm.collectionVariables.set('resp_magazzino_email',   'test.m04.rmag.'  + run + '@logichain.it');",
-                  "pm.collectionVariables.set('operatore_email',        'test.m04.oper.'  + run + '@logichain.it');"
+                  "pm.collectionVariables.set('operatore_email',        'test.m04.oper.'  + run + '@logichain.it');",
+                  "pm.collectionVariables.set('test_piva_cf',  '9' + run.slice(-10));",
+                  "pm.collectionVariables.set('test_piva_cf2', '8' + run.slice(-10));"
                 ],
                 "type": "text/javascript"
               }
@@ -541,7 +553,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"ragione_sociale\": \"Beta Spa\",\n  \"piva_cf\": \"98765432101\",\n  \"email\": \"info@beta.it\",\n  \"telefono\": \"0298765432\"\n}"
+              "raw": "{\n  \"ragione_sociale\": \"Beta Spa\",\n  \"piva_cf\": \"{{test_piva_cf}}\",\n  \"email\": \"info@beta.it\",\n  \"telefono\": \"0298765432\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/clienti",
@@ -607,7 +619,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"ragione_sociale\": \"Gamma Srl\",\n  \"piva_cf\": \"11122233344\",\n  \"source\": \"ecosystem\"\n}"
+              "raw": "{\n  \"ragione_sociale\": \"Gamma Srl\",\n  \"piva_cf\": \"{{test_piva_cf2}}\",\n  \"source\": \"ecosystem\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/clienti",

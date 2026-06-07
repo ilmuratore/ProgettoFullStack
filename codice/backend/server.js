@@ -50,7 +50,7 @@ app.use('/api/v1/clienti',    require('./src/routes/clientiRoutes'));
 
 // M05 — Corrieri & Dipendenti
 app.use('/api/v1/dipendenti', require('./src/routes/dipendentiRoutes'));
-
+app.use('/api/v1/corrieri', require('./src/routes/corrieriRoutes'));
 // M06 — Magazzino
 app.use('/api/v1/magazzini',  require('./src/routes/magazziniRoutes'));
 app.use('/api/v1/ubicazioni', require('./src/routes/ubicazioniRoutes'));
