@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { authApi } from '../api/authApi';
 import { useAuthStore } from '../store/authStore';
 
-// ─── ICONE INLINE (nessuna dipendenza esterna) ────────────────────────────────
+// ─── ICONE INLINE ─────────────────────────────────────────────────────────────
 function IconUser({ size = 15 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -31,13 +31,6 @@ function IconEyeOff({ size = 15 }: { size?: number }) {
     </svg>
   );
 }
-function IconPackage({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16.5 9.4 7.55 4.24" /><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.29 7 12 12 20.71 7" /><line x1="12" x2="12" y1="22" y2="12" />
-    </svg>
-  );
-}
 function IconChevronRight({ size = 14 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -53,43 +46,52 @@ function IconX({ size = 14 }: { size?: number }) {
   );
 }
 
-const ROLE_LABELS: Record<number, string> = {
-  1: 'Admin',
-  2: 'Resp. Acquisti',
-  3: 'Resp. Magazzino',
-  4: 'Operatore',
-  5: 'Corriere',
-};
-const ROLE_COLORS: Record<number, { color: string; bg: string }> = {
-  1: { color: '#0F172A', bg: '#F1F5F9' },
-  2: { color: '#1D4ED8', bg: '#DBEAFE' },
-  3: { color: '#0D9488', bg: '#CCFBF1' },
-  4: { color: '#16A34A', bg: '#DCFCE7' },
-  5: { color: '#EA580C', bg: '#FEE2E2' },
-};
+// Icona di default (package) — viene usata se non viene passato logoUrl
+function IconPackage({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16.5 9.4 7.55 4.24" /><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.29 7 12 12 20.71 7" /><line x1="12" x2="12" y1="22" y2="12" />
+    </svg>
+  );
+}
 
-// Feature list per il panel sinistro
 const FEATURES = ['RBAC Granulare', 'Audit Log', 'Transazioni ACID', 'DDT Automatico', 'Alert Real-time'];
 
-const ROLES_INFO = [
-  { id: 1, label: 'Admin',                 permCount: 18, color: '#17E88F' },
-  { id: 2, label: 'Responsabile Acquisti', permCount: 7,  color: '#3B82F6' },
-  { id: 3, label: 'Responsabile Magazzino',permCount: 8,  color: '#0D9488' },
-  { id: 4, label: 'Operatore',             permCount: 4,  color: '#16A34A' },
-  { id: 5, label: 'Corriere',              permCount: 0,  color: '#EA580C' },
-];
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
+  // Personalizzazione per cliente — opzionali, default LogiChain
+  companyName?: string;       // es. "Acme S.p.A."
+  productName?: string;       // es. "LogiChain ERP" — mostrato nel branding
+  logoUrl?: string;           // URL immagine logo cliente (png/svg)
+  tagline?: string;           // Frase sotto il titolo nel panel sinistro
 }
 
-export function LoginPage({ onLoginSuccess }: LoginPageProps) {
-  const [email, setEmail]           = useState('');
-  const [password, setPassword]     = useState('');
-  const [showPwd, setShowPwd]       = useState(false);
-  const [error, setError]           = useState('');
-  const [loading, setLoading]       = useState(false);
-  const [mounted, setMounted]       = useState(false);
+// ─── Componente Logo ──────────────────────────────────────────────────────────
+
+function LogoMark({ logoUrl, size = 20 }: { logoUrl?: string; size?: number }) {
+  if (logoUrl) {
+    return <img src={logoUrl} alt="logo" style={{ width: size, height: size, objectFit: 'contain' }} />;
+  }
+  return <IconPackage size={size} />;
+}
+
+// ─── LoginPage ────────────────────────────────────────────────────────────────
+
+export function LoginPage({
+  onLoginSuccess,
+  companyName,
+  productName = 'LogiChain ERP',
+  logoUrl,
+  tagline = "Dall'acquisizione merci alla spedizione finale — un'unica piattaforma per controllare ogni flusso operativo del tuo magazzino.",
+}: LoginPageProps) {
+  const [email, setEmail]       = useState('');
+  const [password, setPassword] = useState('');
+  const [showPwd, setShowPwd]   = useState(false);
+  const [error, setError]       = useState('');
+  const [loading, setLoading]   = useState(false);
+  const [mounted, setMounted]   = useState(false);
 
   const { setAuth } = useAuthStore();
 
@@ -118,8 +120,14 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     }
   };
 
+  // Nome visualizzato nel branding: se c'è companyName mostra quello,
+  // altrimenti usa productName
+  const brandName    = companyName ?? productName;
+  const brandSuffix  = companyName ? ` · ${productName}` : '';
+
   return (
     <div className="min-h-screen bg-[#F7F9FC] flex">
+
       {/* ── LEFT PANEL — branding ── */}
       <div
         className="hidden lg:flex lg:w-1/2 relative overflow-hidden"
@@ -147,12 +155,12 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         >
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #17E88F, #0FA67A)' }}>
-              <IconPackage size={20} />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden" style={{ background: 'linear-gradient(135deg, #17E88F, #0FA67A)' }}>
+              <LogoMark logoUrl={logoUrl} size={20} />
             </div>
             <div>
-              <span className="text-white font-bold text-xl tracking-tight">LogiChain</span>
-              <span className="text-[#17E88F] font-light text-xl"> ERP</span>
+              <span className="text-white font-bold text-xl tracking-tight">{brandName}</span>
+              {brandSuffix && <span className="text-[#17E88F] font-light text-sm ml-1">{brandSuffix}</span>}
             </div>
           </div>
 
@@ -169,7 +177,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 <span className="text-[#17E88F]">senza confini</span>
               </h1>
               <p className="text-[#94A3B8] text-base leading-relaxed max-w-sm">
-                Dall'acquisizione merci alla spedizione finale — un'unica piattaforma per controllare ogni flusso operativo del tuo magazzino.
+                {tagline}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -181,19 +189,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             </div>
           </div>
 
-          {/* Roles */}
-          <div className="space-y-3">
-            <p className="text-[#64748B] text-xs font-medium uppercase tracking-wider">5 ruoli operativi</p>
-            <div className="space-y-2">
-              {ROLES_INFO.map((r) => (
-                <div key={r.id} className="flex items-center gap-3">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: r.color }} />
-                  <span className="text-[#94A3B8] text-sm">{r.label}</span>
-                  <span className="text-[#475569] text-xs ml-auto">{r.permCount} permessi</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* Footer branding */}
+          <p className="text-[#334155] text-xs">
+            Powered by <span className="text-[#17E88F] font-medium">LogiChain ERP</span>
+          </p>
         </div>
       </div>
 
@@ -206,10 +205,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         >
           {/* Mobile logo */}
           <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #17E88F, #0FA67A)' }}>
-              <IconPackage size={16} />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden" style={{ background: 'linear-gradient(135deg, #17E88F, #0FA67A)' }}>
+              <LogoMark logoUrl={logoUrl} size={16} />
             </div>
-            <span className="text-[#2D2D2D] font-bold text-lg">LogiChain ERP</span>
+            <span className="text-[#2D2D2D] font-bold text-lg">{brandName}</span>
           </div>
 
           <div className="mb-8">
@@ -229,7 +228,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                   type="email"
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                  placeholder="nome@logichain.it"
+                  placeholder="nome@azienda.it"
                   className="w-full pl-10 pr-4 py-2.5 border border-[#E5EAF2] rounded-xl text-sm text-[#2D2D2D] bg-white focus:outline-none focus:ring-2 focus:ring-[#17E88F]/40 focus:border-[#17E88F] transition-all placeholder:text-[#C4C9D4]"
                   required
                   autoComplete="email"
@@ -297,29 +296,8 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             </button>
           </form>
 
-          {/* Info ruoli */}
-          <div className="mt-6 p-4 bg-white border border-[#E5EAF2] rounded-xl">
-            <p className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider mb-3">Ruoli disponibili</p>
-            <div className="space-y-1.5">
-              {ROLES_INFO.map((r) => {
-                const conf = ROLE_COLORS[r.id] ?? { color: '#6B7280', bg: '#F3F4F6' };
-                return (
-                  <div key={r.id} className="flex items-center gap-2">
-                    <span
-                      className="text-xs font-medium px-2 py-0.5 rounded-md"
-                      style={{ backgroundColor: conf.bg, color: conf.color }}
-                    >
-                      {ROLE_LABELS[r.id]}
-                    </span>
-                    <span className="text-xs text-[#9CA3AF]">{r.permCount} permessi</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <p className="text-center text-xs text-[#9CA3AF] mt-6">
-            LogiChain ERP V3.0 — Sistema di gestione supply chain
+          <p className="text-center text-xs text-[#9CA3AF] mt-8">
+            {brandName} — Sistema di gestione supply chain
           </p>
         </div>
       </div>
