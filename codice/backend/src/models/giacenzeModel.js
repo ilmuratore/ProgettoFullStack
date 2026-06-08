@@ -41,20 +41,32 @@ const lockByProdottoIdAndUbicazioneId = (prodotto_id, ubicazione_id, db = pool) 
 
 const incrementaQuantita = (prodotto_id, ubicazione_id, quantita, db = pool) =>
     db.query(
-        `INSERT INTO giacenze (prodotto_id, ubicazione_id, quantita)
-     SELECT $1, $2, $3
-     WHERE $3 >= 0
-        OR EXISTS (
-            SELECT 1
-            FROM giacenze
+        `WITH updated AS (
+            UPDATE giacenze
+            SET quantita = quantita + $3,
+                updated_at = CURRENT_TIMESTAMP
             WHERE prodotto_id = $1
               AND ubicazione_id = $2
+              AND quantita + $3 >= 0
+            RETURNING id, prodotto_id, ubicazione_id, quantita
+        ),
+        inserted AS (
+            INSERT INTO giacenze (prodotto_id, ubicazione_id, quantita)
+            SELECT $1, $2, $3
+            WHERE $3 >= 0
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM giacenze
+                  WHERE prodotto_id = $1
+                    AND ubicazione_id = $2
+              )
+            RETURNING id, prodotto_id, ubicazione_id, quantita
         )
-     ON CONFLICT (prodotto_id, ubicazione_id)
-     DO UPDATE SET quantita = giacenze.quantita + $3,
-                   updated_at = CURRENT_TIMESTAMP
-     WHERE giacenze.quantita + $3 >= 0
-     RETURNING id, prodotto_id, ubicazione_id, quantita`,
+        SELECT id, prodotto_id, ubicazione_id, quantita
+        FROM updated
+        UNION ALL
+        SELECT id, prodotto_id, ubicazione_id, quantita
+        FROM inserted`,
         [prodotto_id, ubicazione_id, quantita]
     );
 
