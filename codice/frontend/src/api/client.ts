@@ -18,7 +18,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (res.status === 401) {
     localStorage.removeItem('lc_token');
     localStorage.removeItem('lc_utente');
-    window.location.href = '/';
+    window.location.href = '/login';
     throw Object.assign(new Error(body.message ?? 'Non autorizzato'), {
       code: 'AUTH_REQUIRED',
       details: [],
