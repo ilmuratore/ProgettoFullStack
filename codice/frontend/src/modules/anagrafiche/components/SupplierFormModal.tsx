@@ -66,6 +66,13 @@ export function SupplierFormModal({ open, onClose, onSave, initialData, mode }: 
     return Object.keys(errs).length === 0;
   };
 
+  const normalizeUrl = (url: string): string => {
+    const trimmed = url.trim();
+    if (!trimmed) return '';
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    return `https://${trimmed}`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -77,7 +84,7 @@ export function SupplierFormModal({ open, onClose, onSave, initialData, mode }: 
         ...(form.indirizzo.trim() && { indirizzo: form.indirizzo.trim() }),
         ...(form.email.trim() && { email: form.email.trim() }),
         ...(form.telefono.trim() && { telefono: form.telefono.trim() }),
-        ...(form.sito_web.trim() && { sito_web: form.sito_web.trim() }),
+        ...(form.sito_web.trim() && { sito_web: normalizeUrl(form.sito_web) }),
         ...(form.descrizione_aziendale.trim() && { descrizione_aziendale: form.descrizione_aziendale.trim() }),
       };
       await onSave(payload, initialData?.id);
@@ -189,12 +196,13 @@ export function SupplierFormModal({ open, onClose, onSave, initialData, mode }: 
                 Sito Web
               </label>
               <input
-                type="url"
+                type="text"
                 value={form.sito_web}
                 onChange={set('sito_web')}
-                placeholder="https://www.fornitore.it"
+                placeholder="www.fornitore.it"
                 className={inputClass('sito_web')}
               />
+            
             </div>
 
             <div className="col-span-2">
