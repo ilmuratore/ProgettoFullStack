@@ -5,11 +5,7 @@ const prodottiService = require('../services/prodottiService');
 const getAll = async (req, res, next) => {
     try {
         const prodotti = await prodottiService.getAll();
-
-        return res.status(200).json({
-            status: 'success',
-            data: prodotti
-        });
+        return res.status(200).json({ status: 'success', data: prodotti });
     } catch (err) {
         return next(err);
     }
@@ -21,11 +17,7 @@ const getById = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
         const prodotto = await prodottiService.getById(id);
-
-        return res.status(200).json({
-            status: 'success',
-            data: prodotto
-        });
+        return res.status(200).json({ status: 'success', data: prodotto });
     } catch (err) {
         return next(err);
     }
@@ -35,13 +27,9 @@ const getById = async (req, res, next) => {
 // POST /api/v1/prodotti
 const create = async (req, res, next) => {
     try {
-        const { nome, sku, prezzo } = req.body;
-        const prodotto = await prodottiService.create({ nome, sku, prezzo });
-
-        return res.status(201).json({
-            status: 'success',
-            data: prodotto
-        });
+        const { nome, sku, prezzo, categoria_id } = req.body;
+        const prodotto = await prodottiService.create({ nome, sku, prezzo, categoria_id });
+        return res.status(201).json({ status: 'success', data: prodotto });
     } catch (err) {
         return next(err);
     }
@@ -52,18 +40,16 @@ const create = async (req, res, next) => {
 const update = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
-        const { nome, sku, prezzo } = req.body;
+        const { nome, sku, prezzo, categoria_id } = req.body;
 
         const fields = {};
-        if (nome !== undefined) fields.nome = nome;
-        if (sku !== undefined) fields.sku = sku;
-        if (prezzo !== undefined) fields.prezzo = prezzo;
-        const prodotto = await prodottiService.update(id, fields);
+        if (nome         !== undefined) fields.nome         = nome;
+        if (sku          !== undefined) fields.sku          = sku;
+        if (prezzo       !== undefined) fields.prezzo       = prezzo;
+        if (categoria_id !== undefined) fields.categoria_id = categoria_id;
 
-        return res.status(200).json({
-            status: 'success',
-            data: prodotto
-        });
+        const prodotto = await prodottiService.update(id, fields);
+        return res.status(200).json({ status: 'success', data: prodotto });
     } catch (err) {
         return next(err);
     }
@@ -74,9 +60,7 @@ const update = async (req, res, next) => {
 const elimina = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
-
         await prodottiService.deleteProdotto(id);
-
         return res.status(204).send();
     } catch (err) {
         return next(err);
@@ -84,10 +68,4 @@ const elimina = async (req, res, next) => {
 };
 
 
-module.exports = {
-    getAll,
-    getById,
-    create,
-    update,
-    elimina
-};
+module.exports = { getAll, getById, create, update, elimina };

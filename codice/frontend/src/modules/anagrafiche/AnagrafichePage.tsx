@@ -2,24 +2,19 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Search, Plus, Download, Upload, Filter, MoreVertical,
   Edit, Trash2, Eye, Mail, Phone, MapPin, Building2,
-  Package, User, Truck, ChevronRight, Tag, Globe,
-  ExternalLink, Users, Calendar, AlertTriangle,
+  User, Truck, Globe, ExternalLink, Users, Calendar, AlertTriangle,
 } from 'lucide-react';
 import { PageTabBar } from '../../components/ui/PageTabBar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
-import { ProductFormModal } from '../anagrafiche/components/ProductFormModal';
-import { CategoryFormModal, type CategoryFormData } from '../anagrafiche/components/CategoryFormModal';
 import { SupplierFormModal } from '../anagrafiche/components/SupplierFormModal';
 import { ClientFormModal } from '../anagrafiche/components/ClientFormModal';
 import { CourierFormModal } from '../anagrafiche/components/CourierFormModal';
 import { EmployeeFormModal } from '../anagrafiche/components/EmployeeFormModal';
 import { toast } from 'sonner';
-import { prodottiApi } from '../../api/prodottiApi';
 import { fornitoriApi } from '../../api/fornitoriApi';
 import { clientiApi } from '../../api/clientiApi';
 import { corrieriApi, dipendentiApi } from '../../api/corrieriApi';
 import { useAuthStore } from '../../store/authStore';
-import type { ProdottoListino, ProdottoCreateRequest, ProdottoUpdateRequest } from '../../types/prodotti';
 import type { Fornitore, FornitoreCreateRequest, FornitoreUpdateRequest } from '../../types/fornitori';
 import type { Cliente, ClienteCreateRequest, ClienteUpdateRequest } from '../../types/clienti';
 import type {
@@ -27,20 +22,7 @@ import type {
   Dipendente, DipendenteCreateRequest, DipendenteUpdateRequest,
 } from '../../types/corrieri';
 
-type TabType = 'prodotti' | 'categorie' | 'fornitori' | 'clienti' | 'corrieri' | 'dipendenti';
-
-interface Categoria {
-  id: number;
-  nome: string;
-  padre: string | null;
-  prodottiCount: number;
-}
-
-const formatPrezzo = (n: number) =>
-  new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n);
-
-const formatData = (iso: string) =>
-  new Date(iso).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+type TabType = 'fornitori' | 'clienti' | 'corrieri' | 'dipendenti';
 
 const formatDataBreve = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
@@ -48,11 +30,9 @@ const formatDataBreve = (iso: string | null) =>
 export function AnagrafichePage() {
   const { hasPermesso } = useAuthStore();
 
-  const [activeTab, setActiveTab] = useState<TabType>('prodotti');
+  const [activeTab, setActiveTab] = useState<TabType>('fornitori');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [productModalOpen, setProductModalOpen] = useState(false);
-  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const [courierModalOpen, setCourierModalOpen] = useState(false);
@@ -60,11 +40,7 @@ export function AnagrafichePage() {
 
   const [editMode, setEditMode] = useState<'create' | 'edit'>('create');
   const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [categoryModalMode, setCategoryModalMode] = useState<'create' | 'edit' | 'subcategory'>('create');
-  const [parentCategoryForSub, setParentCategoryForSub] = useState('');
 
-  const [prodotti, setProdotti] = useState<ProdottoListino[]>([]);
-  const [loadingProdotti, setLoadingProdotti] = useState(false);
   const [fornitori, setFornitori] = useState<Fornitore[]>([]);
   const [loadingFornitori, setLoadingFornitori] = useState(false);
   const [clienti, setClienti] = useState<Cliente[]>([]);
@@ -73,14 +49,6 @@ export function AnagrafichePage() {
   const [loadingCorrieri, setLoadingCorrieri] = useState(false);
   const [dipendenti, setDipendenti] = useState<Dipendente[]>([]);
   const [loadingDipendenti, setLoadingDipendenti] = useState(false);
-  const [categorieState, setCategorieState] = useState<Categoria[]>([]);
-
-  const fetchProdotti = useCallback(async () => {
-    setLoadingProdotti(true);
-    try { setProdotti(await prodottiApi.list()); }
-    catch (err: any) { toast.error('Errore caricamento prodotti', { description: err?.message }); }
-    finally { setLoadingProdotti(false); }
-  }, []);
 
   const fetchFornitori = useCallback(async () => {
     setLoadingFornitori(true);
@@ -110,42 +78,33 @@ export function AnagrafichePage() {
     finally { setLoadingDipendenti(false); }
   }, []);
 
-  // Lazy loading per tab: fetch solo al primo accesso a ciascun tab
   const fetchedTabs = useRef(new Set<TabType>());
 
   const fetchForTab = useCallback(async (tab: TabType) => {
     if (fetchedTabs.current.has(tab)) return;
     fetchedTabs.current.add(tab);
     switch (tab) {
-      case 'prodotti':   return fetchProdotti();
       case 'fornitori':  return fetchFornitori();
       case 'clienti':    return fetchClienti();
       case 'corrieri':   return fetchCorrieri();
       case 'dipendenti': return fetchDipendenti();
-      // 'categorie' è ancora locale/mock — nessuna fetch
     }
-  }, [fetchProdotti, fetchFornitori, fetchClienti, fetchCorrieri, fetchDipendenti]);
+  }, [fetchFornitori, fetchClienti, fetchCorrieri, fetchDipendenti]);
 
-  // Fetch del tab iniziale al mount
-  useEffect(() => { fetchForTab('prodotti'); }, []);
-  // Fetch on-demand quando l'utente cambia tab
+  useEffect(() => { fetchForTab('fornitori'); }, []);
   useEffect(() => { fetchForTab(activeTab); }, [activeTab, fetchForTab]);
 
   const tabs = [
-    { id: 'prodotti' as TabType,    label: 'Prodotti',    icon: Package,   count: prodotti.length },
-    { id: 'categorie' as TabType,   label: 'Categorie',   icon: Tag,       count: categorieState.filter(c => !c.padre).length },
-    { id: 'fornitori' as TabType,   label: 'Fornitori',   icon: Building2, count: fornitori.length },
-    { id: 'clienti' as TabType,     label: 'Clienti',     icon: User,      count: clienti.length },
-    { id: 'corrieri' as TabType,    label: 'Corrieri',    icon: Truck,     count: corrieri.length },
-    { id: 'dipendenti' as TabType,  label: 'Dipendenti',  icon: Users,     count: dipendenti.length },
+    { id: 'fornitori' as TabType,  label: 'Fornitori',  icon: Building2, count: fornitori.length },
+    { id: 'clienti' as TabType,    label: 'Clienti',    icon: User,      count: clienti.length },
+    { id: 'corrieri' as TabType,   label: 'Corrieri',   icon: Truck,     count: corrieri.length },
+    { id: 'dipendenti' as TabType, label: 'Dipendenti', icon: Users,     count: dipendenti.length },
   ];
 
   const getTabLabel = () => tabs.find(t => t.id === activeTab)?.label ?? '';
 
   const getNewButtonLabel = () => {
     switch (activeTab) {
-      case 'prodotti':   return 'Nuovo Prodotto';
-      case 'categorie':  return 'Nuova Categoria';
       case 'fornitori':  return 'Nuovo Fornitore';
       case 'clienti':    return 'Nuovo Cliente';
       case 'corrieri':   return 'Nuovo Corriere';
@@ -160,8 +119,6 @@ export function AnagrafichePage() {
     setEditMode('create');
     setSelectedItem(null);
     switch (activeTab) {
-      case 'prodotti':   setProductModalOpen(true); break;
-      case 'categorie':  setCategoryModalMode('create'); setCategoryModalOpen(true); break;
       case 'fornitori':  setSupplierModalOpen(true); break;
       case 'clienti':    setClientModalOpen(true); break;
       case 'corrieri':   setCourierModalOpen(true); break;
@@ -173,8 +130,6 @@ export function AnagrafichePage() {
     setEditMode('edit');
     setSelectedItem(item);
     switch (activeTab) {
-      case 'prodotti':   setProductModalOpen(true); break;
-      case 'categorie':  setCategoryModalMode('edit'); setCategoryModalOpen(true); break;
       case 'fornitori':  setSupplierModalOpen(true); break;
       case 'clienti':    setClientModalOpen(true); break;
       case 'corrieri':   setCourierModalOpen(true); break;
@@ -185,15 +140,10 @@ export function AnagrafichePage() {
   const handleDelete = async (id: number) => {
     const isDipendente = activeTab === 'dipendenti';
     const msg = isDipendente
-      ? 'Sei sicuro? L\'eliminazione di un dipendente è PERMANENTE e non può essere annullata.'
+      ? "Sei sicuro? L'eliminazione di un dipendente è PERMANENTE e non può essere annullata."
       : 'Sei sicuro di voler eliminare questo elemento?';
     if (!confirm(msg)) return;
 
-    if (activeTab === 'prodotti') {
-      try { await prodottiApi.remove(id); setProdotti(prev => prev.filter(p => p.id !== id)); toast.success('Prodotto eliminato'); }
-      catch (err: any) { toast.error('Eliminazione fallita', { description: err?.message }); }
-      return;
-    }
     if (activeTab === 'fornitori') {
       try { await fornitoriApi.remove(id); setFornitori(prev => prev.filter(f => f.id !== id)); toast.success('Fornitore eliminato'); }
       catch (err: any) { toast.error('Eliminazione fallita', { description: err?.message }); }
@@ -214,36 +164,9 @@ export function AnagrafichePage() {
       catch (err: any) { toast.error('Eliminazione fallita', { description: err?.message }); }
       return;
     }
-    if (activeTab === 'categorie') {
-      setCategorieState(prev => prev.filter(c => c.id !== id));
-      toast.success('Categoria eliminata');
-    }
   };
 
   const handleView = (_item: any) => { toast.info('Funzionalità di dettaglio in arrivo'); };
-
-  const handleAddSubcategory = (parentName: string) => {
-    setParentCategoryForSub(parentName);
-    setCategoryModalMode('subcategory');
-    setCategoryModalOpen(true);
-  };
-
-  const handleSaveProduct = async (data: ProdottoCreateRequest | ProdottoUpdateRequest, id?: number) => {
-    try {
-      if (editMode === 'create') {
-        const created = await prodottiApi.create(data as ProdottoCreateRequest);
-        setProdotti(prev => [...prev, created]);
-        toast.success('Prodotto creato');
-      } else if (id !== undefined) {
-        const updated = await prodottiApi.update(id, data as ProdottoUpdateRequest);
-        setProdotti(prev => prev.map(p => p.id === id ? updated : p));
-        toast.success('Prodotto aggiornato');
-      }
-    } catch (err: any) {
-      toast.error('Salvataggio fallito', { description: err?.code === 'DUPLICATE_ENTRY' ? 'SKU già in uso' : err?.message });
-      throw err;
-    }
-  };
 
   const handleSaveSupplier = async (data: FornitoreCreateRequest | FornitoreUpdateRequest, id?: number) => {
     try {
@@ -258,7 +181,7 @@ export function AnagrafichePage() {
       }
     } catch (err: any) {
       const msg = err?.code === 'DUPLICATE_ENTRY' ? 'P.IVA già associata a un altro fornitore'
-        : err?.code === 'ACCESS_DENIED' ? 'I fornitori dell\'ecosistema non possono essere modificati'
+        : err?.code === 'ACCESS_DENIED' ? "I fornitori dell'ecosistema non possono essere modificati"
         : err?.message;
       toast.error('Salvataggio fallito', { description: msg });
       throw err;
@@ -316,24 +239,9 @@ export function AnagrafichePage() {
     }
   };
 
-  const handleSaveCategory = (data: CategoryFormData) => {
-    if (categoryModalMode === 'create' || categoryModalMode === 'subcategory') {
-      const newId = Math.max(0, ...categorieState.map(c => c.id)) + 1;
-      setCategorieState(prev => [...prev, { id: newId, nome: data.nome, padre: data.padre || null, prodottiCount: 0 }]);
-      toast.success('Categoria creata');
-    } else {
-      setCategorieState(prev => prev.map(c => c.id === selectedItem?.id ? { ...c, nome: data.nome } : c));
-      toast.success('Categoria aggiornata');
-    }
-  };
-
   const getFilteredData = () => {
     const q = searchQuery.toLowerCase();
     switch (activeTab) {
-      case 'prodotti':
-        return prodotti.filter(p => p.nome.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
-      case 'categorie':
-        return categorieState.filter(c => c.nome.toLowerCase().includes(q));
       case 'fornitori':
         return fornitori.filter(f =>
           f.ragione_sociale.toLowerCase().includes(q) ||
@@ -357,25 +265,17 @@ export function AnagrafichePage() {
           d.codice_fiscale.toLowerCase().includes(q) ||
           (d.ruolo_operativo ?? '').toLowerCase().includes(q)
         );
-      default:
-        return [];
+      default: return [];
     }
   };
 
   const filteredData       = getFilteredData();
-  const filteredProdotti   = activeTab === 'prodotti'    ? (filteredData as ProdottoListino[]) : [];
-  const filteredCategorie  = activeTab === 'categorie'   ? (filteredData as Categoria[]) : [];
-  const filteredFornitori  = activeTab === 'fornitori'   ? (filteredData as Fornitore[]) : [];
-  const filteredClienti    = activeTab === 'clienti'     ? (filteredData as Cliente[]) : [];
-  const filteredCorrieri   = activeTab === 'corrieri'    ? (filteredData as Corriere[]) : [];
-  const filteredDipendenti = activeTab === 'dipendenti'  ? (filteredData as Dipendente[]) : [];
+  const filteredFornitori  = activeTab === 'fornitori'  ? (filteredData as Fornitore[]) : [];
+  const filteredClienti    = activeTab === 'clienti'    ? (filteredData as Cliente[]) : [];
+  const filteredCorrieri   = activeTab === 'corrieri'   ? (filteredData as Corriere[]) : [];
+  const filteredDipendenti = activeTab === 'dipendenti' ? (filteredData as Dipendente[]) : [];
 
-  const tabEntity =
-    activeTab === 'prodotti'   ? 'prodotti'   :
-    activeTab === 'fornitori'  ? 'fornitori'  :
-    activeTab === 'clienti'    ? 'clienti'    :
-    activeTab === 'corrieri'   ? 'corrieri'   :
-    activeTab === 'dipendenti' ? 'dipendenti' : 'prodotti';
+  const tabEntity = activeTab; // fornitori | clienti | corrieri | dipendenti
 
   const canWrite  = (entity: string) => hasPermesso(`${entity}:write`);
   const canDelete = (entity: string) => hasPermesso(`${entity}:delete`);
@@ -424,6 +324,11 @@ export function AnagrafichePage() {
     <tr><td colSpan={cols} className="py-12 text-center text-[#6B7280] text-sm">{msg}</td></tr>
   );
 
+  const loading = activeTab === 'fornitori' ? loadingFornitori
+    : activeTab === 'clienti' ? loadingClienti
+    : activeTab === 'corrieri' ? loadingCorrieri
+    : loadingDipendenti;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -431,7 +336,7 @@ export function AnagrafichePage() {
           <h1 className="text-2xl font-semibold text-[#2D2D2D]">
             Gestione Anagrafiche — {getTabLabel()}
           </h1>
-          <p className="text-sm text-[#6B7280] mt-1">Gestisci clienti, fornitori, prodotti, corrieri e dipendenti</p>
+          <p className="text-sm text-[#6B7280] mt-1">Gestisci fornitori, clienti, corrieri e dipendenti</p>
         </div>
         <div className="flex items-center gap-3">
           <button className="px-4 py-2 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-[#F7F9FC] transition-all flex items-center gap-2">
@@ -440,7 +345,7 @@ export function AnagrafichePage() {
           <button className="px-4 py-2 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-[#F7F9FC] transition-all flex items-center gap-2">
             <Download className="w-4 h-4" /> Esporta
           </button>
-          {(activeTab === 'categorie' || canWrite(tabEntity)) && (
+          {canWrite(tabEntity) && (
             <button
               onClick={handleNewClick}
               className="px-4 py-2 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2 font-medium"
@@ -472,78 +377,7 @@ export function AnagrafichePage() {
             </button>
           </div>
 
-          {activeTab === 'prodotti' && (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-[#E5EAF2]">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Nome Prodotto</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">SKU</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-[#6B7280]">Prezzo</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Agg. Prezzo</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Azioni</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loadingProdotti ? <SkeletonRows cols={5} /> : filteredProdotti.length === 0
-                    ? <EmptyRow cols={5} msg={searchQuery ? 'Nessun prodotto corrisponde alla ricerca' : 'Nessun prodotto. Clicca "Nuovo Prodotto" per iniziare.'} />
-                    : filteredProdotti.map((p, i) => (
-                      <tr key={p.id} className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
-                        <td className="py-3 px-4 font-medium text-[#2D2D2D]">{p.nome}</td>
-                        <td className="py-3 px-4 text-sm text-[#6B7280] font-mono">{p.sku}</td>
-                        <td className="py-3 px-4 text-sm font-semibold text-[#2D2D2D] text-right">{formatPrezzo(p.prezzo)}</td>
-                        <td className="py-3 px-4 text-sm text-[#6B7280]">{formatData(p.data_agg_prezzo)}</td>
-                        <td className="py-3 px-4"><KebabMenu item={p} /></td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {activeTab === 'categorie' && (
-            <div className="space-y-4">
-              {filteredCategorie.filter(c => !c.padre).length === 0 && (
-                <p className="py-12 text-center text-[#6B7280] text-sm">Nessuna categoria. Integrazione con milestone dedicata.</p>
-              )}
-              {filteredCategorie.filter(c => !c.padre).map((categoria) => {
-                const subcategories = categorieState.filter(c => c.padre === categoria.nome);
-                const totalCount = categoria.prodottiCount + subcategories.reduce((s, sub) => s + sub.prodottiCount, 0);
-                return (
-                  <div key={categoria.id} className="border border-[#E5EAF2] rounded-xl overflow-hidden">
-                    <div className="flex items-center justify-between p-4 bg-[#F7F9FC]">
-                      <div className="flex items-center gap-3">
-                        <ChevronRight className="w-5 h-5 text-[#6B7280]" />
-                        <div>
-                          <h3 className="font-semibold text-[#2D2D2D]">{categoria.nome}</h3>
-                          <p className="text-xs text-[#6B7280] mt-0.5">{totalCount} prodotti totali</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => handleAddSubcategory(categoria.nome)} className="px-3 py-1.5 text-xs bg-white border border-[#E5EAF2] text-[#6B7280] rounded-lg hover:bg-[#F7F9FC] transition-all">
-                          Aggiungi Sottocategoria
-                        </button>
-                        <KebabMenu item={categoria} />
-                      </div>
-                    </div>
-                    {subcategories.map((subcat) => (
-                      <div key={subcat.id} className="flex items-center justify-between p-3 px-6 border-t border-[#E5EAF2] hover:bg-[#F7F9FC] transition-all">
-                        <div className="flex items-center gap-3">
-                          <div className="w-1 h-8 bg-[#E5EAF2] rounded" />
-                          <div>
-                            <p className="text-sm font-medium text-[#2D2D2D]">{subcat.nome}</p>
-                            <p className="text-xs text-[#6B7280]">{subcat.prodottiCount} prodotti</p>
-                          </div>
-                        </div>
-                        <KebabMenu item={subcat} />
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
+          {/* ── FORNITORI ── */}
           {activeTab === 'fornitori' && (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -602,6 +436,7 @@ export function AnagrafichePage() {
             </div>
           )}
 
+          {/* ── CLIENTI ── */}
           {activeTab === 'clienti' && (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -647,6 +482,7 @@ export function AnagrafichePage() {
             </div>
           )}
 
+          {/* ── CORRIERI ── */}
           {activeTab === 'corrieri' && (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -668,13 +504,11 @@ export function AnagrafichePage() {
                         <td className="py-3 px-4 text-sm font-mono font-semibold text-[#2D2D2D]">{c.codice}</td>
                         <td className="py-3 px-4 font-medium text-[#2D2D2D]">{c.nome}</td>
                         <td className="py-3 px-4">
-                          {c.email
-                            ? <div className="flex items-center gap-2 text-sm text-[#6B7280]"><Mail className="w-3 h-3 shrink-0" />{c.email}</div>
+                          {c.email ? <div className="flex items-center gap-2 text-sm text-[#6B7280]"><Mail className="w-3 h-3 shrink-0" />{c.email}</div>
                             : <span className="text-sm italic text-[#9CA3AF]">—</span>}
                         </td>
                         <td className="py-3 px-4">
-                          {c.telefono
-                            ? <div className="flex items-center gap-2 text-sm text-[#6B7280]"><Phone className="w-3 h-3 shrink-0" />{c.telefono}</div>
+                          {c.telefono ? <div className="flex items-center gap-2 text-sm text-[#6B7280]"><Phone className="w-3 h-3 shrink-0" />{c.telefono}</div>
                             : <span className="text-sm italic text-[#9CA3AF]">—</span>}
                         </td>
                         <td className="py-3 px-4">
@@ -690,6 +524,7 @@ export function AnagrafichePage() {
             </div>
           )}
 
+          {/* ── DIPENDENTI ── */}
           {activeTab === 'dipendenti' && (
             <div className="overflow-x-auto">
               <div className="flex items-center gap-2 mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
@@ -742,7 +577,7 @@ export function AnagrafichePage() {
 
           <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#E5EAF2]">
             <div className="text-sm text-[#6B7280]">
-              Mostrando <span className="font-medium text-[#2D2D2D]">{filteredData.length}</span> risultati
+              Mostrando <span className="font-medium text-[#2D2D2D]">{loading ? '…' : filteredData.length}</span> risultati
             </div>
             <div className="flex items-center gap-2">
               <button className="px-3 py-1.5 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-lg hover:bg-[#F7F9FC] transition-all text-sm">Precedente</button>
@@ -753,49 +588,10 @@ export function AnagrafichePage() {
         </div>
       </div>
 
-      <ProductFormModal
-        open={productModalOpen}
-        onClose={() => setProductModalOpen(false)}
-        onSave={handleSaveProduct}
-        initialData={selectedItem}
-        mode={editMode}
-      />
-      <CategoryFormModal
-        open={categoryModalOpen}
-        onClose={() => setCategoryModalOpen(false)}
-        onSave={handleSaveCategory}
-        initialData={selectedItem}
-        mode={categoryModalMode}
-        parentCategory={parentCategoryForSub}
-      />
-      <SupplierFormModal
-        open={supplierModalOpen}
-        onClose={() => setSupplierModalOpen(false)}
-        onSave={handleSaveSupplier}
-        initialData={selectedItem}
-        mode={editMode}
-      />
-      <ClientFormModal
-        open={clientModalOpen}
-        onClose={() => setClientModalOpen(false)}
-        onSave={handleSaveClient}
-        initialData={selectedItem}
-        mode={editMode}
-      />
-      <CourierFormModal
-        open={courierModalOpen}
-        onClose={() => setCourierModalOpen(false)}
-        onSave={handleSaveCourier}
-        initialData={selectedItem}
-        mode={editMode}
-      />
-      <EmployeeFormModal
-        open={employeeModalOpen}
-        onClose={() => setEmployeeModalOpen(false)}
-        onSave={handleSaveEmployee}
-        initialData={selectedItem}
-        mode={editMode}
-      />
+      <SupplierFormModal open={supplierModalOpen} onClose={() => setSupplierModalOpen(false)} onSave={handleSaveSupplier} initialData={selectedItem} mode={editMode} />
+      <ClientFormModal  open={clientModalOpen}   onClose={() => setClientModalOpen(false)}   onSave={handleSaveClient}   initialData={selectedItem} mode={editMode} />
+      <CourierFormModal open={courierModalOpen}   onClose={() => setCourierModalOpen(false)}   onSave={handleSaveCourier}  initialData={selectedItem} mode={editMode} />
+      <EmployeeFormModal open={employeeModalOpen} onClose={() => setEmployeeModalOpen(false)} onSave={handleSaveEmployee} initialData={selectedItem} mode={editMode} />
     </div>
   );
 }

@@ -3,7 +3,7 @@ export interface ProdottoListino {
   sku: string;
   nome: string;
   prezzo: number;
-  data_agg_prezzo: string; 
+  data_agg_prezzo: string;
 }
 
 export interface Prodotto {
@@ -27,10 +27,15 @@ export interface ProdottoCreateRequest {
   nome: string;
   sku: string;
   prezzo: number;
+  categoria_id?: number | null;
 }
 
 export interface ProdottoUpdateRequest {
   nome?: string;
   sku?: string;
   prezzo?: number;
+  // null non è supportato via COALESCE nel backend attuale:
+  // ometti il campo per mantere la categoria esistente,
+  // invia un numero per cambiarla.
+  categoria_id?: number;
 }
