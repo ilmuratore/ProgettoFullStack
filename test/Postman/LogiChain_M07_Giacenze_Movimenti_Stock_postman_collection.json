@@ -1,123 +1,17 @@
 {
   "info": {
+    "_postman_id": "36bdf273-5b0d-4cba-94dd-cad33b3eb606",
     "name": "LogiChain V2 — M07 Giacenze & Movimenti Stock",
-    "_postman_id": "logichain-m07-giacenze-movimenti-stock",
-    "description": "Suite di verifica backend M07 (Giacenze & Movimenti Stock).\n\nCOME USARLA:\n1) Avvia il backend (npm run dev) dopo aver applicato tutte le migration.\n2) Nel .env imposta ADMIN_EMAIL e ADMIN_PASSWORD, poi:\n   npm run seed_ruoli_permessi && npm run seed_admin\n3) Allinea le variabili di collection admin_email/admin_password a quelle del .env.\n4) Apri Runner -> seleziona questa collection -> Run.\n\nIl Setup registra gli utenti di test con email univiche via timestamp e crea prodotto, magazzino e due ubicazioni dedicate alla suite.",
+    "description": "Suite di verifica backend M07 (Giacenze & Movimenti Stock).\n\nCOME USARLA:\n1) Avvia il backend (npm run dev) dopo aver applicato tutte le migration fino a 007_inventario.js.\n2) Nel .env imposta ADMIN_EMAIL e ADMIN_PASSWORD, poi:\n   npm run seed_ruoli_permessi && npm run seed_admin\n3) Allinea le variabili di collection admin_email/admin_password a quelle del .env.\n4) Apri Runner -> seleziona questa collection -> Run.\n\nIl Setup crea automaticamente prodotto, magazzino, ubicazione A e B con nomi univoci timestamp-based (ri-eseguibile senza conflitti).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
-  "variable": [
-    {
-      "key": "base_url",
-      "value": "http://localhost:3000",
-      "type": "string"
-    },
-    {
-      "key": "admin_email",
-      "value": "admin@logichain.it",
-      "type": "string"
-    },
-    {
-      "key": "admin_password",
-      "value": "Admin123!",
-      "type": "string"
-    },
-    {
-      "key": "resp_magazzino_email",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "resp_magazzino_password",
-      "value": "Test1234!",
-      "type": "string"
-    },
-    {
-      "key": "operatore_email",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "operatore_password",
-      "value": "Test1234!",
-      "type": "string"
-    },
-    {
-      "key": "token_admin",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "token_resp_mag",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "token_no_access",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "runId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "prodotto_id",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "magazzino_id",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "ubicazione_a_id",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "ubicazione_b_id",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "movimento_id",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "prodotto_sku",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "magazzino_codice",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "riferimento_carico",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "riferimento_scarico",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "riferimento_spostamento",
-      "value": "",
-      "type": "string"
-    }
-  ],
   "item": [
     {
-      "name": "Setup - Autenticazione & Dati M07",
-      "description": "Login admin, creazione utenti di test, prodotto, magazzino e due ubicazioni.",
+      "id": "1c8793cc-03bd-4dbd-b1c4-c70c167e5c20",
+      "name": "Setup — Autenticazione & Dati M07",
       "item": [
         {
+          "id": "78c6268e-6cc3-402e-8b78-7ae11b1b6529",
           "name": "Login Admin",
           "request": {
             "method": "POST",
@@ -153,35 +47,37 @@
             {
               "listen": "prerequest",
               "script": {
-                "type": "text/javascript",
                 "exec": [
                   "var run = Date.now().toString();",
                   "pm.collectionVariables.set('runId', run);",
                   "pm.collectionVariables.set('resp_magazzino_email', 'test.m07.rmag.' + run + '@logichain.it');",
-                  "pm.collectionVariables.set('operatore_email', 'test.m07.oper.' + run + '@logichain.it');",
-                  "pm.collectionVariables.set('prodotto_sku', 'M07-SKU-' + run);",
-                  "pm.collectionVariables.set('magazzino_codice', 'MAG-M07-' + run);",
-                  "pm.collectionVariables.set('riferimento_carico', 'm07_carico:' + run);",
-                  "pm.collectionVariables.set('riferimento_scarico', 'm07_scarico:' + run);",
+                  "pm.collectionVariables.set('operatore_email',      'test.m07.oper.' + run + '@logichain.it');",
+                  "pm.collectionVariables.set('prodotto_sku',         'M07-SKU-' + run);",
+                  "pm.collectionVariables.set('magazzino_codice',     'MAG-M07-' + run);",
+                  "pm.collectionVariables.set('riferimento_carico',   'm07_carico:'       + run);",
+                  "pm.collectionVariables.set('riferimento_scarico',  'm07_scarico:'      + run);",
                   "pm.collectionVariables.set('riferimento_spostamento', 'm07_spostamento:' + run);"
-                ]
+                ],
+                "type": "text/javascript",
+                "id": "b875ff91-9c3e-451c-a0fd-6fcbd4df7a3b"
               }
             },
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "var d = pm.response.json();",
-                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "pm.test('status success', () => pm.expect(d.status).to.eql('success'));",
-                  "pm.collectionVariables.set('token_admin', d.data.token);"
-                ]
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Login Admin -> 200', () => pm.response.to.have.status(200));",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_admin', b.data.token); }"
+                ],
+                "type": "text/javascript",
+                "id": "a66c20a6-6f31-4c55-b5cd-799987f2a577"
               }
             }
           ]
         },
         {
+          "id": "6050df04-65e2-4463-a3b3-97379059ac24",
           "name": "Register Responsabile Magazzino (ruolo_id 3)",
           "request": {
             "method": "POST",
@@ -221,15 +117,17 @@
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "pm.test('201 o 409', () => pm.expect([201, 409]).to.include(pm.response.code));"
-                ]
+                  "pm.test('Setup: Register Resp. Magazzino -> 201 o 409', () => pm.expect([201,409]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript",
+                "id": "0207f1dd-67ed-4388-af43-02d7477aaa60"
               }
             }
           ]
         },
         {
+          "id": "80521be6-d625-4fc1-a989-766853fbc6c0",
           "name": "Register Operatore (ruolo_id 4, no giacenze:write)",
           "request": {
             "method": "POST",
@@ -269,15 +167,17 @@
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "pm.test('201 o 409', () => pm.expect([201, 409]).to.include(pm.response.code));"
-                ]
+                  "pm.test('Setup: Register Operatore -> 201 o 409', () => pm.expect([201,409]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript",
+                "id": "d5bfedb3-27f5-4225-bb6f-ae498025507a"
               }
             }
           ]
         },
         {
+          "id": "aadaa9c1-5b9a-418b-9195-316966da2979",
           "name": "Login Responsabile Magazzino (token_resp_mag)",
           "request": {
             "method": "POST",
@@ -313,17 +213,19 @@
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "var d = pm.response.json();",
-                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "pm.collectionVariables.set('token_resp_mag', d.data.token);"
-                ]
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Login Resp. Magazzino -> 200', () => pm.response.to.have.status(200));",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_resp_mag', b.data.token); }"
+                ],
+                "type": "text/javascript",
+                "id": "7829093e-45e7-4b14-bb58-8adf6dae781d"
               }
             }
           ]
         },
         {
+          "id": "f18c89b1-95ac-4d4b-ae27-3c0a009db9a1",
           "name": "Login Operatore (token_no_access)",
           "request": {
             "method": "POST",
@@ -359,17 +261,19 @@
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "var d = pm.response.json();",
-                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "pm.collectionVariables.set('token_no_access', d.data.token);"
-                ]
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Login Operatore -> 200', () => pm.response.to.have.status(200));",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_no_access', b.data.token); }"
+                ],
+                "type": "text/javascript",
+                "id": "77c1bd3f-e7c5-4060-bc7b-8ba57c2bf88c"
               }
             }
           ]
         },
         {
+          "id": "5ab82f9c-4bf5-45e4-9342-147113400626",
           "name": "Crea prodotto test",
           "request": {
             "method": "POST",
@@ -396,7 +300,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Prodotto Test M07\",\n  \"sku\": \"{{prodotto_sku}}\",\n  \"prezzo\": 10.5\n}",
+              "raw": "{\n  \"nome\": \"Prodotto Test M07\",\n  \"sku\": \"{{prodotto_sku}}\",\n  \"prezzo\": 10.50\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -408,18 +312,19 @@
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "var d = pm.response.json();",
-                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('status success', () => pm.expect(d.status).to.eql('success'));",
-                  "pm.collectionVariables.set('prodotto_id', d.data.id);"
-                ]
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Crea prodotto -> 201', () => pm.response.to.have.status(201));",
+                  "if (b.data && b.data.id) { pm.collectionVariables.set('prodotto_id', b.data.id); }"
+                ],
+                "type": "text/javascript",
+                "id": "ab3e7820-e6df-4a09-8a1c-e23a0f1d6b85"
               }
             }
           ]
         },
         {
+          "id": "57b3b319-72fa-48de-9b2e-dd47a110d1be",
           "name": "Crea magazzino test",
           "request": {
             "method": "POST",
@@ -458,18 +363,20 @@
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "var d = pm.response.json();",
-                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set('magazzino_id', d.data.id);"
-                ]
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Crea magazzino -> 201', () => pm.response.to.have.status(201));",
+                  "if (b.data && b.data.id) { pm.collectionVariables.set('magazzino_id', b.data.id); }"
+                ],
+                "type": "text/javascript",
+                "id": "6a60df79-edf9-4279-93e1-4af01af44938"
               }
             }
           ]
         },
         {
-          "name": "Crea ubicazione A",
+          "id": "14aa55f6-453d-4a2f-981f-b5d2015a0979",
+          "name": "Crea ubicazione A (corsia 1, scaffale 1)",
           "request": {
             "method": "POST",
             "header": [
@@ -509,18 +416,20 @@
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "var d = pm.response.json();",
-                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set('ubicazione_a_id', d.data.id);"
-                ]
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Crea ubicazione A -> 201', () => pm.response.to.have.status(201));",
+                  "if (b.data && b.data.id) { pm.collectionVariables.set('ubicazione_a_id', b.data.id); }"
+                ],
+                "type": "text/javascript",
+                "id": "e35ea86d-832a-4d8e-bde5-7d87f2c0771b"
               }
             }
           ]
         },
         {
-          "name": "Crea ubicazione B",
+          "id": "af2f203e-ba46-487b-b8c9-16841412a0df",
+          "name": "Crea ubicazione B (corsia 1, scaffale 2)",
           "request": {
             "method": "POST",
             "header": [
@@ -560,12 +469,13 @@
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "var d = pm.response.json();",
-                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set('ubicazione_b_id', d.data.id);"
-                ]
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Crea ubicazione B -> 201', () => pm.response.to.have.status(201));",
+                  "if (b.data && b.data.id) { pm.collectionVariables.set('ubicazione_b_id', b.data.id); }"
+                ],
+                "type": "text/javascript",
+                "id": "7b59ac9b-427f-4deb-889a-321e709c85b8"
               }
             }
           ]
@@ -573,516 +483,810 @@
       ]
     },
     {
-      "name": "Giacenze - 2 test",
-      "description": "Verifica consultazione giacenze per prodotto.",
+      "name": "Giacenze — 2 test",
       "item": [
         {
-          "name": "01 GET /giacenze/:prodotto_id - senza token -> 401",
-          "request": {
-            "method": "GET",
-            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}"
-          },
+          "name": "01 GET /giacenze/:prodotto_id — senza token → 401",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
                   "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
-          ]
-        },
-        {
-          "name": "02 GET /giacenze/:prodotto_id - inizialmente vuote",
+          ],
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token_resp_mag}}"
-              }
-            ],
             "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}"
-          },
+          }
+        },
+        {
+          "name": "02 GET /giacenze/:prodotto_id — inizialmente vuote",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "var d = pm.response.json();",
+                  "const d = pm.response.json();",
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "pm.test('data array', () => pm.expect(d.data).to.be.an('array'));",
-                  "pm.test('array vuoto', () => pm.expect(d.data).to.have.lengthOf(0));"
-                ]
+                  "pm.test('status success', () => pm.expect(d.status).to.eql('success'));",
+                  "pm.test('data è array', () => pm.expect(d.data).to.be.an('array'));",
+                  "pm.test('array vuoto (no movimenti ancora)', () => pm.expect(d.data).to.have.lengthOf(0));"
+                ],
+                "type": "text/javascript"
               }
             }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "Movimenti Stock - 14 test",
-      "description": "Carico, rettifica, scarico e spostamento con verifica impatto su giacenze.",
-      "item": [
-        {
-          "name": "01 POST /movimenti-stock - carico acquisto valido",
+          ],
           "request": {
-            "method": "POST",
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
             "header": [
               {
                 "key": "Authorization",
                 "value": "Bearer {{token_resp_mag}}"
-              },
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Movimenti Stock — 22 test",
+      "item": [
+        {
+          "name": "01 POST /movimenti-stock — carico acquisto valido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const d = pm.response.json();",
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('tipo CARICO_ACQUISTO', () => pm.expect(d.data.tipo).to.eql('CARICO_ACQUISTO'));",
+                  "pm.test('quantita = 10', () => pm.expect(Number(d.data.quantita)).to.eql(10));",
+                  "pm.collectionVariables.set('movimento_id', d.data.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/api/v1/movimenti-stock",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"prodotto_id\": {{prodotto_id}},\n  \"ubicazione_id\": {{ubicazione_a_id}},\n  \"quantita\": 10,\n  \"movimento_tipo\": \"CARICO_ACQUISTO\",\n  \"riferimento\": \"{{riferimento_carico}}\",\n  \"note\": \"Carico iniziale M07\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "var d = pm.response.json();",
-                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('tipo corretto', () => pm.expect(d.data.tipo).to.eql('CARICO_ACQUISTO'));",
-                  "pm.test('quantita 10', () => pm.expect(Number(d.data.quantita)).to.eql(10));",
-                  "pm.collectionVariables.set('movimento_id', d.data.id);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "02 GET /movimenti-stock/:id - dettaglio movimento",
-          "request": {
-            "method": "GET",
-            "header": [
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{token_resp_mag}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/movimenti-stock/{{movimento_id}}"
-          },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"prodotto_id\":{{prodotto_id}},\"ubicazione_id\":{{ubicazione_a_id}},\"quantita\":10,\"movimento_tipo\":\"CARICO_ACQUISTO\",\"riferimento\":\"{{riferimento_carico}}\",\"note\":\"Carico iniziale M07\"}"
+            }
+          }
+        },
+        {
+          "name": "02 GET /movimenti-stock/:id — dettaglio movimento",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "var d = pm.response.json();",
+                  "const d = pm.response.json();",
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "pm.test('id coerente', () => pm.expect(d.data.id).to.eql(parseInt(pm.collectionVariables.get('movimento_id'))));",
                   "pm.test('riferimento corretto', () => pm.expect(d.data.riferimento).to.eql(pm.collectionVariables.get('riferimento_carico')));"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
-          ]
-        },
-        {
-          "name": "03 GET /giacenze/:prodotto_id - dopo carico",
+          ],
           "request": {
             "method": "GET",
+            "url": "{{base_url}}/api/v1/movimenti-stock/{{movimento_id}}",
             "header": [
               {
                 "key": "Authorization",
                 "value": "Bearer {{token_resp_mag}}"
               }
-            ],
-            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}"
-          },
+            ]
+          }
+        },
+        {
+          "name": "03 GET /giacenze/:prodotto_id — dopo carico (A=10)",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "var d = pm.response.json();",
+                  "const d = pm.response.json();",
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "pm.test('una sola giacenza', () => pm.expect(d.data).to.have.lengthOf(1));",
                   "pm.test('quantita = 10', () => pm.expect(Number(d.data[0].quantita)).to.eql(10));"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
-          ]
-        },
-        {
-          "name": "04 POST /movimenti-stock - rettifica positiva senza note -> 400",
+          ],
           "request": {
-            "method": "POST",
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
             "header": [
               {
                 "key": "Authorization",
                 "value": "Bearer {{token_resp_mag}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
               }
-            ],
-            "url": "{{base_url}}/api/v1/movimenti-stock",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"prodotto_id\": {{prodotto_id}},\n  \"ubicazione_id\": {{ubicazione_a_id}},\n  \"quantita\": 2,\n  \"movimento_tipo\": \"RETTIFICA_POSITIVA\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
+            ]
+          }
+        },
+        {
+          "name": "04 POST /movimenti-stock — rettifica positiva senza note → 400",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
                   "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
                   "pm.test('VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
-          ]
-        },
-        {
-          "name": "05 POST /movimenti-stock - rettifica positiva valida",
+          ],
           "request": {
             "method": "POST",
+            "url": "{{base_url}}/api/v1/movimenti-stock",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token_resp_mag}}"
-              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/api/v1/movimenti-stock",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"prodotto_id\": {{prodotto_id}},\n  \"ubicazione_id\": {{ubicazione_a_id}},\n  \"quantita\": 2,\n  \"movimento_tipo\": \"RETTIFICA_POSITIVA\",\n  \"riferimento\": \"m07_rettifica_pos\",\n  \"note\": \"Allineamento inventariale\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "var d = pm.response.json();",
-                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('tipo corretto', () => pm.expect(d.data.tipo).to.eql('RETTIFICA_POSITIVA'));",
-                  "pm.test('quantita positiva', () => pm.expect(Number(d.data.quantita)).to.eql(2));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "06 GET /giacenze/:prodotto_id - dopo rettifica",
-          "request": {
-            "method": "GET",
-            "header": [
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{token_resp_mag}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}"
-          },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"prodotto_id\":{{prodotto_id}},\"ubicazione_id\":{{ubicazione_a_id}},\"quantita\":2,\"movimento_tipo\":\"RETTIFICA_POSITIVA\"}"
+            }
+          }
+        },
+        {
+          "name": "05 POST /movimenti-stock — rettifica positiva valida",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "var d = pm.response.json();",
+                  "const d = pm.response.json();",
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('tipo RETTIFICA_POSITIVA', () => pm.expect(d.data.tipo).to.eql('RETTIFICA_POSITIVA'));",
+                  "pm.test('quantita nel record = 2', () => pm.expect(Number(d.data.quantita)).to.eql(2));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_resp_mag}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"prodotto_id\":{{prodotto_id}},\"ubicazione_id\":{{ubicazione_a_id}},\"quantita\":2,\"movimento_tipo\":\"RETTIFICA_POSITIVA\",\"riferimento\":\"m07_rettifica_pos\",\"note\":\"Allineamento inventariale\"}"
+            }
+          }
+        },
+        {
+          "name": "06 GET /giacenze/:prodotto_id — dopo rettifica positiva (A=12)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const d = pm.response.json();",
                   "pm.test('quantita = 12', () => pm.expect(Number(d.data[0].quantita)).to.eql(12));"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
-          ]
-        },
-        {
-          "name": "07 POST /movimenti-stock - scarico vendita valido",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token_resp_mag}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/api/v1/movimenti-stock",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"prodotto_id\": {{prodotto_id}},\n  \"ubicazione_id\": {{ubicazione_a_id}},\n  \"quantita\": 4,\n  \"movimento_tipo\": \"SCARICO_VENDITA\",\n  \"riferimento\": \"{{riferimento_scarico}}\",\n  \"note\": \"Scarico ordine test\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "var d = pm.response.json();",
-                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('tipo corretto', () => pm.expect(d.data.tipo).to.eql('SCARICO_VENDITA'));",
-                  "pm.test('quantita positiva', () => pm.expect(Number(d.data.quantita)).to.eql(4));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "08 GET /giacenze/:prodotto_id - dopo scarico",
+          ],
           "request": {
             "method": "GET",
+            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
             "header": [
               {
                 "key": "Authorization",
                 "value": "Bearer {{token_resp_mag}}"
               }
-            ],
-            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}"
-          },
+            ]
+          }
+        },
+        {
+          "name": "07 POST /movimenti-stock — scarico vendita valido",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "var d = pm.response.json();",
-                  "pm.test('quantita = 8', () => pm.expect(Number(d.data[0].quantita)).to.eql(8));"
-                ]
+                  "const d = pm.response.json();",
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('tipo SCARICO_VENDITA', () => pm.expect(d.data.tipo).to.eql('SCARICO_VENDITA'));",
+                  "pm.test('quantita nel record = 4', () => pm.expect(Number(d.data.quantita)).to.eql(4));"
+                ],
+                "type": "text/javascript"
               }
             }
-          ]
-        },
-        {
-          "name": "09 POST /movimenti-stock - spostamento valido",
+          ],
           "request": {
             "method": "POST",
+            "url": "{{base_url}}/api/v1/movimenti-stock",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token_resp_mag}}"
-              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_resp_mag}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/movimenti-stock",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"prodotto_id\": {{prodotto_id}},\n  \"ubicazione_da_id\": {{ubicazione_a_id}},\n  \"ubicazione_a_id\": {{ubicazione_b_id}},\n  \"quantita\": 3,\n  \"movimento_tipo\": \"SPOSTAMENTO\",\n  \"riferimento\": \"{{riferimento_spostamento}}\",\n  \"note\": \"Spostamento interno\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
+              "raw": "{\"prodotto_id\":{{prodotto_id}},\"ubicazione_id\":{{ubicazione_a_id}},\"quantita\":4,\"movimento_tipo\":\"SCARICO_VENDITA\",\"riferimento\":\"{{riferimento_scarico}}\",\"note\":\"Scarico ordine test\"}"
             }
-          },
+          }
+        },
+        {
+          "name": "08 GET /giacenze/:prodotto_id — dopo scarico (A=8)",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "var d = pm.response.json();",
+                  "const d = pm.response.json();",
+                  "pm.test('quantita = 8', () => pm.expect(Number(d.data[0].quantita)).to.eql(8));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_resp_mag}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "09 POST /movimenti-stock — spostamento valido A→B (3 pezzi)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const d = pm.response.json();",
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
                   "pm.test('ramo scarico presente', () => pm.expect(d.data).to.have.property('scarico'));",
-                  "pm.test('ramo carico presente', () => pm.expect(d.data).to.have.property('carico'));",
-                  "pm.test('entrambi tipo SPOSTAMENTO', () => {",
-                  "    pm.expect(d.data.scarico.tipo).to.eql('SPOSTAMENTO');",
-                  "    pm.expect(d.data.carico.tipo).to.eql('SPOSTAMENTO');",
-                  "});"
-                ]
+                  "pm.test('ramo carico presente',  () => pm.expect(d.data).to.have.property('carico'));",
+                  "pm.test('scarico tipo SPOSTAMENTO', () => pm.expect(d.data.scarico.tipo).to.eql('SPOSTAMENTO'));",
+                  "pm.test('carico tipo SPOSTAMENTO',  () => pm.expect(d.data.carico.tipo).to.eql('SPOSTAMENTO'));"
+                ],
+                "type": "text/javascript"
               }
             }
-          ]
-        },
-        {
-          "name": "10 GET /giacenze/:prodotto_id - dopo spostamento",
+          ],
           "request": {
-            "method": "GET",
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/movimenti-stock",
             "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{token_resp_mag}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}"
-          },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"prodotto_id\":{{prodotto_id}},\"ubicazione_da_id\":{{ubicazione_a_id}},\"ubicazione_a_id\":{{ubicazione_b_id}},\"quantita\":3,\"movimento_tipo\":\"SPOSTAMENTO\",\"riferimento\":\"{{riferimento_spostamento}}\",\"note\":\"Spostamento interno test\"}"
+            }
+          }
+        },
+        {
+          "name": "10 GET /giacenze/:prodotto_id — dopo spostamento (A=5, B=3)",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "var d = pm.response.json();",
-                  "pm.test('due giacenze presenti', () => pm.expect(d.data).to.have.lengthOf(2));",
+                  "const d = pm.response.json();",
+                  "pm.test('due giacenze', () => pm.expect(d.data).to.have.lengthOf(2));",
                   "var qa = d.data.find(x => x.ubicazione_id === parseInt(pm.collectionVariables.get('ubicazione_a_id')));",
                   "var qb = d.data.find(x => x.ubicazione_id === parseInt(pm.collectionVariables.get('ubicazione_b_id')));",
-                  "pm.test('ubicazione A = 5', () => pm.expect(Number(qa.quantita)).to.eql(5));",
-                  "pm.test('ubicazione B = 3', () => pm.expect(Number(qb.quantita)).to.eql(3));"
-                ]
+                  "pm.test('A = 5', () => pm.expect(Number(qa.quantita)).to.eql(5));",
+                  "pm.test('B = 3', () => pm.expect(Number(qb.quantita)).to.eql(3));"
+                ],
+                "type": "text/javascript"
               }
             }
-          ]
-        },
-        {
-          "name": "11 GET /movimenti-stock/riferimento/:riferimento - spostamento",
+          ],
           "request": {
             "method": "GET",
+            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
             "header": [
               {
                 "key": "Authorization",
                 "value": "Bearer {{token_resp_mag}}"
               }
-            ],
-            "url": "{{base_url}}/api/v1/movimenti-stock/riferimento/{{riferimento_spostamento}}"
-          },
+            ]
+          }
+        },
+        {
+          "name": "11 GET /movimenti-stock/riferimento/:rif — 2 record spostamento",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "var d = pm.response.json();",
+                  "const d = pm.response.json();",
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "pm.test('due record di spostamento', () => pm.expect(d.data).to.have.lengthOf(2));",
-                  "pm.test('tutti tipo SPOSTAMENTO', () => pm.expect(d.data.every(x => x.tipo === 'SPOSTAMENTO')).to.be.true);"
-                ]
+                  "pm.test('due record', () => pm.expect(d.data).to.have.lengthOf(2));",
+                  "pm.test('tutti SPOSTAMENTO', () => pm.expect(d.data.every(x => x.tipo === 'SPOSTAMENTO')).to.be.true);"
+                ],
+                "type": "text/javascript"
               }
             }
-          ]
-        },
-        {
-          "name": "12 GET /movimenti-stock/tipo/SPOSTAMENTO",
+          ],
           "request": {
             "method": "GET",
+            "url": "{{base_url}}/api/v1/movimenti-stock/riferimento/{{riferimento_spostamento}}",
             "header": [
               {
                 "key": "Authorization",
                 "value": "Bearer {{token_resp_mag}}"
               }
-            ],
-            "url": "{{base_url}}/api/v1/movimenti-stock/tipo/SPOSTAMENTO"
-          },
+            ]
+          }
+        },
+        {
+          "name": "12 GET /movimenti-stock/tipo/SPOSTAMENTO — almeno 2 record",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "var d = pm.response.json();",
+                  "const d = pm.response.json();",
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "pm.test('almeno 2 record', () => pm.expect(d.data.length).to.be.at.least(2));",
                   "pm.test('riferimento spostamento presente', () => pm.expect(d.data.some(x => x.riferimento === pm.collectionVariables.get('riferimento_spostamento'))).to.be.true);"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
-          ]
-        },
-        {
-          "name": "13 POST /movimenti-stock - token Operatore -> 403",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token_no_access}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/api/v1/movimenti-stock",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"prodotto_id\": {{prodotto_id}},\n  \"ubicazione_id\": {{ubicazione_a_id}},\n  \"quantita\": 1,\n  \"movimento_tipo\": \"CARICO_ACQUISTO\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));",
-                  "pm.test('ACCESS_DENIED', () => pm.expect(pm.response.json().code).to.eql('ACCESS_DENIED'));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "14 GET /movimenti-stock - lista",
+          ],
           "request": {
             "method": "GET",
+            "url": "{{base_url}}/api/v1/movimenti-stock/tipo/SPOSTAMENTO",
             "header": [
               {
                 "key": "Authorization",
                 "value": "Bearer {{token_resp_mag}}"
               }
-            ],
-            "url": "{{base_url}}/api/v1/movimenti-stock"
-          },
+            ]
+          }
+        },
+        {
+          "name": "13 POST /movimenti-stock — token Operatore → 403",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "var d = pm.response.json();",
-                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "pm.test('data array', () => pm.expect(d.data).to.be.an('array'));",
-                  "pm.test('almeno 5 movimenti', () => pm.expect(d.data.length).to.be.at.least(5));"
-                ]
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));",
+                  "pm.test('ACCESS_DENIED', () => pm.expect(pm.response.json().code).to.eql('ACCESS_DENIED'));"
+                ],
+                "type": "text/javascript"
               }
             }
-          ]
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_no_access}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"prodotto_id\":{{prodotto_id}},\"ubicazione_id\":{{ubicazione_a_id}},\"quantita\":1,\"movimento_tipo\":\"CARICO_ACQUISTO\"}"
+            }
+          }
+        },
+        {
+          "name": "14 GET /movimenti-stock — lista (almeno 5 record)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const d = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('status success', () => pm.expect(d.status).to.eql('success'));",
+                  "pm.test('data è array', () => pm.expect(d.data).to.be.an('array'));",
+                  "pm.test('almeno 5 movimenti', () => pm.expect(d.data.length).to.be.at.least(5));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_resp_mag}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "15 GET /movimenti-stock/tipo/TIPO_INVALIDO — enum invalido → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/movimenti-stock/tipo/TIPO_INVALIDO",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_resp_mag}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "16 GET /giacenze/99999 — prodotto inesistente → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('RESOURCE_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('RESOURCE_NOT_FOUND'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/giacenze/99999",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_resp_mag}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "17 POST /movimenti-stock — rettifica negativa valida (A: 5→3)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const d = pm.response.json();",
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('tipo RETTIFICA_NEGATIVA', () => pm.expect(d.data.tipo).to.eql('RETTIFICA_NEGATIVA'));",
+                  "pm.test('quantita nel record = 2', () => pm.expect(Number(d.data.quantita)).to.eql(2));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_resp_mag}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"prodotto_id\":{{prodotto_id}},\"ubicazione_id\":{{ubicazione_a_id}},\"quantita\":2,\"movimento_tipo\":\"RETTIFICA_NEGATIVA\",\"riferimento\":\"m07_rettifica_neg\",\"note\":\"Rettifica negativa test M07\"}"
+            }
+          }
+        },
+        {
+          "name": "18 GET /giacenze/:prodotto_id — dopo rettifica negativa (A=3, B=3)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const d = pm.response.json();",
+                  "var qa = d.data.find(x => x.ubicazione_id === parseInt(pm.collectionVariables.get('ubicazione_a_id')));",
+                  "var qb = d.data.find(x => x.ubicazione_id === parseInt(pm.collectionVariables.get('ubicazione_b_id')));",
+                  "pm.test('A = 3', () => pm.expect(Number(qa.quantita)).to.eql(3));",
+                  "pm.test('B = 3', () => pm.expect(Number(qb.quantita)).to.eql(3));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_resp_mag}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "19 POST /movimenti-stock — reso valido (B: 3→4)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const d = pm.response.json();",
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('tipo RESO', () => pm.expect(d.data.tipo).to.eql('RESO'));",
+                  "pm.test('quantita nel record = 1', () => pm.expect(Number(d.data.quantita)).to.eql(1));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_resp_mag}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"prodotto_id\":{{prodotto_id}},\"ubicazione_id\":{{ubicazione_b_id}},\"quantita\":1,\"movimento_tipo\":\"RESO\",\"riferimento\":\"m07_reso\"}"
+            }
+          }
+        },
+        {
+          "name": "20 GET /giacenze/:prodotto_id — dopo reso (A=3, B=4)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const d = pm.response.json();",
+                  "var qb = d.data.find(x => x.ubicazione_id === parseInt(pm.collectionVariables.get('ubicazione_b_id')));",
+                  "pm.test('B = 4', () => pm.expect(Number(qb.quantita)).to.eql(4));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_resp_mag}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "21 POST /movimenti-stock — scarico > giacenza → 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('422 Unprocessable', () => pm.response.to.have.status(422));",
+                  "pm.test('INSUFFICIENT_STOCK', () => pm.expect(pm.response.json().code).to.eql('INSUFFICIENT_STOCK'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_resp_mag}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"prodotto_id\":{{prodotto_id}},\"ubicazione_id\":{{ubicazione_a_id}},\"quantita\":100,\"movimento_tipo\":\"SCARICO_VENDITA\",\"riferimento\":\"m07_scarico_eccesso\"}"
+            }
+          }
+        },
+        {
+          "name": "22 POST /movimenti-stock — spostamento stessa ubicazione → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_resp_mag}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"prodotto_id\":{{prodotto_id}},\"ubicazione_da_id\":{{ubicazione_a_id}},\"ubicazione_a_id\":{{ubicazione_a_id}},\"quantita\":1,\"movimento_tipo\":\"SPOSTAMENTO\"}"
+            }
+          }
         }
       ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "admin_email",
+      "value": "admin@logichain.it"
+    },
+    {
+      "key": "admin_password",
+      "value": "Admin123!"
+    },
+    {
+      "key": "resp_magazzino_email",
+      "value": ""
+    },
+    {
+      "key": "resp_magazzino_password",
+      "value": "Test1234!"
+    },
+    {
+      "key": "operatore_email",
+      "value": ""
+    },
+    {
+      "key": "operatore_password",
+      "value": "Test1234!"
+    },
+    {
+      "key": "token_admin",
+      "value": ""
+    },
+    {
+      "key": "token_resp_mag",
+      "value": ""
+    },
+    {
+      "key": "token_no_access",
+      "value": ""
+    },
+    {
+      "key": "runId",
+      "value": ""
+    },
+    {
+      "key": "prodotto_id",
+      "value": ""
+    },
+    {
+      "key": "prodotto_sku",
+      "value": ""
+    },
+    {
+      "key": "magazzino_id",
+      "value": ""
+    },
+    {
+      "key": "magazzino_codice",
+      "value": ""
+    },
+    {
+      "key": "ubicazione_a_id",
+      "value": ""
+    },
+    {
+      "key": "ubicazione_b_id",
+      "value": ""
+    },
+    {
+      "key": "movimento_id",
+      "value": ""
+    },
+    {
+      "key": "riferimento_carico",
+      "value": ""
+    },
+    {
+      "key": "riferimento_scarico",
+      "value": ""
+    },
+    {
+      "key": "riferimento_spostamento",
+      "value": ""
     }
   ]
 }

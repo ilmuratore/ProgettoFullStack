@@ -5,6 +5,15 @@ const ubicazioniModel = require('../models/ubicazioniModel');
 const pool = require('../config/db');
 
 
+const VALID_TIPI_MOVIMENTO = [
+    'CARICO_ACQUISTO',
+    'SCARICO_VENDITA',
+    'SPOSTAMENTO',
+    'RETTIFICA_POSITIVA',
+    'RETTIFICA_NEGATIVA',
+    'RESO'
+];
+
 const throwError = (code, message) => {
     const err = new Error(message);
     err.code = code;
@@ -49,6 +58,10 @@ const getByUbicazioneId = async (ubicazione_id) => {
 };
 
 const getByTipo = async (movimento_tipo) => {
+    if (!VALID_TIPI_MOVIMENTO.includes(movimento_tipo)) {
+        throwError('VALIDATION_ERROR', `Tipo movimento non valido. Valori ammessi: ${VALID_TIPI_MOVIMENTO.join(', ')}`);
+    }
+
     const result = await movimentiStockModel.findByTipo(movimento_tipo);
     return result.rows;
 };
