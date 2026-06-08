@@ -64,12 +64,12 @@ function PageProtectedRoute({ pageId, children }: { pageId: string; children: Re
   Corriere: 5,
 };
 
-const ruoloId =
-  utente.ruolo_id ??
-  ruoloMap[utente.ruolo ?? ''];
+// const ruoloId =
+//   utente.ruolo_id ??
+//   ruoloMap[utente.ruolo ?? ''];
 
 const accessiblePages =
-  PAGINE_PER_RUOLO[ruoloId] ?? ['dashboard'];
+  PAGINE_PER_RUOLO[utente?.ruolo_id] ?? ['dashboard'];
   console.log('Utente:', utente);
   console.log('Ruolo:', utente?.ruolo_id);
   console.log('Pagine:', PAGINE_PER_RUOLO[utente?.ruolo_id]);

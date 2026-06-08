@@ -6,16 +6,13 @@ export type Role =
   | 'Corriere';
 
 export interface UtenteAPI {
-  id: number;
+ 
+   id: number;
   nome: string;
   cognome: string;
   email: string;
-
-  ruolo?: string;
-
-  ruolo_id?: number;
-  ruolo_nome?: string;
-
+  ruolo_id: number;          
+  ruolo_nome: string;       
   created_at?: string;
   updated_at?: string;
 }
