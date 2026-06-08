@@ -133,12 +133,7 @@ export function Sidebar({
 
       {/* ── Footer ── */}
       <div className={`border-t border-[#E5EAF2] space-y-1 flex-shrink-0 ${isCollapsed ? 'p-2' : 'p-3'}`}>
-        {!isCollapsed && (
-          <div className="flex items-center gap-2 px-2 py-1">
-            <div className="w-1.5 h-1.5 bg-[#22C55E] rounded-full animate-pulse" />
-            <span className="text-xs text-[#9CA3AF]">Sistema Online</span>
-          </div>
-        )}
+       
 
         {/* Collapse toggle */}
         <div className="relative group/collapse">
