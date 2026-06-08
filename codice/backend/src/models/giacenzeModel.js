@@ -1,6 +1,42 @@
 const pool = require('../config/db');
 
 
+const findAll = () =>
+    pool.query(
+        `SELECT giacenze.id,
+                giacenze.prodotto_id,
+                prodotti.sku,
+                prodotti.nome AS prodotto,
+                giacenze.ubicazione_id,
+                ubicazioni.codice AS ubicazione,
+                magazzini.nome AS magazzino,
+                giacenze.quantita
+     FROM giacenze
+     JOIN prodotti ON giacenze.prodotto_id = prodotti.id
+     JOIN ubicazioni ON giacenze.ubicazione_id = ubicazioni.id
+     JOIN magazzini ON ubicazioni.magazzino_id = magazzini.id
+     ORDER BY giacenze.id`
+    );
+
+
+const findById = (id) =>
+    pool.query(
+        `SELECT giacenze.id,
+                giacenze.prodotto_id,
+                prodotti.sku,
+                prodotti.nome AS prodotto,
+                giacenze.ubicazione_id,
+                ubicazioni.codice AS ubicazione,
+                magazzini.nome AS magazzino,
+                giacenze.quantita
+     FROM giacenze
+     JOIN prodotti ON giacenze.prodotto_id = prodotti.id
+     JOIN ubicazioni ON giacenze.ubicazione_id = ubicazioni.id
+     JOIN magazzini ON ubicazioni.magazzino_id = magazzini.id
+     WHERE giacenze.id = $1`,
+        [id]
+    );
+
 const findByProdottoId = (prodotto_id) =>
     pool.query(
         `SELECT giacenze.id,
@@ -20,8 +56,23 @@ const findByProdottoId = (prodotto_id) =>
         [prodotto_id]
     );
 
-const findByProdottoIdAndUbicazioneId = (prodotto_id, ubicazione_id, db = pool) =>
-    db.query(
+const findByUbicazioneId = (ubicazione_id) =>
+    pool.query(
+        `SELECT giacenze.id,
+                giacenze.prodotto_id,
+                prodotti.sku,
+                prodotti.nome AS prodotto,
+                giacenze.ubicazione_id,
+                giacenze.quantita
+     FROM giacenze
+     JOIN prodotti ON giacenze.prodotto_id = prodotti.id
+     WHERE giacenze.ubicazione_id = $1
+     ORDER BY prodotti.nome`,
+        [ubicazione_id]
+    );
+
+const findByProdottoIdAndUbicazioneId = (prodotto_id, ubicazione_id) =>
+    pool.query(
         `SELECT id, prodotto_id, ubicazione_id, quantita
      FROM giacenze
      WHERE prodotto_id = $1
@@ -29,48 +80,54 @@ const findByProdottoIdAndUbicazioneId = (prodotto_id, ubicazione_id, db = pool) 
         [prodotto_id, ubicazione_id]
     );
 
-const lockByProdottoIdAndUbicazioneId = (prodotto_id, ubicazione_id, db = pool) =>
-    db.query(
-        `SELECT id, prodotto_id, ubicazione_id, quantita
-     FROM giacenze
-     WHERE prodotto_id = $1
-       AND ubicazione_id = $2
-     FOR UPDATE`,
-        [prodotto_id, ubicazione_id]
-    );
 
-const incrementaQuantita = (prodotto_id, ubicazione_id, quantita, db = pool) =>
-    db.query(
-        `WITH updated AS (
-            UPDATE giacenze
-            SET quantita = quantita + $3,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE prodotto_id = $1
-              AND ubicazione_id = $2
-              AND quantita + $3 >= 0
-            RETURNING id, prodotto_id, ubicazione_id, quantita
-        ),
-        inserted AS (
-            INSERT INTO giacenze (prodotto_id, ubicazione_id, quantita)
-            SELECT $1, $2, $3
-            WHERE $3 >= 0
-              AND NOT EXISTS (
-                  SELECT 1
-                  FROM giacenze
-                  WHERE prodotto_id = $1
-                    AND ubicazione_id = $2
-              )
-            RETURNING id, prodotto_id, ubicazione_id, quantita
-        )
-        SELECT id, prodotto_id, ubicazione_id, quantita
-        FROM updated
-        UNION ALL
-        SELECT id, prodotto_id, ubicazione_id, quantita
-        FROM inserted`,
+const create = ({ prodotto_id, ubicazione_id, quantita = 0 }) =>
+    pool.query(
+        `INSERT INTO giacenze (prodotto_id, ubicazione_id, quantita)
+     SELECT $1, $2, $3
+     WHERE $3 >= 0
+     RETURNING id, prodotto_id, ubicazione_id, quantita`,
         [prodotto_id, ubicazione_id, quantita]
     );
 
+const update = (id, { prodotto_id, ubicazione_id, quantita }) =>
+    pool.query(
+        `UPDATE giacenze
+     SET prodotto_id = COALESCE($1, prodotto_id),
+         ubicazione_id = COALESCE($2, ubicazione_id),
+         quantita = COALESCE($3, quantita),
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = $4
+       AND COALESCE($3, quantita) >= 0
+     RETURNING id, prodotto_id, ubicazione_id, quantita`,
+        [prodotto_id, ubicazione_id, quantita, id]
+    );
+
+
+const incrementaQuantita = (prodotto_id, ubicazione_id, quantita) =>
+    pool.query(
+        `INSERT INTO giacenze (prodotto_id, ubicazione_id, quantita)
+     SELECT $1, $2, $3
+     WHERE $3 >= 0
+        OR EXISTS (
+            SELECT 1
+            FROM giacenze
+            WHERE prodotto_id = $1
+              AND ubicazione_id = $2
+        )
+     ON CONFLICT (prodotto_id, ubicazione_id)
+     DO UPDATE SET quantita = giacenze.quantita + $3,
+                   updated_at = CURRENT_TIMESTAMP
+     WHERE giacenze.quantita + $3 >= 0
+     RETURNING id, prodotto_id, ubicazione_id, quantita`,
+        [prodotto_id, ubicazione_id, quantita]
+    );
+
+const remove = (id) =>
+    pool.query('DELETE FROM giacenze WHERE id = $1 RETURNING id', [id]);
+
+
 module.exports = {
-    findByProdottoId, findByProdottoIdAndUbicazioneId,
-    lockByProdottoIdAndUbicazioneId, incrementaQuantita
+    findAll, findById, findByProdottoId, findByUbicazioneId, findByProdottoIdAndUbicazioneId,
+    create, update, incrementaQuantita, remove
 };

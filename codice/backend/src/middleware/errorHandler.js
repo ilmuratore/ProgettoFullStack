@@ -10,7 +10,6 @@ const errorMessages = {
     RESOURCE_NOT_FOUND:         'Risorsa non trovata',
     DUPLICATE_ENTRY:            'Record già esistente (valore duplicato)',
     CORRIERE_CON_SPEDIZIONI:    'Impossibile eliminare: il corriere ha spedizioni associate',
-    INSUFFICIENT_STOCK:         'Giacenza insufficiente',
     RATE_LIMIT:                 'Troppe richieste',
     INTERNAL_SERVER_ERROR:      'Errore interno del server'
 };
@@ -27,7 +26,6 @@ const errorStatusCodes = {
     DUPLICATE_ENTRY:            409,
     CORRIERE_CON_SPEDIZIONI:    409,
     RUOLO_NON_VALIDO:           422,
-    INSUFFICIENT_STOCK:         422,
     RATE_LIMIT:                 429,
     INTERNAL_SERVER_ERROR:      500
 };
