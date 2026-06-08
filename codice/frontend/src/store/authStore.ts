@@ -9,6 +9,23 @@ export const RUOLO_ID_TO_NOME: Record<number, string> = {
   5: 'Corriere',
 };
 
+const RUOLO_NOME_TO_ID: Record<string, number> = Object.fromEntries(
+  Object.entries(RUOLO_ID_TO_NOME).map(([id, nome]) => [nome, Number(id)])
+);
+
+function normalizzaUtente(u: UtenteAPI): UtenteAPI {
+  const ruolo_id =
+    u.ruolo_id ??
+    RUOLO_NOME_TO_ID[u.ruolo_nome ?? ''] ??
+    RUOLO_NOME_TO_ID[(u as any).ruolo ?? ''];
+  return {
+    ...u,
+    ruolo_id,
+    ruolo_nome: u.ruolo_nome ?? (ruolo_id ? RUOLO_ID_TO_NOME[ruolo_id] : undefined),
+  };
+}
+
+
 const PERMESSI_PER_RUOLO: Record<number, string[]> = {
   1: [
     'utenti:write', 'utenti:read', 'utenti:delete',
@@ -60,9 +77,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   })(),
 
   setAuth: (token, utente) => {
+    const u = normalizzaUtente(utente);
     localStorage.setItem('lc_token', token);
-    localStorage.setItem('lc_utente', JSON.stringify(utente));
-    set({ token, utente });
+    localStorage.setItem('lc_utente', JSON.stringify(u));
+    set({ token, utente:u  });
   },
 
   logout: () => {

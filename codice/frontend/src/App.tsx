@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router';
 import { Toaster } from 'sonner';
 
 import { Sidebar } from './components/layout/Sidebar';
@@ -44,40 +44,14 @@ const PATH_TO_PAGE: Record<string, string> = Object.fromEntries(
   Object.entries(PAGE_TO_PATH).map(([k, v]) => [v, k])
 );
 
-// ─── ProtectedRoute ───────────────────────────────────────────────────────────
-
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { token, utente } = useAuthStore();
-  if (!token || !utente) return <Navigate to="/login" replace />;
-  return <>{children}</>;
-}
+// ─── PageProtectedRoute ───────────────────────────────────────────────────────
+// Solo RBAC: l'auth check è già in AppShell (layout padre).
 
 function PageProtectedRoute({ pageId, children }: { pageId: string; children: React.ReactNode }) {
- 
-  const { token, utente } = useAuthStore();
-  if (!token || !utente) return <Navigate to="/login" replace />;
-  const ruoloMap: Record<string, number> = {
-  Admin: 1,
-  'Responsabile Acquisti': 2,
-  'Responsabile Magazzino': 3,
-  Operatore: 4,
-  Corriere: 5,
-};
-
-const ruoloId =
-  utente.ruolo_id ??
-  ruoloMap[utente.ruolo ?? ''];
-
-const accessiblePages =
-  PAGINE_PER_RUOLO[ruoloId] ?? ['dashboard'];
-  console.log('Utente:', utente);
-  console.log('Ruolo:', utente?.ruolo_id);
-  console.log('Pagine:', PAGINE_PER_RUOLO[utente?.ruolo_id]);
-  console.log("UTENTE COMPLETO", utente);
-  console.log("CHIAVI", Object.keys(utente || {}));
+  const { utente } = useAuthStore();
+  const accessiblePages = PAGINE_PER_RUOLO[utente?.ruolo_id ?? 0] ?? ['dashboard'];
   if (!accessiblePages.includes(pageId)) return <Navigate to="/" replace />;
   return <>{children}</>;
-  
 }
 
 // ─── LoginWrapper ─────────────────────────────────────────────────────────────
@@ -85,9 +59,8 @@ const accessiblePages =
 function LoginWrapper() {
   const { token, utente } = useAuthStore();
   const navigate = useNavigate();
-  const isAuth = !!(token && utente);
 
-  if (isAuth) return <Navigate to="/" replace />;
+  if (token && utente) return <Navigate to="/" replace />;
 
   return (
     <LoginPage
@@ -97,9 +70,11 @@ function LoginWrapper() {
 }
 
 // ─── AppShell ─────────────────────────────────────────────────────────────────
+// Layout condiviso per tutte le rotte autenticate.
+// Monta UNA SOLA VOLTA per sessione — authApi.me() non si riesegue ad ogni navigazione.
 
-function AppShell({ children }: { children: React.ReactNode }) {
-  const { utente, logout, setAuth } = useAuthStore();
+function AppShell() {
+  const { token, utente, logout, setAuth } = useAuthStore();
   const navigate  = useNavigate();
   const location  = useLocation();
 
@@ -107,24 +82,25 @@ function AppShell({ children }: { children: React.ReactNode }) {
     () => localStorage.getItem('sidebar-collapsed') === 'true'
   );
 
+  // me() chiamato una sola volta al mount del layout, non ad ogni cambio pagina.
   useEffect(() => {
-    const token = localStorage.getItem('lc_token');
-    if (!token) return;
+    const storedToken = localStorage.getItem('lc_token');
+    if (!storedToken) return;
     authApi.me()
-      .then((u) => setAuth(token, u))
+      .then((u) => setAuth(storedToken, u))
       .catch(() => {});
   }, []);
 
-  if (!utente) return null;
+  // Zustand inizializza token/utente da localStorage al primo render,
+  // quindi questo redirect scatta solo in caso di logout o token assente.
+  if (!token || !utente) return <Navigate to="/login" replace />;
 
-  const ruoloNome =
-  (
+  const ruoloNome = (
     utente.ruolo_nome ??
-    utente.ruolo ??
     RUOLO_ID_TO_NOME[utente.ruolo_id] ??
     'Utente'
   ) as Role;
-  const ruolo = utente.ruolo ?? utente.ruolo_nome;
+
   const accessiblePages = (PAGINE_PER_RUOLO[utente.ruolo_id] ?? ['dashboard']) as string[];
   const initials        = `${utente.nome?.[0] ?? ''}${utente.cognome?.[0] ?? ''}`.toUpperCase();
   const activePage      = PATH_TO_PAGE[location.pathname] ?? 'dashboard';
@@ -167,7 +143,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
         onLogout={logout}
       />
       <main className={`mt-16 p-6 transition-all duration-300 ${sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]'}`}>
-        {children}
+        <Outlet />
       </main>
     </div>
   );
@@ -183,64 +159,39 @@ function AppRouter() {
     <Routes>
       <Route path="/login" element={<LoginWrapper />} />
 
-      {/* Pagine principali con RBAC */}
-      <Route path="/" element={
-        <PageProtectedRoute pageId="dashboard">
-          <AppShell><DashboardPage /></AppShell>
-        </PageProtectedRoute>
-      } />
-      <Route path="/anagrafiche" element={
-        <PageProtectedRoute pageId="anagrafiche">
-          <AppShell><AnagrafichePage /></AppShell>
-        </PageProtectedRoute>
-      } />
-      <Route path="/magazzino" element={
-        <PageProtectedRoute pageId="magazzino">
-          <AppShell><WarehousePage /></AppShell>
-        </PageProtectedRoute>
-      } />
-      <Route path="/acquisti" element={
-        <PageProtectedRoute pageId="acquisti">
-          <AppShell><PurchasesPage /></AppShell>
-        </PageProtectedRoute>
-      } />
-      <Route path="/vendite" element={
-        <PageProtectedRoute pageId="vendite">
-          <AppShell><SalesPage /></AppShell>
-        </PageProtectedRoute>
-      } />
-      <Route path="/logistica" element={
-        <PageProtectedRoute pageId="logistica">
-          <AppShell><LogisticsPage /></AppShell>
-        </PageProtectedRoute>
-      } />
-      <Route path="/amministrazione" element={
-        <PageProtectedRoute pageId="amministrazione">
-          <AppShell><AdministrationPage /></AppShell>
-        </PageProtectedRoute>
-      } />
+      {/* AppShell come layout condiviso — monta una sola volta per tutta la sessione */}
+      <Route element={<AppShell />}>
 
-      {/* Pagine utente — accessibili a tutti gli utenti autenticati */}
-      <Route path="/profilo" element={
-        <ProtectedRoute>
-          <AppShell><UserProfilePage /></AppShell>
-        </ProtectedRoute>
-      } />
-      <Route path="/sicurezza" element={
-        <ProtectedRoute>
-          <AppShell><SicurezzaPage /></AppShell>
-        </ProtectedRoute>
-      } />
-      <Route path="/preferenze" element={
-        <ProtectedRoute>
-          <AppShell><PreferenzePage /></AppShell>
-        </ProtectedRoute>
-      } />
-      <Route path="/supporto" element={
-        <ProtectedRoute>
-          <AppShell><SupportoPage /></AppShell>
-        </ProtectedRoute>
-      } />
+        {/* Pagine principali con RBAC */}
+        <Route path="/" element={
+          <PageProtectedRoute pageId="dashboard"><DashboardPage /></PageProtectedRoute>
+        } />
+        <Route path="/anagrafiche" element={
+          <PageProtectedRoute pageId="anagrafiche"><AnagrafichePage /></PageProtectedRoute>
+        } />
+        <Route path="/magazzino" element={
+          <PageProtectedRoute pageId="magazzino"><WarehousePage /></PageProtectedRoute>
+        } />
+        <Route path="/acquisti" element={
+          <PageProtectedRoute pageId="acquisti"><PurchasesPage /></PageProtectedRoute>
+        } />
+        <Route path="/vendite" element={
+          <PageProtectedRoute pageId="vendite"><SalesPage /></PageProtectedRoute>
+        } />
+        <Route path="/logistica" element={
+          <PageProtectedRoute pageId="logistica"><LogisticsPage /></PageProtectedRoute>
+        } />
+        <Route path="/amministrazione" element={
+          <PageProtectedRoute pageId="amministrazione"><AdministrationPage /></PageProtectedRoute>
+        } />
+
+        {/* Pagine utente — accessibili a tutti gli autenticati */}
+        <Route path="/profilo"    element={<UserProfilePage />} />
+        <Route path="/sicurezza"  element={<SicurezzaPage />} />
+        <Route path="/preferenze" element={<PreferenzePage />} />
+        <Route path="/supporto"   element={<SupportoPage />} />
+
+      </Route>
 
       <Route path="*" element={<Navigate to={isAuth ? '/' : '/login'} replace />} />
     </Routes>

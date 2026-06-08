@@ -11,8 +11,7 @@
     "seed_admin": "node seeds/seed_admin.js",
     "migrate:down": "node-pg-migrate down",
     "migrate:redo": "node-pg-migrate redo",
-    "migrate:create": "node-pg-migrate create",
-    "seed_m05": "node seeds/seed_m05_permessi.js"
+    "migrate:create": "node-pg-migrate create"
   },
   "keywords": [],
   "author": "",
