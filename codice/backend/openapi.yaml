@@ -2,9 +2,9 @@ openapi: 3.0.3
 
 info:
   title: LogiChain ERP — API
-  version: "1.0.0"
+  version: "2.0.0"
   description: |
-    API REST per LogiChain ERP — milestone M01–M06.
+    API REST per LogiChain ERP — milestone M01–M07.
 
     ## Autenticazione
     Tutte le rotte (eccetto `POST /auth/login`) richiedono un token JWT nell'header:
@@ -34,6 +34,7 @@ info:
     | `ACCESS_DENIED` | 403 | Permesso insufficiente |
     | `RESOURCE_NOT_FOUND` | 404 | Risorsa non trovata |
     | `DUPLICATE_ENTRY` | 409 | Violazione unicità (SKU, P.IVA, codice...) |
+    | `INSUFFICIENT_STOCK` | 422 | Giacenza insufficiente per il movimento richiesto |
     | `INTERNAL_SERVER_ERROR` | 500 | Errore generico server |
 
     ## RBAC — Permessi per modulo
@@ -46,6 +47,7 @@ info:
     | `corrieri:read` / `corrieri:write` / `corrieri:delete` | Corrieri |
     | `dipendenti:read` / `dipendenti:write` / `dipendenti:delete` | Dipendenti |
     | `magazzino:read` / `magazzino:write` | Magazzini e Ubicazioni |
+    | `giacenze:read` / `giacenze:write` | Giacenze e Movimenti Stock |
 
 servers:
   - url: http://localhost:3000/api/v1
@@ -70,6 +72,10 @@ tags:
     description: Gestione magazzini e ubicazioni (M06)
   - name: Ubicazioni
     description: Slot fisici all'interno dei magazzini (M06)
+  - name: Giacenze
+    description: Livelli di stock per prodotto/ubicazione (M07)
+  - name: MovimentiStock
+    description: Registro append-only di tutti i movimenti di magazzino (M07)
 
 # ─────────────────────────────────────────────
 # COMPONENTI RIUTILIZZABILI
@@ -142,6 +148,17 @@ components:
 
     NoContent:
       description: Eliminazione completata (nessun body)
+
+    InsufficientStock:
+      description: Giacenza insufficiente per completare il movimento
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            status: error
+            code: INSUFFICIENT_STOCK
+            message: Giacenza insufficiente per completare il movimento
+            details: []
 
   schemas:
 
@@ -472,6 +489,109 @@ components:
       required: [temperatura_controllata]
       properties:
         temperatura_controllata: { type: boolean, example: true }
+
+    # ── GIACENZE & MOVIMENTI STOCK (M07) ──────
+
+    Giacenza:
+      description: |
+        Livello di stock di un prodotto in un'ubicazione specifica.
+        Generato da `giacenzeModel.findByProdottoId` con JOIN su prodotti, ubicazioni, magazzini.
+      type: object
+      properties:
+        id:           { type: integer, example: 23 }
+        prodotto_id:  { type: integer, example: 7 }
+        sku:          { type: string,  example: VLV-001 }
+        prodotto:     { type: string,  example: "Valvola a sfera 1/2\"", description: "nome del prodotto" }
+        ubicazione_id: { type: integer, example: 12 }
+        ubicazione:   { type: string,  example: "1-02-05", description: "codice ubicazione storato nel DB" }
+        magazzino:    { type: string,  example: "Magazzino principale Sesto", description: "nome magazzino" }
+        quantita:     { type: integer, example: 85 }
+
+    MovimentoStock:
+      description: |
+        Record singolo nel registro append-only dei movimenti di magazzino.
+        `quantita` è sempre positiva — la direzione è determinata da `tipo`.
+        Per SPOSTAMENTO vengono creati **due** record separati (SCARICO sulla sorgente + CARICO sulla destinazione).
+      type: object
+      properties:
+        id:           { type: integer, example: 41 }
+        prodotto_id:  { type: integer, example: 7 }
+        sku:          { type: string,  example: VLV-001 }
+        prodotto:     { type: string,  example: "Valvola a sfera 1/2\"" }
+        ubicazione_id: { type: integer, example: 12 }
+        ubicazione:   { type: string,  example: "1-02-05" }
+        quantita:     { type: integer, example: 10, description: "Sempre positiva. La direzione del flusso è determinata da `tipo`." }
+        tipo:
+          type: string
+          enum: [CARICO_ACQUISTO, SCARICO_VENDITA, SPOSTAMENTO, RETTIFICA_POSITIVA, RETTIFICA_NEGATIVA, RESO]
+          example: CARICO_ACQUISTO
+        riferimento:  { type: string,  example: "ordine_acquisto:42", nullable: true, description: "Documento sorgente in formato {tipo}:{id}" }
+        note:         { type: string,  example: "Ricevuto con DDT 2026-0031", nullable: true, description: "Obbligatorio per RETTIFICA_POSITIVA e RETTIFICA_NEGATIVA" }
+        created_at:   { type: string,  format: date-time, example: "2026-06-08T10:15:00.000Z" }
+
+    MovimentoStockCreateRequest:
+      type: object
+      required: [prodotto_id, quantita, movimento_tipo]
+      description: |
+        ## Campi per tipo di movimento
+
+        | `movimento_tipo` | Campi ubicazione richiesti | `note` |
+        |---|---|---|
+        | `CARICO_ACQUISTO` | `ubicazione_id` | opzionale |
+        | `SCARICO_VENDITA` | `ubicazione_id` | opzionale |
+        | `RETTIFICA_POSITIVA` | `ubicazione_id` | **obbligatoria** |
+        | `RETTIFICA_NEGATIVA` | `ubicazione_id` | **obbligatoria** |
+        | `RESO` | `ubicazione_id` | opzionale |
+        | `SPOSTAMENTO` | `ubicazione_da_id` + `ubicazione_a_id` (devono essere diversi) | opzionale |
+
+        `quantita` è sempre un intero positivo ≥ 1.
+        Per SPOSTAMENTO, `ubicazione_da_id` e `ubicazione_a_id` sostituiscono `ubicazione_id`.
+      properties:
+        prodotto_id:
+          type: integer
+          minimum: 1
+          example: 7
+        ubicazione_id:
+          type: integer
+          minimum: 1
+          example: 12
+          description: "Richiesto per tutti i tipi eccetto SPOSTAMENTO."
+        ubicazione_da_id:
+          type: integer
+          minimum: 1
+          example: 12
+          description: "Solo per SPOSTAMENTO: ubicazione di partenza."
+        ubicazione_a_id:
+          type: integer
+          minimum: 1
+          example: 15
+          description: "Solo per SPOSTAMENTO: ubicazione di arrivo. Deve essere diversa da ubicazione_da_id."
+        quantita:
+          type: integer
+          minimum: 1
+          example: 10
+        movimento_tipo:
+          type: string
+          enum: [CARICO_ACQUISTO, SCARICO_VENDITA, SPOSTAMENTO, RETTIFICA_POSITIVA, RETTIFICA_NEGATIVA, RESO]
+          example: CARICO_ACQUISTO
+        riferimento:
+          type: string
+          example: "ordine_acquisto:42"
+          description: "Identificativo documento sorgente. Convenzione: {tipo}:{id}."
+        note:
+          type: string
+          example: "Allineamento inventariale Q2 2026"
+          description: "Obbligatorie per RETTIFICA_POSITIVA e RETTIFICA_NEGATIVA."
+
+    SpostamentoResult:
+      description: |
+        Risposta per `movimento_tipo=SPOSTAMENTO`.
+        Lo spostamento genera sempre **due record**: SCARICO sull'ubicazione di partenza e CARICO su quella di arrivo.
+        Entrambi i record hanno `tipo=SPOSTAMENTO` e lo stesso `riferimento`.
+      type: object
+      properties:
+        scarico: { $ref: '#/components/schemas/MovimentoStock' }
+        carico:  { $ref: '#/components/schemas/MovimentoStock' }
 
 # ─────────────────────────────────────────────
 # SECURITY DEFAULT
@@ -1877,3 +1997,477 @@ paths:
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
         "404": { $ref: '#/components/responses/NotFound' }
+
+  # ══════════════════════════════════════════
+  # M07 — GIACENZE
+  # ══════════════════════════════════════════
+
+  /giacenze/{prodotto_id}:
+    parameters:
+      - name: prodotto_id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 7
+
+    get:
+      tags: [Giacenze]
+      summary: Giacenze per prodotto
+      description: |
+        Restituisce tutti gli slot in cui il prodotto ha giacenza,
+        con nome magazzino, codice ubicazione e quantità.
+        Restituisce array vuoto se il prodotto non ha ancora movimenti.
+        Richiede permesso `giacenze:read`.
+      x-required-permission: giacenze:read
+      responses:
+        "200":
+          description: Lista giacenze del prodotto
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Giacenza' }
+              example:
+                status: success
+                data:
+                  - id: 23
+                    prodotto_id: 7
+                    sku: VLV-001
+                    prodotto: "Valvola a sfera 1/2\""
+                    ubicazione_id: 12
+                    ubicazione: "1-02-05"
+                    magazzino: "Magazzino principale Sesto"
+                    quantita: 85
+                  - id: 31
+                    prodotto_id: 7
+                    sku: VLV-001
+                    prodotto: "Valvola a sfera 1/2\""
+                    ubicazione_id: 18
+                    ubicazione: "1-03-01"
+                    magazzino: "Magazzino principale Sesto"
+                    quantita: 40
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404":
+          description: Prodotto non trovato o disattivato
+          content:
+            application/json:
+              example:
+                status: error
+                code: RESOURCE_NOT_FOUND
+                message: Prodotto non trovato
+                details: []
+
+  # ══════════════════════════════════════════
+  # M07 — MOVIMENTI STOCK
+  # ══════════════════════════════════════════
+
+  /movimenti-stock:
+    get:
+      tags: [MovimentiStock]
+      summary: Lista tutti i movimenti
+      description: |
+        Restituisce tutti i movimenti in ordine cronologico inverso (`created_at DESC`).
+        Il registro è append-only — UPDATE e DELETE sono bloccati a livello DB da RULES PostgreSQL.
+        Richiede permesso `giacenze:read`.
+      x-required-permission: giacenze:read
+      responses:
+        "200":
+          description: Lista movimenti stock
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/MovimentoStock' }
+              example:
+                status: success
+                data:
+                  - id: 42
+                    prodotto_id: 7
+                    sku: VLV-001
+                    prodotto: "Valvola a sfera 1/2\""
+                    ubicazione_id: 12
+                    ubicazione: "1-02-05"
+                    quantita: 10
+                    tipo: CARICO_ACQUISTO
+                    riferimento: "ordine_acquisto:15"
+                    note: null
+                    created_at: "2026-06-08T10:15:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+    post:
+      tags: [MovimentiStock]
+      summary: Registra un movimento stock
+      description: |
+        Crea un movimento stock e aggiorna atomicamente la giacenza nella tabella `giacenze`.
+        Tutte le operazioni avvengono in una transazione `BEGIN/COMMIT`.
+
+        ### Tipi di movimento e comportamento
+
+        | Tipo | Effetto su giacenza | Note obbligatorie |
+        |---|---|---|
+        | `CARICO_ACQUISTO` | +quantita sull'ubicazione | No |
+        | `SCARICO_VENDITA` | -quantita dall'ubicazione | No |
+        | `RETTIFICA_POSITIVA` | +quantita sull'ubicazione | **Sì** |
+        | `RETTIFICA_NEGATIVA` | -quantita dall'ubicazione | **Sì** |
+        | `RESO` | +quantita sull'ubicazione | No |
+        | `SPOSTAMENTO` | -quantita da `ubicazione_da_id`, +quantita su `ubicazione_a_id` | No |
+
+        Per `SPOSTAMENTO` la risposta contiene `{ scarico, carico }` invece del singolo record.
+        Per tutti gli altri tipi la risposta contiene il singolo record creato.
+
+        Richiede permesso `giacenze:write`.
+      x-required-permission: giacenze:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MovimentoStockCreateRequest' }
+            examples:
+              carico_acquisto:
+                summary: Carico da acquisto
+                value:
+                  prodotto_id: 7
+                  ubicazione_id: 12
+                  quantita: 50
+                  movimento_tipo: CARICO_ACQUISTO
+                  riferimento: "ordine_acquisto:42"
+              scarico_vendita:
+                summary: Scarico per vendita
+                value:
+                  prodotto_id: 7
+                  ubicazione_id: 12
+                  quantita: 5
+                  movimento_tipo: SCARICO_VENDITA
+                  riferimento: "ordine:88"
+              rettifica_positiva:
+                summary: Rettifica inventariale positiva
+                value:
+                  prodotto_id: 7
+                  ubicazione_id: 12
+                  quantita: 3
+                  movimento_tipo: RETTIFICA_POSITIVA
+                  riferimento: "inventario:2026-Q2"
+                  note: "Allineamento conteggio fisico Q2 2026"
+              rettifica_negativa:
+                summary: Rettifica inventariale negativa
+                value:
+                  prodotto_id: 7
+                  ubicazione_id: 12
+                  quantita: 2
+                  movimento_tipo: RETTIFICA_NEGATIVA
+                  riferimento: "inventario:2026-Q2"
+                  note: "Scarti rilevati durante conteggio Q2 2026"
+              reso:
+                summary: Reso da cliente
+                value:
+                  prodotto_id: 7
+                  ubicazione_id: 12
+                  quantita: 1
+                  movimento_tipo: RESO
+                  riferimento: "ordine:88"
+              spostamento:
+                summary: Spostamento inter-slot
+                value:
+                  prodotto_id: 7
+                  ubicazione_da_id: 12
+                  ubicazione_a_id: 15
+                  quantita: 20
+                  movimento_tipo: SPOSTAMENTO
+                  riferimento: "riorganizzazione:2026-06"
+      responses:
+        "201":
+          description: |
+            Movimento registrato. La risposta varia in base al tipo:
+            - Tutti i tipi eccetto SPOSTAMENTO → `data` contiene il singolo `MovimentoStock`.
+            - SPOSTAMENTO → `data` contiene `{ scarico: MovimentoStock, carico: MovimentoStock }`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    oneOf:
+                      - $ref: '#/components/schemas/MovimentoStock'
+                      - $ref: '#/components/schemas/SpostamentoResult'
+              examples:
+                carico:
+                  summary: Risposta carico/scarico/rettifica/reso
+                  value:
+                    status: success
+                    data:
+                      id: 43
+                      prodotto_id: 7
+                      sku: VLV-001
+                      prodotto: "Valvola a sfera 1/2\""
+                      ubicazione_id: 12
+                      ubicazione: "1-02-05"
+                      quantita: 50
+                      tipo: CARICO_ACQUISTO
+                      riferimento: "ordine_acquisto:42"
+                      note: null
+                      created_at: "2026-06-08T10:30:00.000Z"
+                spostamento:
+                  summary: Risposta spostamento
+                  value:
+                    status: success
+                    data:
+                      scarico:
+                        id: 44
+                        prodotto_id: 7
+                        sku: VLV-001
+                        prodotto: "Valvola a sfera 1/2\""
+                        ubicazione_id: 12
+                        ubicazione: "1-02-05"
+                        quantita: 20
+                        tipo: SPOSTAMENTO
+                        riferimento: "riorganizzazione:2026-06"
+                        note: null
+                        created_at: "2026-06-08T10:35:00.000Z"
+                      carico:
+                        id: 45
+                        prodotto_id: 7
+                        sku: VLV-001
+                        prodotto: "Valvola a sfera 1/2\""
+                        ubicazione_id: 15
+                        ubicazione: "1-03-01"
+                        quantita: 20
+                        tipo: SPOSTAMENTO
+                        riferimento: "riorganizzazione:2026-06"
+                        note: null
+                        created_at: "2026-06-08T10:35:00.000Z"
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404":
+          description: Prodotto o ubicazione non trovata
+          content:
+            application/json:
+              example:
+                status: error
+                code: RESOURCE_NOT_FOUND
+                message: Prodotto non trovato
+                details: []
+        "422": { $ref: '#/components/responses/InsufficientStock' }
+
+  /movimenti-stock/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 43
+
+    get:
+      tags: [MovimentiStock]
+      summary: Dettaglio movimento per ID
+      description: Richiede permesso `giacenze:read`.
+      x-required-permission: giacenze:read
+      responses:
+        "200":
+          description: Dettaglio movimento
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/MovimentoStock' }
+              example:
+                status: success
+                data:
+                  id: 43
+                  prodotto_id: 7
+                  sku: VLV-001
+                  prodotto: "Valvola a sfera 1/2\""
+                  ubicazione_id: 12
+                  ubicazione: "1-02-05"
+                  quantita: 50
+                  tipo: CARICO_ACQUISTO
+                  riferimento: "ordine_acquisto:42"
+                  note: null
+                  created_at: "2026-06-08T10:30:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /movimenti-stock/prodotto/{prodotto_id}:
+    parameters:
+      - name: prodotto_id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 7
+
+    get:
+      tags: [MovimentiStock]
+      summary: Movimenti per prodotto
+      description: |
+        Restituisce lo storico movimenti di un prodotto specifico in ordine cronologico inverso.
+        Verifica che il prodotto esista e sia attivo.
+        Richiede permesso `giacenze:read`.
+      x-required-permission: giacenze:read
+      responses:
+        "200":
+          description: Lista movimenti del prodotto
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/MovimentoStock' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404":
+          description: Prodotto non trovato o disattivato
+          content:
+            application/json:
+              example:
+                status: error
+                code: RESOURCE_NOT_FOUND
+                message: Prodotto non trovato
+                details: []
+
+  /movimenti-stock/ubicazione/{ubicazione_id}:
+    parameters:
+      - name: ubicazione_id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 12
+
+    get:
+      tags: [MovimentiStock]
+      summary: Movimenti per ubicazione
+      description: |
+        Restituisce lo storico movimenti di uno slot specifico in ordine cronologico inverso.
+        Verifica che l'ubicazione esista.
+        Richiede permesso `giacenze:read`.
+      x-required-permission: giacenze:read
+      responses:
+        "200":
+          description: Lista movimenti dell'ubicazione
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/MovimentoStock' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404":
+          description: Ubicazione non trovata
+          content:
+            application/json:
+              example:
+                status: error
+                code: RESOURCE_NOT_FOUND
+                message: Ubicazione non trovata
+                details: []
+
+  /movimenti-stock/tipo/{movimento_tipo}:
+    parameters:
+      - name: movimento_tipo
+        in: path
+        required: true
+        schema:
+          type: string
+          enum: [CARICO_ACQUISTO, SCARICO_VENDITA, SPOSTAMENTO, RETTIFICA_POSITIVA, RETTIFICA_NEGATIVA, RESO]
+        example: SPOSTAMENTO
+
+    get:
+      tags: [MovimentiStock]
+      summary: Movimenti per tipo
+      description: |
+        Filtra il registro per tipo di movimento in ordine cronologico inverso.
+        Restituisce 400 se `movimento_tipo` non è un valore valido dell'enum.
+        Richiede permesso `giacenze:read`.
+      x-required-permission: giacenze:read
+      responses:
+        "200":
+          description: Lista movimenti del tipo specificato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/MovimentoStock' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  /movimenti-stock/riferimento/{riferimento}:
+    parameters:
+      - name: riferimento
+        in: path
+        required: true
+        schema: { type: string }
+        example: "ordine_acquisto:42"
+
+    get:
+      tags: [MovimentiStock]
+      summary: Movimenti per riferimento
+      description: |
+        Filtra il registro per il campo `riferimento` (match esatto).
+        Utile per recuperare tutti i record associati a un documento sorgente.
+        Per uno SPOSTAMENTO restituisce 2 record (scarico + carico) con lo stesso riferimento.
+        Richiede permesso `giacenze:read`.
+      x-required-permission: giacenze:read
+      responses:
+        "200":
+          description: Lista movimenti con quel riferimento
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/MovimentoStock' }
+              example:
+                status: success
+                data:
+                  - id: 44
+                    prodotto_id: 7
+                    sku: VLV-001
+                    prodotto: "Valvola a sfera 1/2\""
+                    ubicazione_id: 12
+                    ubicazione: "1-02-05"
+                    quantita: 20
+                    tipo: SPOSTAMENTO
+                    riferimento: "riorganizzazione:2026-06"
+                    note: null
+                    created_at: "2026-06-08T10:35:00.000Z"
+                  - id: 45
+                    prodotto_id: 7
+                    sku: VLV-001
+                    prodotto: "Valvola a sfera 1/2\""
+                    ubicazione_id: 15
+                    ubicazione: "1-03-01"
+                    quantita: 20
+                    tipo: SPOSTAMENTO
+                    riferimento: "riorganizzazione:2026-06"
+                    note: null
+                    created_at: "2026-06-08T10:35:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }

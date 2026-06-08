@@ -23,6 +23,13 @@ module.exports = (blueprint) => {
                 });
             }
 
+            if (rules.enum && Array.isArray(rules.enum) && !rules.enum.includes(value)) {
+                errors.push({
+                    field,
+                    message: `${field} deve essere uno di: ${rules.enum.join(', ')}`
+                });
+            }
+
             if (rules.minLength && typeof value === 'string' && value.length < rules.minLength) {
                 errors.push({
                     field,
