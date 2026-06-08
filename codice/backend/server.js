@@ -60,8 +60,8 @@ app.use('/api/v1/magazzini',  require('./src/routes/magazziniRoutes'));
 app.use('/api/v1/ubicazioni', require('./src/routes/ubicazioniRoutes'));
 
 // M07 — Giacenze & Movimenti Stock
-app.use('/api/v1/giacenze',         require('./src/routes/giacenzeRoutes'));
-app.use('/api/v1/movimenti-stock',  require('./src/routes/movimenti_stockRoutes'));
+// app.use('/api/v1/giacenze',         require('./src/routes/giacenzeRoutes'));
+// app.use('/api/v1/movimenti-stock',  require('./src/routes/movimentiStockRoutes'));
 
 // M08 — Ordini in Entrata (Purchase Orders)
 // app.use('/api/v1/ordini-acquisto',  require('./src/routes/ordiniAcquistoRoutes'));
