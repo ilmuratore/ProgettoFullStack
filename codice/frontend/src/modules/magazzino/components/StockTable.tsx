@@ -71,7 +71,7 @@ export function StockTable() {
 
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="sticky top-0 bg-white z-10">
+          <thead className="sticky top-0 bg-white">
             <tr className="border-b border-[#E5EAF2]">
               <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">
                 <button className="flex items-center gap-2 hover:text-[#2D2D2D]">
