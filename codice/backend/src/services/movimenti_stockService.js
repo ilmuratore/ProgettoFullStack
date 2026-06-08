@@ -118,7 +118,7 @@ const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione
 
             await giacenzeModel.incrementaQuantita(prodotto_id, ubicazione_a_id, quantita, client);
 
-            const scaricoResult = await movimentiStockModel.create({
+            const movimentoScaricoResult = await movimentiStockModel.create({
                 prodotto_id,
                 ubicazione_id: ubicazione_da_id,
                 quantita,
@@ -127,7 +127,7 @@ const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione
                 note
             }, client);
 
-            const caricoResult = await movimentiStockModel.create({
+            const movimentoCaricoResult = await movimentiStockModel.create({
                 prodotto_id,
                 ubicazione_id: ubicazione_a_id,
                 quantita,
@@ -138,10 +138,10 @@ const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione
 
             await client.query('COMMIT');
 
-            return [
-                scaricoResult.rows[0],
-                caricoResult.rows[0]
-            ];
+            return {
+                scarico: movimentoScaricoResult.rows[0],
+                carico: movimentoCaricoResult.rows[0]
+            };
         } catch (err) {
             await client.query('ROLLBACK');
             throw err;
