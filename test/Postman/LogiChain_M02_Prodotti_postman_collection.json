@@ -90,7 +90,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Op\",\n  \"cognome\": \"Eratore\",\n  \"email\": \"{{operatorEmail}}\",\n  \"password\": \"{{operatorPassword}}\",\n  \"ruolo_id\": 4\n}",
+              "raw": "{\n  \"nome\": \"Op\",\n  \"cognome\": \"Eratore\",\n  \"email\": \"{{operatorEmail}}\",\n  \"password\": \"{{operatorPassword}}\",\n  \"ruolo_id\": 9\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -136,7 +136,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Cor\",\n  \"cognome\": \"Riere\",\n  \"email\": \"{{corriereEmail}}\",\n  \"password\": \"{{corrierePassword}}\",\n  \"ruolo_id\": 5\n}",
+              "raw": "{\n  \"nome\": \"Cor\",\n  \"cognome\": \"Riere\",\n  \"email\": \"{{corriereEmail}}\",\n  \"password\": \"{{corrierePassword}}\",\n  \"ruolo_id\": 10\n}",
               "options": {
                 "raw": {
                   "language": "json"

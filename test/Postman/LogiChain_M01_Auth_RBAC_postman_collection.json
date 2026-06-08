@@ -210,7 +210,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Test\",\n  \"cognome\": \"M01\",\n  \"email\": \"{{test_email}}\",\n  \"password\": \"Test1234!\",\n  \"ruolo_id\": 3\n}",
+              "raw": "{\n  \"nome\": \"Test\",\n  \"cognome\": \"M01\",\n  \"email\": \"{{test_email}}\",\n  \"password\": \"Test1234!\",\n  \"ruolo_id\": 8\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -229,7 +229,7 @@
                   "pm.test('03 status = success', () => pm.expect(b.status).to.eql('success'));",
                   "pm.test('03 id numerico', () => pm.expect(b.data.id).to.be.a('number'));",
                   "pm.test('03 email corrisponde', () => pm.expect(b.data.email).to.eql(pm.collectionVariables.get('test_email')));",
-                  "pm.test('03 ruolo = Responsabile Magazzino', () => pm.expect(b.data.ruolo).to.eql('Responsabile Magazzino'));",
+                  "pm.test('03 ruolo = Resp. Magazzino', () => pm.expect(b.data.ruolo).to.eql('Resp. Magazzino'));",
                   "pm.collectionVariables.set('utente_id', b.data.id);"
                 ],
                 "type": "text/javascript"
@@ -266,7 +266,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Dup\",\n  \"cognome\": \"Test\",\n  \"email\": \"{{test_email_dup}}\",\n  \"password\": \"Dup1234!\",\n  \"ruolo_id\": 3\n}",
+              "raw": "{\n  \"nome\": \"Dup\",\n  \"cognome\": \"Test\",\n  \"email\": \"{{test_email_dup}}\",\n  \"password\": \"Dup1234!\",\n  \"ruolo_id\": 8\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -370,7 +370,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"cognome\": \"Test\",\n  \"email\": \"nomissing@logichain.it\",\n  \"password\": \"Test1234!\",\n  \"ruolo_id\": 3\n}",
+              "raw": "{\n  \"cognome\": \"Test\",\n  \"email\": \"nomissing@logichain.it\",\n  \"password\": \"Test1234!\",\n  \"ruolo_id\": 8\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -427,7 +427,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Test\",\n  \"cognome\": \"Short\",\n  \"email\": \"shortpwd@logichain.it\",\n  \"password\": \"abc\",\n  \"ruolo_id\": 3\n}",
+              "raw": "{\n  \"nome\": \"Test\",\n  \"cognome\": \"Short\",\n  \"email\": \"shortpwd@logichain.it\",\n  \"password\": \"abc\",\n  \"ruolo_id\": 8\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -539,7 +539,7 @@
                 "exec": [
                   "var b = pm.response.json();",
                   "pm.test('09 GET /me Resp. Magazzino -> 200', () => pm.response.to.have.status(200));",
-                  "pm.test('09 ruolo = Responsabile Magazzino', () => pm.expect(b.data.ruolo).to.eql('Responsabile Magazzino'));",
+                  "pm.test('09 ruolo = Resp. Magazzino', () => pm.expect(b.data.ruolo).to.eql('Resp. Magazzino'));",
                   "pm.test('09 id corrisponde all utente registrato', () => {",
                   "  pm.expect(b.data.id).to.eql(Number(pm.collectionVariables.get('utente_id')));",
                   "});"
@@ -578,7 +578,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Test\",\n  \"cognome\": \"RBAC\",\n  \"email\": \"rbac_test@logichain.it\",\n  \"password\": \"Test1234!\",\n  \"ruolo_id\": 4\n}",
+              "raw": "{\n  \"nome\": \"Test\",\n  \"cognome\": \"RBAC\",\n  \"email\": \"rbac_test@logichain.it\",\n  \"password\": \"Test1234!\",\n  \"ruolo_id\": 9\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -804,7 +804,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Test\",\n  \"cognome\": \"Noauth\",\n  \"email\": \"noauth@logichain.it\",\n  \"password\": \"Test1234!\",\n  \"ruolo_id\": 4\n}",
+              "raw": "{\n  \"nome\": \"Test\",\n  \"cognome\": \"Noauth\",\n  \"email\": \"noauth@logichain.it\",\n  \"password\": \"Test1234!\",\n  \"ruolo_id\": 9\n}",
               "options": {
                 "raw": {
                   "language": "json"

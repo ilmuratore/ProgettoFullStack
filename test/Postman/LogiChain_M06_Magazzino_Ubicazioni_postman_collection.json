@@ -153,7 +153,7 @@
         },
         {
           "id": "836d9712-893b-47a7-a21d-fcefa3a93209",
-          "name": "Register Responsabile Magazzino (ruolo_id 3)",
+          "name": "Register Responsabile Magazzino (ruolo_id 8)",
           "request": {
             "method": "POST",
             "header": [
@@ -180,7 +180,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Magazzino\",\n  \"email\": \"{{resp_magazzino_email}}\",\n  \"password\": \"{{resp_magazzino_password}}\",\n  \"ruolo_id\": 3\n}",
+              "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Magazzino\",\n  \"email\": \"{{resp_magazzino_email}}\",\n  \"password\": \"{{resp_magazzino_password}}\",\n  \"ruolo_id\": 8\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -203,7 +203,7 @@
         },
         {
           "id": "7f8e57a5-1a13-4f03-889a-c0de6e4d7012",
-          "name": "Register Operatore (ruolo_id 4, no magazzino:write)",
+          "name": "Register Operatore (ruolo_id 9, no magazzino:write)",
           "request": {
             "method": "POST",
             "header": [
@@ -230,7 +230,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Op\",\n  \"cognome\": \"Eratore\",\n  \"email\": \"{{operatore_email}}\",\n  \"password\": \"{{operatore_password}}\",\n  \"ruolo_id\": 4\n}",
+              "raw": "{\n  \"nome\": \"Op\",\n  \"cognome\": \"Eratore\",\n  \"email\": \"{{operatore_email}}\",\n  \"password\": \"{{operatore_password}}\",\n  \"ruolo_id\": 9\n}",
               "options": {
                 "raw": {
                   "language": "json"

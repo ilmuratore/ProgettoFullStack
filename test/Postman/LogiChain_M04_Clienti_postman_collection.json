@@ -110,6 +110,21 @@
       "key": "test_piva_cf2",
       "value": "",
       "type": "default"
+    },
+    {
+      "key": "corriere_email",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "corriere_password",
+      "value": "Test1234!",
+      "type": "string"
+    },
+    {
+      "key": "token_corriere",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -162,7 +177,8 @@
                   "pm.collectionVariables.set('resp_magazzino_email',   'test.m04.rmag.'  + run + '@logichain.it');",
                   "pm.collectionVariables.set('operatore_email',        'test.m04.oper.'  + run + '@logichain.it');",
                   "pm.collectionVariables.set('test_piva_cf',  '9' + run.slice(-10));",
-                  "pm.collectionVariables.set('test_piva_cf2', '8' + run.slice(-10));"
+                  "pm.collectionVariables.set('test_piva_cf2', '8' + run.slice(-10));",
+                  "pm.collectionVariables.set('corriere_email', 'test.m04.corr.' + run + '@logichain.it');"
                 ],
                 "type": "text/javascript"
               }
@@ -183,7 +199,7 @@
         },
         {
           "id": "0f711168-d077-4be7-95e2-873da0721743",
-          "name": "Register Responsabile Acquisti (ruolo_id 2)",
+          "name": "Register Responsabile Acquisti (ruolo_id 7)",
           "request": {
             "method": "POST",
             "header": [
@@ -210,7 +226,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Acquisti\",\n  \"email\": \"{{resp_acquisti_email}}\",\n  \"password\": \"{{resp_acquisti_password}}\",\n  \"ruolo_id\": 2\n}",
+              "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Acquisti\",\n  \"email\": \"{{resp_acquisti_email}}\",\n  \"password\": \"{{resp_acquisti_password}}\",\n  \"ruolo_id\": 7\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -233,7 +249,7 @@
         },
         {
           "id": "59b90f24-8306-4cb2-ade1-0a3369bb9623",
-          "name": "Register Responsabile Magazzino (ruolo_id 3)",
+          "name": "Register Responsabile Magazzino (ruolo_id 8)",
           "request": {
             "method": "POST",
             "header": [
@@ -260,7 +276,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Magazzino\",\n  \"email\": \"{{resp_magazzino_email}}\",\n  \"password\": \"{{resp_magazzino_password}}\",\n  \"ruolo_id\": 3\n}",
+              "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Magazzino\",\n  \"email\": \"{{resp_magazzino_email}}\",\n  \"password\": \"{{resp_magazzino_password}}\",\n  \"ruolo_id\": 8\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -283,7 +299,7 @@
         },
         {
           "id": "d4f7297b-f6f8-43fe-a54a-002a12e0da34",
-          "name": "Register Operatore (ruolo_id 4)",
+          "name": "Register Operatore (ruolo_id 9)",
           "request": {
             "method": "POST",
             "header": [
@@ -310,7 +326,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Op\",\n  \"cognome\": \"Eratore\",\n  \"email\": \"{{operatore_email}}\",\n  \"password\": \"{{operatore_password}}\",\n  \"ruolo_id\": 4\n}",
+              "raw": "{\n  \"nome\": \"Op\",\n  \"cognome\": \"Eratore\",\n  \"email\": \"{{operatore_email}}\",\n  \"password\": \"{{operatore_password}}\",\n  \"ruolo_id\": 9\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -471,6 +487,101 @@
                   "if (b.data && b.data.token) { pm.collectionVariables.set('token_operatore', b.data.token); }"
                 ],
                 "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register Corriere (ruolo_id 10, no clienti:read)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Corr\",\n  \"cognome\": \"Iere\",\n  \"email\": \"{{corriere_email}}\",\n  \"password\": \"{{corriere_password}}\",\n  \"ruolo_id\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Setup: Register Corriere -> 201 o 409', () => pm.expect([201,409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Corriere (token_corriere, no clienti:read)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{corriere_email}}\",\n  \"password\": \"{{corriere_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Setup: Login Corriere -> 200', () => pm.response.to.have.status(200));",
+                  "const t = pm.response.json().data.token;",
+                  "pm.expect(t, 'token presente').to.be.a('string');",
+                  "pm.collectionVariables.set('token_corriere', t);"
+                ]
               }
             }
           ]

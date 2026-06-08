@@ -73,7 +73,7 @@
           ]
         },
         {
-          "name": "Register Responsabile Acquisti (ruolo_id 2)",
+          "name": "Register Responsabile Acquisti (ruolo_id 7)",
           "request": {
             "method": "POST",
             "header": [
@@ -100,7 +100,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Acquisti\",\n  \"email\": \"{{resp_acquisti_email}}\",\n  \"password\": \"{{resp_acquisti_password}}\",\n  \"ruolo_id\": 2\n}",
+              "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Acquisti\",\n  \"email\": \"{{resp_acquisti_email}}\",\n  \"password\": \"{{resp_acquisti_password}}\",\n  \"ruolo_id\": 7\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -121,7 +121,7 @@
           ]
         },
         {
-          "name": "Register Operatore (ruolo_id 4)",
+          "name": "Register Operatore (ruolo_id 9)",
           "request": {
             "method": "POST",
             "header": [
@@ -148,7 +148,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Op\",\n  \"cognome\": \"Eratore\",\n  \"email\": \"{{operatore_email}}\",\n  \"password\": \"{{operatore_password}}\",\n  \"ruolo_id\": 4\n}",
+              "raw": "{\n  \"nome\": \"Op\",\n  \"cognome\": \"Eratore\",\n  \"email\": \"{{operatore_email}}\",\n  \"password\": \"{{operatore_password}}\",\n  \"ruolo_id\": 9\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -169,7 +169,7 @@
           ]
         },
         {
-          "name": "Register Responsabile Magazzino (ruolo_id 3)",
+          "name": "Register Responsabile Magazzino (ruolo_id 8)",
           "request": {
             "method": "POST",
             "header": [
@@ -196,7 +196,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Magazzino\",\n  \"email\": \"{{resp_magazzino_email}}\",\n  \"password\": \"{{resp_magazzino_password}}\",\n  \"ruolo_id\": 3\n}",
+              "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Magazzino\",\n  \"email\": \"{{resp_magazzino_email}}\",\n  \"password\": \"{{resp_magazzino_password}}\",\n  \"ruolo_id\": 8\n}",
               "options": {
                 "raw": {
                   "language": "json"

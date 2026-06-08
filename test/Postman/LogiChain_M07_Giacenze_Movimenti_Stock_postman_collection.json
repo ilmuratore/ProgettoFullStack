@@ -51,7 +51,7 @@
                   "var run = Date.now().toString();",
                   "pm.collectionVariables.set('runId', run);",
                   "pm.collectionVariables.set('resp_magazzino_email', 'test.m07.rmag.' + run + '@logichain.it');",
-                  "pm.collectionVariables.set('operatore_email',      'test.m07.oper.' + run + '@logichain.it');",
+                  "pm.collectionVariables.set('corriere_email',      'test.m07.corr.' + run + '@logichain.it');",
                   "pm.collectionVariables.set('prodotto_sku',         'M07-SKU-' + run);",
                   "pm.collectionVariables.set('magazzino_codice',     'MAG-M07-' + run);",
                   "pm.collectionVariables.set('riferimento_carico',   'm07_carico:'       + run);",
@@ -78,7 +78,7 @@
         },
         {
           "id": "6050df04-65e2-4463-a3b3-97379059ac24",
-          "name": "Register Responsabile Magazzino (ruolo_id 3)",
+          "name": "Register Responsabile Magazzino (ruolo_id 8)",
           "request": {
             "method": "POST",
             "header": [
@@ -105,7 +105,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Magazzino\",\n  \"email\": \"{{resp_magazzino_email}}\",\n  \"password\": \"{{resp_magazzino_password}}\",\n  \"ruolo_id\": 3\n}",
+              "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Magazzino\",\n  \"email\": \"{{resp_magazzino_email}}\",\n  \"password\": \"{{resp_magazzino_password}}\",\n  \"ruolo_id\": 8\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -128,7 +128,7 @@
         },
         {
           "id": "80521be6-d625-4fc1-a989-766853fbc6c0",
-          "name": "Register Operatore (ruolo_id 4, no giacenze:write)",
+          "name": "Register Corriere (ruolo_id 10, no giacenze:write)",
           "request": {
             "method": "POST",
             "header": [
@@ -155,7 +155,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Op\",\n  \"cognome\": \"Eratore\",\n  \"email\": \"{{operatore_email}}\",\n  \"password\": \"{{operatore_password}}\",\n  \"ruolo_id\": 4\n}",
+              "raw": "{\n  \"nome\": \"Corr\",\n  \"cognome\": \"Iere\",\n  \"email\": \"{{corriere_email}}\",\n  \"password\": \"{{corriere_password}}\",\n  \"ruolo_id\": 10\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -168,7 +168,7 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Setup: Register Operatore -> 201 o 409', () => pm.expect([201,409]).to.include(pm.response.code));"
+                  "pm.test('Setup: Register Corriere -> 201 o 409', () => pm.expect([201,409]).to.include(pm.response.code));"
                 ],
                 "type": "text/javascript",
                 "id": "d5bfedb3-27f5-4225-bb6f-ae498025507a"
@@ -226,7 +226,7 @@
         },
         {
           "id": "f18c89b1-95ac-4d4b-ae27-3c0a009db9a1",
-          "name": "Login Operatore (token_no_access)",
+          "name": "Login Corriere (token_no_access)",
           "request": {
             "method": "POST",
             "header": [
@@ -249,7 +249,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{operatore_email}}\",\n  \"password\": \"{{operatore_password}}\"\n}",
+              "raw": "{\n  \"email\": \"{{corriere_email}}\",\n  \"password\": \"{{corriere_password}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -263,7 +263,7 @@
               "script": {
                 "exec": [
                   "var b = pm.response.json();",
-                  "pm.test('Setup: Login Operatore -> 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Setup: Login Corriere -> 200', () => pm.response.to.have.status(200));",
                   "if (b.data && b.data.token) { pm.collectionVariables.set('token_no_access', b.data.token); }"
                 ],
                 "type": "text/javascript",
@@ -900,7 +900,7 @@
           }
         },
         {
-          "name": "13 POST /movimenti-stock — token Operatore → 403",
+          "name": "13 POST /movimenti-stock — token Corriere (no giacenze:write) → 403",
           "event": [
             {
               "listen": "test",
@@ -1225,11 +1225,11 @@
       "value": "Test1234!"
     },
     {
-      "key": "operatore_email",
+      "key": "corriere_email",
       "value": ""
     },
     {
-      "key": "operatore_password",
+      "key": "corriere_password",
       "value": "Test1234!"
     },
     {
