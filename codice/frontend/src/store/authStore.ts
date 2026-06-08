@@ -80,7 +80,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const u = normalizzaUtente(utente);
     localStorage.setItem('lc_token', token);
     localStorage.setItem('lc_utente', JSON.stringify(u));
-    set({ token, utente });
+    set({ token, utente:u  });
   },
 
   logout: () => {
