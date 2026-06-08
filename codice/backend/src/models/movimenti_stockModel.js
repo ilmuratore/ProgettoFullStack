@@ -82,8 +82,8 @@ const findByRiferimento = (riferimento) =>
     );
 
 
-const create = ({ prodotto_id, ubicazione_id, quantita, movimento_tipo, riferimento, note }, db = pool) =>
-    db.query(
+const create = ({ prodotto_id, ubicazione_id, quantita, movimento_tipo, riferimento, note }) =>
+    pool.query(
         `INSERT INTO movimenti_stock (prodotto_id, ubicazione_id, quantita, tipo, riferimento, note)
      VALUES ($1, $2, $3, $4::movimento_tipo, $5, $6)
      RETURNING id, prodotto_id, ubicazione_id, quantita, tipo, riferimento, note, created_at`,
