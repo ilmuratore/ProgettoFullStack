@@ -35,6 +35,8 @@ info:
     | `RESOURCE_NOT_FOUND` | 404 | Risorsa non trovata |
     | `DUPLICATE_ENTRY` | 409 | Violazione unicità (SKU, P.IVA, codice...) |
     | `INSUFFICIENT_STOCK` | 422 | Giacenza insufficiente per il movimento richiesto |
+    | `CATEGORIA_CON_PRODOTTI` | 409 | Impossibile eliminare la categoria: ha prodotti associati |
+    | `CATEGORIA_CON_SOTTOCATEGORIE` | 409 | Impossibile eliminare la categoria: ha sottocategorie |
     | `INTERNAL_SERVER_ERROR` | 500 | Errore generico server |
 
     ## RBAC — Permessi per modulo
@@ -262,6 +264,35 @@ components:
         nome:   { type: string, example: "Tubo in acciaio inox DN50 — rev." }
         sku:    { type: string, example: TUB-INOX-050-R }
         prezzo: { type: number, minimum: 0.01, example: 52.00 }
+
+    # ── CATEGORIE ─────────────────────────────
+
+    Categoria:
+      type: object
+      properties:
+        id:                    { type: integer, example: 3 }
+        nome:                  { type: string,  example: Valvolame }
+        categoria_padre_id:    { type: integer, example: 1, nullable: true }
+        categoria_padre_nome:  { type: string,  example: Componentistica, nullable: true }
+        prodotti_count:        { type: integer, example: 12, description: "Numero di prodotti attivi associati a questa categoria" }
+        created_at:            { type: string,  format: date-time }
+        updated_at:            { type: string,  format: date-time }
+
+    CategoriaCreateRequest:
+      type: object
+      required: [nome]
+      properties:
+        nome:               { type: string,  example: Raccorderia, description: "Deve essere univoco (case-insensitive)" }
+        categoria_padre_id: { type: integer, example: 1, description: "Omettere o null per categoria radice. Max 2 livelli." }
+
+    CategoriaUpdateRequest:
+      type: object
+      description: |
+        Tutti i campi sono opzionali. Inviare solo quelli da modificare.
+        Per rimuovere il padre (promuovere a categoria radice) inviare `categoria_padre_id: null`.
+      properties:
+        nome:               { type: string,  example: "Raccorderia — aggiornato" }
+        categoria_padre_id: { type: integer, nullable: true, example: null, description: "null = rimozione padre" }
 
     # ── FORNITORI ─────────────────────────────
 
@@ -911,6 +942,218 @@ paths:
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
         "404": { $ref: '#/components/responses/NotFound' }
+
+  # ══════════════════════════════════════════
+  # M02 (ext) — CATEGORIE PRODOTTI
+  # ══════════════════════════════════════════
+
+  /categorie:
+    get:
+      tags: [Categorie]
+      summary: Lista tutte le categorie
+      description: |
+        Restituisce tutte le categorie con join padre e conteggio prodotti attivi.
+        Le categorie radice (senza padre) appaiono prima, ordinate per nome.
+      x-required-permission: prodotti:read
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista categorie
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Categoria' }
+              example:
+                status: success
+                data:
+                  - id: 1
+                    nome: Componentistica
+                    categoria_padre_id: null
+                    categoria_padre_nome: null
+                    prodotti_count: 4
+                    created_at: "2026-01-10T08:00:00.000Z"
+                    updated_at: "2026-01-10T08:00:00.000Z"
+                  - id: 3
+                    nome: Valvolame
+                    categoria_padre_id: 1
+                    categoria_padre_nome: Componentistica
+                    prodotti_count: 8
+                    created_at: "2026-01-12T09:00:00.000Z"
+                    updated_at: "2026-01-12T09:00:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+    post:
+      tags: [Categorie]
+      summary: Crea una nuova categoria
+      description: |
+        Crea una categoria radice o una sottocategoria.
+        Il nome deve essere univoco (case-insensitive).
+        Massimo 2 livelli di profondità (radice → sottocategoria).
+      x-required-permission: prodotti:write
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CategoriaCreateRequest' }
+            examples:
+              radice:
+                summary: Categoria radice
+                value: { nome: Raccorderia }
+              sottocategoria:
+                summary: Sottocategoria
+                value: { nome: Raccorderia ottone, categoria_padre_id: 1 }
+      responses:
+        "201":
+          description: Categoria creata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Categoria' }
+              example:
+                status: success
+                data:
+                  id: 5
+                  nome: Raccorderia
+                  categoria_padre_id: null
+                  categoria_padre_nome: null
+                  prodotti_count: 0
+                  created_at: "2026-06-08T12:00:00.000Z"
+                  updated_at: "2026-06-08T12:00:00.000Z"
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404":
+          description: Categoria padre non trovata
+          content:
+            application/json:
+              example: { status: error, code: RESOURCE_NOT_FOUND, message: Categoria padre non trovata }
+        "409": { $ref: '#/components/responses/DuplicateEntry' }
+
+  /categorie/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 3
+
+    get:
+      tags: [Categorie]
+      summary: Dettaglio categoria
+      x-required-permission: prodotti:read
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Dettaglio categoria
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Categoria' }
+              example:
+                status: success
+                data:
+                  id: 3
+                  nome: Valvolame
+                  categoria_padre_id: 1
+                  categoria_padre_nome: Componentistica
+                  prodotti_count: 8
+                  created_at: "2026-01-12T09:00:00.000Z"
+                  updated_at: "2026-01-12T09:00:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+    patch:
+      tags: [Categorie]
+      summary: Aggiorna categoria (parziale)
+      description: |
+        Modifica nome e/o padre. Inviare solo i campi da modificare.
+        Inviare `categoria_padre_id: null` per rimuovere il padre e promuovere a categoria radice.
+      x-required-permission: prodotti:write
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CategoriaUpdateRequest' }
+            examples:
+              rinomina:
+                summary: Rinomina
+                value: { nome: "Valvolame e rubinetteria" }
+              rimuovi_padre:
+                summary: Promuovi a radice
+                value: { categoria_padre_id: null }
+              cambia_padre:
+                summary: Cambia padre
+                value: { categoria_padre_id: 2 }
+      responses:
+        "200":
+          description: Categoria aggiornata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/Categoria' }
+              example:
+                status: success
+                data:
+                  id: 3
+                  nome: "Valvolame e rubinetteria"
+                  categoria_padre_id: 1
+                  categoria_padre_nome: Componentistica
+                  prodotti_count: 8
+                  created_at: "2026-01-12T09:00:00.000Z"
+                  updated_at: "2026-06-08T14:30:00.000Z"
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/DuplicateEntry' }
+
+    delete:
+      tags: [Categorie]
+      summary: Elimina categoria (hard delete)
+      description: |
+        Eliminazione fisica. Bloccata se la categoria ha prodotti attivi associati o sottocategorie.
+        Codici di errore specifici: `CATEGORIA_CON_PRODOTTI` (409), `CATEGORIA_CON_SOTTOCATEGORIE` (409).
+      x-required-permission: prodotti:delete
+      security:
+        - bearerAuth: []
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409":
+          description: Eliminazione bloccata da FK
+          content:
+            application/json:
+              examples:
+                con_prodotti:
+                  summary: Ha prodotti associati
+                  value: { status: error, code: CATEGORIA_CON_PRODOTTI, message: "Impossibile eliminare: la categoria ha 8 prodotto/i associato/i. Riassegnali prima di procedere." }
+                con_sottocategorie:
+                  summary: Ha sottocategorie
+                  value: { status: error, code: CATEGORIA_CON_SOTTOCATEGORIE, message: "Impossibile eliminare: la categoria ha 2 sottocategoria/e. Eliminale prima di procedere." }
 
   # ══════════════════════════════════════════
   # M03 — FORNITORI

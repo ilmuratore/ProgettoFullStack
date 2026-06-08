@@ -42,9 +42,9 @@ mountSwagger(app);
 app.use('/api/v1/auth', require('./src/routes/authRoutes'));
 // app.use('/api/v1/utenti',     require('./src/routes/utentiRoutes'));
 
-// M02 — I nostri Prodotti (Listino)
-app.use('/api/v1/prodotti', require('./src/routes/prodottiRoutes'));
-// app.use('/api/v1/categorie',  require('./src/routes/categorieRoutes'));
+// M02 — I nostri Prodotti (Listino) + Categorie
+app.use('/api/v1/prodotti',   require('./src/routes/prodottiRoutes'));
+app.use('/api/v1/categorie',  require('./src/routes/categorieRoutes'));
 
 // M03 — I nostri Fornitori
 app.use('/api/v1/fornitori',  require('./src/routes/fornitoriRoutes'));
@@ -55,6 +55,7 @@ app.use('/api/v1/clienti',    require('./src/routes/clientiRoutes'));
 // M05 — Corrieri & Dipendenti
 app.use('/api/v1/dipendenti', require('./src/routes/dipendentiRoutes'));
 app.use('/api/v1/corrieri', require('./src/routes/corrieriRoutes'));
+
 // M06 — Magazzino
 app.use('/api/v1/magazzini',  require('./src/routes/magazziniRoutes'));
 app.use('/api/v1/ubicazioni', require('./src/routes/ubicazioniRoutes'));
