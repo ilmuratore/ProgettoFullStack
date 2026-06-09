@@ -39,16 +39,80 @@ info:
     | `CATEGORIA_CON_SOTTOCATEGORIE` | 409 | Impossibile eliminare la categoria: ha sottocategorie |
     | `INTERNAL_SERVER_ERROR` | 500 | Errore generico server |
 
-    ## RBAC — Permessi per modulo
-    | Permesso | Modulo |
-    |---|---|
-    | `utenti:write` | Registrazione nuovi utenti |
-    | `prodotti:read` / `prodotti:write` / `prodotti:delete` | Prodotti |
-    | `fornitori:read` / `fornitori:write` / `fornitori:delete` | Fornitori |
-    | `clienti:read` / `clienti:write` / `clienti:delete` | Clienti |
-    | `dipendenti:read` / `dipendenti:write` / `dipendenti:delete` | Dipendenti |
-    | `magazzino:read` / `magazzino:write` | Magazzini, Ubicazioni e **Corrieri** |
-    | `giacenze:read` / `giacenze:write` | Giacenze e Movimenti Stock |
+    ## RBAC — Tutti i permessi (30)
+    Tutti i permessi sono presenti nel DB (seed). Le colonne `Rotte attive` indicano se esiste
+    già almeno un endpoint montato in `server.js` che richiede quel permesso.
+
+    | Permesso | Modulo | Rotte attive |
+    |---|---|---|
+    | `utenti:read` | Visualizza utenti | ⬜ (utentiRoutes non montata) |
+    | `utenti:write` | Registrazione nuovi utenti | ✅ M01 |
+    | `utenti:delete` | Elimina utenti | ⬜ (utentiRoutes non montata) |
+    | `prodotti:read` | Visualizza prodotti e categorie | ✅ M02 |
+    | `prodotti:write` | Crea/modifica prodotti e categorie | ✅ M02 |
+    | `prodotti:delete` | Elimina prodotti e categorie | ✅ M02 |
+    | `fornitori:read` | Visualizza fornitori e contatti | ✅ M03 |
+    | `fornitori:write` | Crea/modifica fornitori | ✅ M03 |
+    | `fornitori:delete` | Elimina fornitori | ✅ M03 |
+    | `clienti:read` | Visualizza clienti e destinazioni | ✅ M04 |
+    | `clienti:write` | Crea/modifica clienti | ✅ M04 |
+    | `clienti:delete` | Elimina clienti | ✅ M04 |
+    | `dipendenti:read` | Visualizza dipendenti | ✅ M05 |
+    | `dipendenti:write` | Crea/modifica dipendenti | ✅ M05 |
+    | `dipendenti:delete` | Elimina dipendenti | ✅ M05 |
+    | `magazzino:read` | Visualizza magazzini, ubicazioni e corrieri | ✅ M05–M06 |
+    | `magazzino:write` | Crea/modifica magazzini, ubicazioni e corrieri | ✅ M05–M06 |
+    | `giacenze:read` | Visualizza giacenze e movimenti stock | ✅ M07 |
+    | `giacenze:write` | Registra movimenti stock | ✅ M07 |
+    | `acquisti:read` | Visualizza ordini di acquisto e ricezioni | ⬜ M08 |
+    | `acquisti:write` | Crea/modifica ordini di acquisto | ⬜ M08 |
+    | `acquisti:approve` | Approva ordini di acquisto | ⬜ M08 |
+    | `ordini:read` | Visualizza ordini di vendita | ⬜ M09 |
+    | `ordini:write` | Crea/modifica ordini e gestisce picking | ⬜ M09 |
+    | `ordini:approve` | Approva ordini commerciali | ⬜ M09 |
+    | `spedizioni:read` | Visualizza spedizioni e DDT | ⬜ M10 |
+    | `spedizioni:write` | Gestisce spedizioni e DDT | ⬜ M10 |
+    | `notifiche:read` | Visualizza notifiche | ⬜ M11 |
+    | `dashboard:read` | Visualizza dashboard e KPI | ⬜ M12 |
+    | `ecosystem:read` | Ricerca nell'ecosistema globale | ⬜ M13–M16 |
+
+    ## RBAC — Matrice ruoli → permessi
+    Fonte: `seed_ruoli_permessi.js`. Legenda: ✅ ha il permesso · — non ce l'ha.
+
+    | Permesso | Admin | Resp.Az | Supporto | Resp.HR | Resp.Vend | Resp.Acq | Resp.Mag | Operatore | Corriere |
+    |---|---|---|---|---|---|---|---|---|---|
+    | `utenti:read` | ✅ | ✅ | ✅ | ✅ | — | — | — | — | — |
+    | `utenti:write` | ✅ | — | — | — | — | — | — | — | — |
+    | `utenti:delete` | ✅ | — | — | — | — | — | — | — | — |
+    | `prodotti:read` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — |
+    | `prodotti:write` | ✅ | ✅ | — | — | — | ✅ | ✅ | — | — |
+    | `prodotti:delete` | ✅ | ✅ | — | — | — | — | — | — | — |
+    | `fornitori:read` | ✅ | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | — |
+    | `fornitori:write` | ✅ | ✅ | — | — | — | ✅ | — | — | — |
+    | `fornitori:delete` | ✅ | ✅ | — | — | — | — | — | — | — |
+    | `clienti:read` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — |
+    | `clienti:write` | ✅ | ✅ | — | — | ✅ | ✅ | — | — | — |
+    | `clienti:delete` | ✅ | ✅ | — | — | ✅ | — | — | — | — |
+    | `dipendenti:read` | ✅ | ✅ | — | ✅ | — | — | — | — | — |
+    | `dipendenti:write` | ✅ | ✅ | — | ✅ | — | — | — | — | — |
+    | `dipendenti:delete` | ✅ | ✅ | — | ✅ | — | — | — | — | — |
+    | `magazzino:read` | ✅ | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | — |
+    | `magazzino:write` | ✅ | ✅ | — | — | — | — | ✅ | — | — |
+    | `giacenze:read` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — |
+    | `giacenze:write` | ✅ | ✅ | — | — | ✅ | — | ✅ | ✅ | — |
+    | `acquisti:read` | ✅ | ✅ | ✅ | — | — | ✅ | ✅ | — | — |
+    | `acquisti:write` | ✅ | ✅ | — | — | — | ✅ | — | — | — |
+    | `acquisti:approve` | ✅ | ✅ | — | — | — | ✅ | ✅ | — | — |
+    | `ordini:read` | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ | — |
+    | `ordini:write` | ✅ | ✅ | — | — | ✅ | — | — | ✅ | — |
+    | `ordini:approve` | ✅ | ✅ | — | — | ✅ | — | ✅ | ✅ | — |
+    | `spedizioni:read` | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ |
+    | `spedizioni:write` | ✅ | ✅ | — | — | — | — | ✅ | — | ✅ |
+    | `notifiche:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+    | `dashboard:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+    | `ecosystem:read` | ✅ | ✅ | ✅ | — | — | ✅ | — | — | — |
+
+    > **Nota**: Dev ha gli stessi permessi di Admin (ALL). Resp. Azienda ha tutti tranne `utenti:write/delete`.
 
 servers:
   - url: http://localhost:3000/api/v1
