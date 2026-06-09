@@ -143,7 +143,7 @@ export function ProductDetailDrawer({ productId, isOpen, onClose }: ProductDetai
                       <Tag className="w-3 h-3" />
                       Categoria
                     </div>
-                    <div className="text-sm font-medium text-[#2D2D2D]">{getValue(product.categoria_nome)}</div>
+                    <div className="text-sm font-medium text-[#2D2D2D]">{getValue(product.categoria ?? product.categoria_nome)}</div>
                   </div>
                   <div>
                     <div className="flex items-center gap-2 text-xs text-[#6B7280] mb-1">

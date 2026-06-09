@@ -12,7 +12,8 @@ export interface Prodotto {
   nome: string;
   descrizione: string | null;
   categoria_id: number | null;
-  categoria_nome: string | null;
+  categoria: string | null;
+  categoria_nome?: string | null;
   unita_misura: string | null;
   peso_kg: number | null;
   scorta_minima: number;
@@ -26,16 +27,21 @@ export interface Prodotto {
 export interface ProdottoCreateRequest {
   nome: string;
   sku: string;
-  prezzo: number;
+  descrizione?: string | null;
   categoria_id?: number | null;
+  unita_misura?: string | null;
+  peso_kg?: number | null;
+  scorta_minima?: number;
+  prezzo: number;
 }
 
 export interface ProdottoUpdateRequest {
   nome?: string;
   sku?: string;
+  descrizione?: string | null;
+  categoria_id?: number | null;
+  unita_misura?: string | null;
+  peso_kg?: number | null;
+  scorta_minima?: number;
   prezzo?: number;
-  // null non è supportato via COALESCE nel backend attuale:
-  // ometti il campo per mantere la categoria esistente,
-  // invia un numero per cambiarla.
-  categoria_id?: number;
 }
