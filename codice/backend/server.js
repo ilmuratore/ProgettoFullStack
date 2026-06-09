@@ -40,7 +40,7 @@ mountSwagger(app);
 
 // M01 — Auth & RBAC
 app.use('/api/v1/auth', require('./src/routes/authRoutes'));
-// app.use('/api/v1/utenti',     require('./src/routes/utentiRoutes'));
+app.use('/api/v1/utenti',     require('./src/routes/utentiRoutes'));
 
 // M02 — I nostri Prodotti (Listino) + Categorie
 app.use('/api/v1/prodotti',   require('./src/routes/prodottiRoutes'));

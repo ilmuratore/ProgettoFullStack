@@ -44,8 +44,20 @@ const getMe = async (req, res, next) => {
 };
 
 
+const changePassword = async (req, res, next) => {
+    try {
+        const { password_attuale, password_nuova } = req.body;
+        await authService.changePassword(req.user.id, password_attuale, password_nuova);
+        return res.status(204).send();
+    } catch (err) {
+        return next(err);
+    }
+};
+
+
 module.exports = {
     login,
     register,
-    getMe
+    getMe,
+    changePassword
 };
