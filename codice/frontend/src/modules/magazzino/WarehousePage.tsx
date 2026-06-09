@@ -10,6 +10,8 @@ import { StockTable } from './components/StockTable';
 import { StockMovementsTimeline } from './components/StockMovementsTimeline';
 import { NewMovementModal } from './components/NewMovementModal';
 import { ProductFormModal } from './components/ProductFormModal';
+// da lasciare per il merge, componente dettaglio prodotto
+import { ProductDetailDrawer } from './components/ProductDetailDrawer';
 import { CategoryFormModal } from './components/CategoryFormModal';
 import { ProductsTab } from './components/ProductsTab';
 import { CategoriesTab } from './components/CategoriesTab';
@@ -27,7 +29,8 @@ import type {
   Ubicazione,
   UbicazioneCreateRequest,
 } from '../../types/magazzino';
-import type { ProdottoListino, ProdottoCreateRequest, ProdottoUpdateRequest } from '../../types/prodotti';
+// aggiunto Prodotto nei type importati
+import type { Prodotto, ProdottoListino, ProdottoCreateRequest, ProdottoUpdateRequest } from '../../types/prodotti';
 import type { Categoria, CategoriaCreateRequest, CategoriaUpdateRequest } from '../../types/categorie';
 
 type WarehouseTab = 'prodotti' | 'categorie' | 'struttura' | 'giacenze' | 'movimenti';
@@ -83,7 +86,11 @@ export function WarehousePage() {
   const [searchProdotti, setSearchProdotti] = useState('');
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [productModalMode, setProductModalMode] = useState<'create' | 'edit'>('create');
-  const [selectedProduct, setSelectedProduct] = useState<ProdottoListino | null>(null);
+  // aggiunto prodotto selezionato
+  const [selectedProduct, setSelectedProduct] = useState<Prodotto | null>(null);
+  // da lasciare per il merge useState per apertura dettaglio prodotto
+  const [productDetailOpen, setProductDetailOpen] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
 
   // ── Categorie ──────────────────────────────────────────────────────────────
   const [categorie, setCategorie] = useState<Categoria[]>([]);
@@ -287,19 +294,42 @@ export function WarehousePage() {
 
   // ── Prodotti handlers ──────────────────────────────────────────────────────
   const handleSaveProduct = async (data: ProdottoCreateRequest | ProdottoUpdateRequest, id?: number) => {
+    // serve a dire quali dati del prodotto mostrare
+    const toListinoItem = (prodotto: Prodotto): ProdottoListino => ({
+      id: prodotto.id,
+      sku: prodotto.sku,
+      nome: prodotto.nome,
+      prezzo: prodotto.prezzo,
+      data_agg_prezzo: prodotto.data_agg_prezzo,
+      attivo: prodotto.attivo,
+      created_at: prodotto.created_at,
+    });
+
     try {
       if (productModalMode === 'create') {
         const created = await prodottiApi.create(data as ProdottoCreateRequest);
-        setProdotti(prev => [...prev, created]);
+        setProdotti(prev => [...prev, toListinoItem(created)]);
         toast.success('Prodotto creato');
       } else if (id !== undefined) {
         const updated = await prodottiApi.update(id, data as ProdottoUpdateRequest);
-        setProdotti(prev => prev.map(p => p.id === id ? updated : p));
+        setProdotti(prev => prev.map(p => p.id === id ? toListinoItem(updated) : p));
         toast.success('Prodotto aggiornato');
       }
     } catch (err: any) {
       toast.error('Salvataggio fallito', { description: err?.code === 'DUPLICATE_ENTRY' ? 'SKU già in uso' : err?.message });
       throw err;
+    }
+  };
+
+  // aggiunta di 1 nuovo handle per la modifica
+  const handleEditProduct = async (productId: number) => {
+    try {
+      const product = await prodottiApi.getById(productId);
+      setProductModalMode('edit');
+      setSelectedProduct(product);
+      setProductModalOpen(true);
+    } catch (err: any) {
+      toast.error('Errore caricamento prodotto', { description: err?.message });
     }
   };
 
@@ -435,8 +465,10 @@ export function WarehousePage() {
               canWriteProdotti={canWriteProdotti}
               canDeleteProdotti={canDeleteProdotti}
               onSearchChange={setSearchProdotti}
-              onView={() => toast.info('Dettaglio prodotto disponibile con M07')}
-              onEdit={(item) => { setProductModalMode('edit'); setSelectedProduct(item); setProductModalOpen(true); }}
+              // richiamo il componente dettaglio prodotto
+              onView={(item) => { setSelectedProductId(item.id); setProductDetailOpen(true); }}
+              //aggiunta del nuovo handle per la modifica
+              onEdit={(item) => { void handleEditProduct(item.id); }}
               onDelete={handleDeleteProduct}
             />
           )}
@@ -468,6 +500,13 @@ export function WarehousePage() {
 
       {/* ── Modali ── */}
       <NewMovementModal isOpen={isMovementModalOpen} onClose={() => setIsMovementModalOpen(false)} />
+
+      {/* componente dettaglio prodotto */}
+      <ProductDetailDrawer
+        productId={selectedProductId}
+        isOpen={productDetailOpen}
+        onClose={() => setProductDetailOpen(false)}
+      />
 
       <ProductFormModal
         open={productModalOpen}
