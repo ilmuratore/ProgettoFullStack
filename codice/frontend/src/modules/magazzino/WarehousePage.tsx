@@ -32,12 +32,11 @@ import type { Categoria, CategoriaCreateRequest, CategoriaUpdateRequest } from '
 type WarehouseTab = 'struttura' | 'prodotti' | 'categorie' | 'giacenze' | 'movimenti' | 'rettifiche';
 
 const tabs: TabConfig[] = [
-  { id: 'struttura',  label: 'Struttura',  icon: GitMerge     },
-  { id: 'prodotti',   label: 'Prodotti',   icon: Package      },
-  { id: 'categorie',  label: 'Categorie',  icon: Tag          },
-  { id: 'giacenze',   label: 'Giacenze',   icon: Package      },
-  { id: 'movimenti',  label: 'Movimenti',  icon: ArrowLeftRight },
-  { id: 'rettifiche', label: 'Rettifiche', icon: ClipboardEdit },
+  { id: 'prodotti', label: 'Prodotti', icon: Package },
+  { id: 'categorie', label: 'Categorie', icon: Tag },
+  { id: 'struttura', label: 'Struttura', icon: GitMerge },
+  { id: 'giacenze', label: 'Giacenze', icon: Package },
+  { id: 'movimenti', label: 'Movimenti', icon: ArrowLeftRight },
 ];
 
 const rettificheData: {
@@ -86,7 +85,7 @@ export function WarehousePage() {
   const [selectedMagDetail, setSelectedMagDetail] = useState<MagazzinoConUbicazioni | null>(null);
 
   const canWrite = hasPermesso('magazzino:write');
-  const canWriteProdotti  = hasPermesso('prodotti:write');
+  const canWriteProdotti = hasPermesso('prodotti:write');
   const canDeleteProdotti = hasPermesso('prodotti:delete');
 
   // ── Prodotti ───────────────────────────────────────────────────────────────
@@ -133,9 +132,9 @@ export function WarehousePage() {
   const fetchForTab = useCallback((tab: WarehouseTab) => {
     if (fetchedTabs.current.has(tab)) return;
     fetchedTabs.current.add(tab);
-    if (tab === 'struttura')  fetchMagazzini();
-    if (tab === 'prodotti')   { fetchProdotti(); fetchCategorie(); } // categorie servono anche per il modal prodotti
-    if (tab === 'categorie')  fetchCategorie();
+    if (tab === 'struttura') fetchMagazzini();
+    if (tab === 'prodotti') { fetchProdotti(); fetchCategorie(); } // categorie servono anche per il modal prodotti
+    if (tab === 'categorie') fetchCategorie();
   }, [fetchMagazzini, fetchProdotti, fetchCategorie]);
 
   useEffect(() => { fetchForTab('struttura'); }, []);
@@ -145,14 +144,20 @@ export function WarehousePage() {
   const getActionButton = (): { label: string; action: () => void; show: boolean } => {
     switch (activeTab) {
       case 'struttura':
-        return { label: 'Nuovo Magazzino', show: canWrite,
-          action: () => { setMagModalMode('create'); setMagForm(EMPTY_MAG); setMagErrors({}); setMagModalOpen(true); } };
+        return {
+          label: 'Nuovo Magazzino', show: canWrite,
+          action: () => { setMagModalMode('create'); setMagForm(EMPTY_MAG); setMagErrors({}); setMagModalOpen(true); }
+        };
       case 'prodotti':
-        return { label: 'Nuovo Prodotto', show: canWriteProdotti,
-          action: () => { setProductModalMode('create'); setSelectedProduct(null); setProductModalOpen(true); } };
+        return {
+          label: 'Nuovo Prodotto', show: canWriteProdotti,
+          action: () => { setProductModalMode('create'); setSelectedProduct(null); setProductModalOpen(true); }
+        };
       case 'categorie':
-        return { label: 'Nuova Categoria', show: canWriteProdotti,
-          action: () => { setCategoryModalMode('create'); setSelectedCategory(null); setInitialParentCategoryId(undefined); setCategoryModalOpen(true); } };
+        return {
+          label: 'Nuova Categoria', show: canWriteProdotti,
+          action: () => { setCategoryModalMode('create'); setSelectedCategory(null); setInitialParentCategoryId(undefined); setCategoryModalOpen(true); }
+        };
       case 'giacenze':
         return { label: 'Aggiorna Giacenze', show: true, action: () => toast.info('Disponibile con M07') };
       case 'movimenti':
@@ -176,8 +181,10 @@ export function WarehousePage() {
   const handleEditMagazzino = (mag: MagazzinoConUbicazioni) => {
     setMagModalMode('edit');
     setSelectedMag(mag);
-    setMagForm({ codice: mag.codice, nome: mag.nome, indirizzo: mag.indirizzo ?? '',
-      cap: mag.cap ?? '', citta: mag.citta ?? '', provincia: mag.provincia ?? '', paese: mag.paese ?? 'Italia' });
+    setMagForm({
+      codice: mag.codice, nome: mag.nome, indirizzo: mag.indirizzo ?? '',
+      cap: mag.cap ?? '', citta: mag.citta ?? '', provincia: mag.provincia ?? '', paese: mag.paese ?? 'Italia'
+    });
     setMagErrors({});
     setMagModalOpen(true);
   };
@@ -284,8 +291,10 @@ export function WarehousePage() {
       }
       setUbicModalOpen(false);
     } catch (err: any) {
-      toast.error('Salvataggio fallito', { description: err?.code === 'DUPLICATE_ENTRY'
-        ? 'Slot già occupato (stessa corsia e scaffale in questo magazzino)' : err?.message });
+      toast.error('Salvataggio fallito', {
+        description: err?.code === 'DUPLICATE_ENTRY'
+          ? 'Slot già occupato (stessa corsia e scaffale in questo magazzino)' : err?.message
+      });
     } finally { setUbicLoading(false); }
   };
 
@@ -535,8 +544,8 @@ export function WarehousePage() {
                   <tbody>
                     {loadingProdotti ? <SkeletonRows cols={5} /> : filteredProdotti.length === 0
                       ? <tr><td colSpan={5} className="py-12 text-center text-[#6B7280] text-sm">
-                          {searchProdotti ? 'Nessun prodotto corrisponde alla ricerca' : 'Nessun prodotto. Clicca "Nuovo Prodotto" per iniziare.'}
-                        </td></tr>
+                        {searchProdotti ? 'Nessun prodotto corrisponde alla ricerca' : 'Nessun prodotto. Clicca "Nuovo Prodotto" per iniziare.'}
+                      </td></tr>
                       : filteredProdotti.map((p, i) => (
                         <tr key={p.id} className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
                           <td className="py-3 px-4 font-medium text-[#2D2D2D]">{p.nome}</td>
