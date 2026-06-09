@@ -1,5 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Building2, Package, FileText, CheckCircle, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { SupplierFormModal } from '../../anagrafiche/components/SupplierFormModal';
+import { fornitoriApi } from '../../../api/fornitoriApi';
+import type { Fornitore, FornitoreCreateRequest } from '../../../types/fornitori';
 
 interface NewPurchaseOrderModalProps {
   isOpen: boolean;
@@ -18,10 +22,30 @@ interface OrderLine {
 
 export function NewPurchaseOrderModal({ isOpen, onClose }: NewPurchaseOrderModalProps) {
   const [currentStep, setCurrentStep] = useState<Step>(1);
-  const [selectedSupplier, setSelectedSupplier] = useState('');
+  const [fornitori, setFornitori] = useState<Fornitore[]>([]);
+  const [loadingFornitori, setLoadingFornitori] = useState(false);
+  const [isSupplierFormOpen, setIsSupplierFormOpen] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<Fornitore | null>(null);
+  const [supplierSearch, setSupplierSearch] = useState('');
   const [orderLines, setOrderLines] = useState<OrderLine[]>([]);
   const [dataPrevista, setDataPrevista] = useState('');
   const [note, setNote] = useState('');
+
+  useEffect(() => {
+    if (!isOpen) return;
+    loadFornitori();
+  }, [isOpen]);
+
+  const loadFornitori = async () => {
+    setLoadingFornitori(true);
+    try {
+      setFornitori(await fornitoriApi.list());
+    } catch (err: any) {
+      toast.error('Errore caricamento fornitori', { description: err?.message });
+    } finally {
+      setLoadingFornitori(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -32,13 +56,11 @@ export function NewPurchaseOrderModal({ isOpen, onClose }: NewPurchaseOrderModal
     { number: 4, label: 'Conferma', icon: CheckCircle },
   ];
 
-  const suppliers = [
-    'Packaging Solutions Italia S.p.A.',
-    'Pallet Systems Europe S.p.A.',
-    'Film Protezione Italia S.p.A.',
-    'Etichette Professionali S.r.l.',
-    'Nastri & Reggette S.r.l.',
-  ];
+  const filteredFornitori = fornitori.filter(f =>
+    f.ragione_sociale.toLowerCase().includes(supplierSearch.toLowerCase()) ||
+    (f.piva ?? '').toLowerCase().includes(supplierSearch.toLowerCase()) ||
+    (f.indirizzo ?? '').toLowerCase().includes(supplierSearch.toLowerCase())
+  );
 
   const products = [
     { sku: 'PLT-EUR-001', nome: 'Pallet Standard EUR 1200x800', prezzo: 12.50 },
@@ -93,12 +115,28 @@ export function NewPurchaseOrderModal({ isOpen, onClose }: NewPurchaseOrderModal
   };
 
   const handleConfirm = () => {
-    onClose();
+    handleClose();
+  };
+
+  const handleSaveSupplier = async (data: FornitoreCreateRequest) => {
+    const created = await fornitoriApi.create(data);
+    setFornitori(prev => [...prev, created]);
+    setSelectedSupplier(created);
+    setIsSupplierFormOpen(false);
+    toast.success('Fornitore creato');
+  };
+
+  const handleClose = () => {
     setCurrentStep(1);
-    setSelectedSupplier('');
+    setFornitori([]);
+    setLoadingFornitori(false);
+    setIsSupplierFormOpen(false);
+    setSelectedSupplier(null);
+    setSupplierSearch('');
     setOrderLines([]);
     setDataPrevista('');
     setNote('');
+    onClose();
   };
 
   return (
@@ -110,7 +148,7 @@ export function NewPurchaseOrderModal({ isOpen, onClose }: NewPurchaseOrderModal
             <p className="text-sm text-[#6B7280] mt-1">Step {currentStep} di 4</p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="w-10 h-10 flex items-center justify-center hover:bg-[#F7F9FC] rounded-xl transition-all"
           >
             <X className="w-5 h-5 text-[#6B7280]" />
@@ -156,37 +194,74 @@ export function NewPurchaseOrderModal({ isOpen, onClose }: NewPurchaseOrderModal
           {/* Step 1: Selezione Fornitore */}
           {currentStep === 1 && (
             <div className="space-y-4">
-              <h3 className="font-semibold text-[#2D2D2D] mb-4">Seleziona Fornitore</h3>
-              <div className="grid grid-cols-1 gap-3">
-                {suppliers.map((supplier) => (
-                  <label
-                    key={supplier}
-                    className={`p-4 border-2 rounded-xl cursor-pointer transition-all hover:border-[#17E88F] ${
-                      selectedSupplier === supplier ? 'border-[#17E88F] bg-[#F0FDF7]' : 'border-[#E5EAF2]'
-                    }`}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h3 className="font-semibold text-[#2D2D2D] mb-2">Seleziona Fornitore</h3>
+                  <p className="text-sm text-[#6B7280]">Scegli un fornitore presente o creane uno nuovo direttamente nel modulo.</p>
+                </div>
+                <button
+                  onClick={() => setIsSupplierFormOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#17E88F] text-white rounded-xl hover:bg-[#0FA67A] transition-all text-sm font-medium"
+                >
+                  <Plus className="w-4 h-4" />
+                  Nuovo Fornitore
+                </button>
+              </div>
+              <div className="relative">
+                <label className="sr-only" htmlFor="supplier-search">Cerca fornitore</label>
+                <Package className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  id="supplier-search"
+                  type="text"
+                  placeholder="Cerca per ragione sociale, P.IVA o indirizzo..."
+                  value={supplierSearch}
+                  onChange={(e) => setSupplierSearch(e.target.value)}
+                  className="w-full h-10 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] text-sm"
+                />
+              </div>
+              {loadingFornitori ? (
+                <div className="rounded-2xl border border-[#E5EAF2] bg-[#F7F9FC] p-6 text-center text-sm text-[#6B7280]">
+                  Caricamento fornitori...
+                </div>
+              ) : filteredFornitori.length === 0 ? (
+                <div className="rounded-2xl border border-[#E5EAF2] bg-[#F7F9FC] p-6 text-center text-sm text-[#6B7280] space-y-3">
+                  <p>Nessun fornitore trovato con questi criteri.</p>
+                  <button
+                    onClick={() => setIsSupplierFormOpen(true)}
+                    className="px-4 py-2 bg-[#17E88F] text-white rounded-xl hover:bg-[#0FA67A] transition-all text-sm font-medium"
                   >
-                    <input
-                      type="radio"
-                      name="supplier"
-                      value={supplier}
-                      checked={selectedSupplier === supplier}
-                      onChange={(e) => setSelectedSupplier(e.target.value)}
-                      className="sr-only"
-                    />
-                    <div className="flex items-center gap-3">
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        selectedSupplier === supplier ? 'border-[#17E88F]' : 'border-[#E5EAF2]'
-                      }`}>
-                        {selectedSupplier === supplier && (
-                          <div className="w-3 h-3 bg-[#17E88F] rounded-full" />
+                    Crea nuovo fornitore
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredFornitori.map((fornitore) => (
+                    <button
+                      key={fornitore.id}
+                      type="button"
+                      onClick={() => setSelectedSupplier(fornitore)}
+                      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                        selectedSupplier?.id === fornitore.id
+                          ? 'border-[#17E88F] bg-[#F0FDF7]'
+                          : 'border-[#E5EAF2] hover:border-[#17E88F]/40 hover:bg-[#F7F9FC]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-medium text-[#2D2D2D]">{fornitore.ragione_sociale}</p>
+                          <p className="text-xs text-[#9CA3AF] mt-0.5">{fornitore.piva ?? 'P.IVA non disponibile'}</p>
+                          {fornitore.indirizzo && (
+                            <p className="text-xs text-[#9CA3AF] mt-1">{fornitore.indirizzo}</p>
+                          )}
+                        </div>
+                        {selectedSupplier?.id === fornitore.id && (
+                          <div className="w-5 h-5 rounded-full bg-[#17E88F] flex items-center justify-center text-white text-[10px]">✓</div>
                         )}
                       </div>
-                      <Building2 className="w-5 h-5 text-[#6B7280]" />
-                      <span className="font-medium text-[#2D2D2D]">{supplier}</span>
-                    </div>
-                  </label>
-                ))}
-              </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -277,7 +352,7 @@ export function NewPurchaseOrderModal({ isOpen, onClose }: NewPurchaseOrderModal
 
               <div className="bg-[#F7F9FC] rounded-xl p-4">
                 <div className="text-sm text-[#6B7280] mb-1">Fornitore Selezionato</div>
-                <div className="font-medium text-[#2D2D2D]">{selectedSupplier}</div>
+                <div className="font-medium text-[#2D2D2D]">{selectedSupplier?.ragione_sociale ?? 'Nessun fornitore selezionato'}</div>
               </div>
 
               <div>
@@ -338,7 +413,7 @@ export function NewPurchaseOrderModal({ isOpen, onClose }: NewPurchaseOrderModal
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-[#6B7280]">Fornitore:</span>
-                    <span className="font-medium text-[#2D2D2D]">{selectedSupplier}</span>
+                    <span className="font-medium text-[#2D2D2D]">{selectedSupplier?.ragione_sociale ?? 'Nessun fornitore selezionato'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[#6B7280]">Prodotti:</span>
@@ -360,7 +435,7 @@ export function NewPurchaseOrderModal({ isOpen, onClose }: NewPurchaseOrderModal
 
         <div className="flex items-center justify-between p-6 border-t border-[#E5EAF2]">
           <button
-            onClick={currentStep === 1 ? onClose : handleBack}
+            onClick={currentStep === 1 ? handleClose : handleBack}
             className="px-6 py-2.5 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-[#F7F9FC] transition-all font-medium"
           >
             {currentStep === 1 ? 'Annulla' : 'Indietro'}
@@ -377,6 +452,12 @@ export function NewPurchaseOrderModal({ isOpen, onClose }: NewPurchaseOrderModal
           </button>
         </div>
       </div>
+      <SupplierFormModal
+        open={isSupplierFormOpen}
+        onClose={() => setIsSupplierFormOpen(false)}
+        onSave={handleSaveSupplier}
+        mode="create"
+      />
     </div>
   );
 }
