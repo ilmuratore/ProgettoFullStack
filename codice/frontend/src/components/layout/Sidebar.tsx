@@ -159,7 +159,7 @@ export function Sidebar({
               className={`w-full flex items-center rounded-xl hover:bg-[#FEF2F2] transition-all ${isCollapsed ? 'justify-center p-3' : 'gap-3 px-4 py-2.5'}`}
             >
               <LogOut className="w-4 h-4 text-[#EF4444] flex-shrink-0" />
-              {!isCollapsed && <span className="text-sm text-[#EF4444] font-medium">Esci</span>}
+              {!isCollapsed && <span className="text-sm text-[#EF4444] font-medium">Logout</span>}
             </button>
             {isCollapsed && (
               <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1E293B] text-white text-xs font-medium rounded-lg opacity-0 group-hover/logout:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">

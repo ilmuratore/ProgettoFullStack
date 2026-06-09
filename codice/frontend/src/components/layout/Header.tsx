@@ -62,7 +62,7 @@ export function Header({ onNavigate, sidebarCollapsed = false, user, onLogout }:
           {/* Titolo pagina */}
           <div className="flex items-center gap-4">
             <div>
-              <h2 className="font-semibold text-[#2D2D2D]">Dashboard Operativa</h2>
+              <h2 className="font-semibold text-[#2D2D2D]">Dashboard</h2>
             </div>
           </div>
 
