@@ -46,3 +46,42 @@ export function filterCategorieTree(categorie: Categoria[], query: string): Cate
       : sottoDaTenere.has(c.id)
   );
 }
+
+// Etichetta + livello pronti per essere mostrati in una <select>.
+export interface CategoriaSelectOption {
+  id: number;
+  label: string;   
+  livello: number; 
+  nome: string;    
+}
+
+// Mette le categorie in ordine: ogni padre seguito dalle sue sottocategorie.
+export function flattenCategorieForSelect(categorie: Categoria[]): CategoriaSelectOption[] {
+  // Prendo i padri (le radici) e li ordino per nome.
+  const radici = categorie
+    .filter((c) => c.categoria_padre_id === null)
+    .sort((a, b) => a.nome.localeCompare(b.nome));
+
+  const result: CategoriaSelectOption[] = [];
+
+  for (const padre of radici) {
+    // Aggiungo il padre alla lista.
+    result.push({ id: padre.id, label: padre.nome, livello: 0, nome: padre.nome });
+
+    // Trovo le sue sottocategorie, ordinate per nome, e le metto subito dopo.
+    const figli = categorie
+      .filter((c) => c.categoria_padre_id === padre.id)
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+
+    for (const figlio of figli) {
+      result.push({
+        id: figlio.id,
+        label: `\u00A0\u00A0\u00A0\u00A0↳ ${figlio.nome}`, 
+        livello: 1,
+        nome: figlio.nome,
+      });
+    }
+  }
+
+  return result;
+}
