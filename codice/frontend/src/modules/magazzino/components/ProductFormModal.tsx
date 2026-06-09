@@ -21,6 +21,7 @@ interface FormState {
   unita_misura: string;
   peso_kg: string;
   scorta_minima: string;
+  attivo: boolean;
 }
 
 const EMPTY_FORM: FormState = {
@@ -32,6 +33,7 @@ const EMPTY_FORM: FormState = {
   unita_misura: '',
   peso_kg: '',
   scorta_minima: '0',
+  attivo: true,
 };
 
 export function ProductFormModal({
@@ -61,6 +63,7 @@ export function ProductFormModal({
         unita_misura: initialData.unita_misura ?? '',
         peso_kg: initialData.peso_kg !== null ? String(initialData.peso_kg) : '',
         scorta_minima: String(initialData.scorta_minima),
+        attivo: initialData.attivo,
       });
       return;
     }
@@ -113,6 +116,7 @@ export function ProductFormModal({
       sku: form.sku.trim(),
       scorta_minima: scortaMinima,
       prezzo,
+      attivo: form.attivo,
       ...(form.descrizione.trim() && { descrizione: form.descrizione.trim() }),
       ...(categoriaId !== undefined && { categoria_id: categoriaId }),
       ...(form.unita_misura.trim() && { unita_misura: form.unita_misura.trim() }),
@@ -140,6 +144,10 @@ export function ProductFormModal({
       setForm(prev => ({ ...prev, [field]: e.target.value }));
       if (errors[field]) setErrors(prev => ({ ...prev, [field]: undefined }));
     };
+
+  const toggleAttivo = () => {
+    setForm(prev => ({ ...prev, attivo: !prev.attivo }));
+  };
 
   const inputClass = (err?: string) =>
     `w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all ${
@@ -297,6 +305,29 @@ export function ProductFormModal({
                 className={inputClass(errors.scorta_minima)}
               />
               {errors.scorta_minima && <p className="mt-1 text-xs text-red-500">{errors.scorta_minima}</p>}
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-[#2D2D2D] mb-2">Stato prodotto</label>
+              <div className="flex items-center justify-between gap-4 px-4 py-3 border border-[#E5EAF2] rounded-2xl bg-[#F7F9FC]">
+                <div>
+                  <p className="text-sm font-medium text-[#2D2D2D]">
+                    {form.attivo ? 'Prodotto attivo' : 'Prodotto disattivato'}
+                  </p>
+                  <p className="text-xs text-[#6B7280] mt-1">
+                    {form.attivo
+                      ? 'Il prodotto sara visibile come attivo nel modulo magazzino.'
+                      : 'Il prodotto verra salvato come disattivato.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleAttivo}
+                  className={`w-11 h-6 rounded-full transition-colors flex items-center ${form.attivo ? 'bg-[#17E88F]' : 'bg-[#D1D5DB]'}`}
+                >
+                  <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform mx-1 ${form.attivo ? 'translate-x-5' : ''}`} />
+                </button>
+              </div>
             </div>
           </div>
 

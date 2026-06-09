@@ -15,6 +15,7 @@ const createBlueprint = {
     unita_misura:  { required: false, type: 'string' },
     peso_kg:       { required: false, type: 'number', min: 0 },
     scorta_minima: { required: false, type: 'number', integer: true, min: 0 },
+    attivo:        { required: false, type: 'boolean' },
 };
 
 const updateBlueprint = {
@@ -26,6 +27,7 @@ const updateBlueprint = {
     unita_misura:  { required: false, type: 'string' },
     peso_kg:       { required: false, type: 'number', min: 0 },
     scorta_minima: { required: false, type: 'number', integer: true, min: 0 },
+    attivo:        { required: false, type: 'boolean' },
 };
 
 router.get(   '/',    auth, requirePermesso('prodotti:read'),   prodottiController.getAll);

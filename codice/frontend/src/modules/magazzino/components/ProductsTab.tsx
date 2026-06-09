@@ -1,6 +1,8 @@
-import { Filter, MoreVertical, Edit, Trash2, Eye, Search } from 'lucide-react';
+import { useState } from 'react';
+import { MoreVertical, Edit, Trash2, Eye, Search } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../../components/ui/dropdown-menu';
 import type { ProdottoListino } from '../../../types/prodotti';
+import { EMPTY_PRODUCT_FILTERS, ProductsFilter, type ProductFiltersState } from './ProductsFilter';
 
 interface ProductsTabProps {
   prodotti: ProdottoListino[];
@@ -86,28 +88,70 @@ export function ProductsTab({
   onEdit,
   onDelete,
 }: ProductsTabProps) {
-  const filteredProdotti = prodotti.filter((p) => {
-    const q = search.toLowerCase();
-    return p.nome.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
-  });
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState<ProductFiltersState>(EMPTY_PRODUCT_FILTERS);
+
+  const activeFiltersCount = (filters.ordinamento !== 'alfabetico' ? 1 : 0) + (filters.stato !== 'tutti' ? 1 : 0);
+
+  const filteredProdotti = prodotti
+    .filter((prodotto) => {
+      const query = search.trim().toLowerCase();
+      const matchSearch =
+        query === '' ||
+        prodotto.nome.toLowerCase().includes(query) ||
+        prodotto.sku.toLowerCase().includes(query);
+
+      const matchStatus =
+        filters.stato === 'tutti' ||
+        (filters.stato === 'attivi' && prodotto.attivo) ||
+        (filters.stato === 'disattivati' && !prodotto.attivo);
+
+      return matchSearch && matchStatus;
+    })
+    .sort((left, right) => {
+      switch (filters.ordinamento) {
+        case 'prezzo_crescente':
+          return left.prezzo - right.prezzo;
+        case 'prezzo_decrescente':
+          return right.prezzo - left.prezzo;
+        case 'data_inserimento_recente':
+          return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+        case 'data_inserimento_vecchio':
+          return new Date(left.created_at).getTime() - new Date(right.created_at).getTime();
+        case 'alfabetico':
+        default:
+          return left.nome.localeCompare(right.nome, 'it');
+      }
+    });
+
+  const resetFilters = () => {
+    setFilters(EMPTY_PRODUCT_FILTERS);
+  };
 
   return (
     <>
-      <div className="flex items-center gap-4">
-        <div className="flex-1 relative">
-          <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Cerca prodotti per nome o SKU..."
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full h-10 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all"
-          />
-        </div>
-        <button className="px-4 py-2 bg-[#F7F9FC] border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-white transition-all flex items-center gap-2">
-          <Filter className="w-4 h-4" /> Filtri
-        </button>
+      <div className="space-y-4">
+        <ProductsFilter
+          open={filtersOpen}
+          filters={filters}
+          activeFiltersCount={activeFiltersCount}
+          onToggleOpen={() => setFiltersOpen(prev => !prev)}
+          onChange={setFilters}
+          onReset={resetFilters}
+        >
+          <div className="relative">
+            <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Cerca prodotti per nome o SKU..."
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="w-full h-10 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all"
+            />
+          </div>
+        </ProductsFilter>
       </div>
+
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -122,11 +166,20 @@ export function ProductsTab({
           <tbody>
             {loading ? <SkeletonRows cols={5} /> : filteredProdotti.length === 0
               ? <tr><td colSpan={5} className="py-12 text-center text-[#6B7280] text-sm">
-                {search ? 'Nessun prodotto corrisponde alla ricerca' : 'Nessun prodotto. Clicca "Nuovo Prodotto" per iniziare.'}
+                {search || activeFiltersCount > 0
+                  ? 'Nessun prodotto corrisponde ai filtri impostati'
+                  : 'Nessun prodotto. Clicca "Nuovo Prodotto" per iniziare.'}
               </td></tr>
               : filteredProdotti.map((p, i) => (
                 <tr key={p.id} className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
-                  <td className="py-3 px-4 font-medium text-[#2D2D2D]">{p.nome}</td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-3">
+                      <span className="font-medium text-[#2D2D2D]">{p.nome}</span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-medium ${p.attivo ? 'bg-[#DCFCE7] text-[#22C55E]' : 'bg-[#FEE2E2] text-[#EF4444]'}`}>
+                        {p.attivo ? 'Attivo' : 'Disattivato'}
+                      </span>
+                    </div>
+                  </td>
                   <td className="py-3 px-4 text-sm text-[#6B7280] font-mono">{p.sku}</td>
                   <td className="py-3 px-4 text-sm font-semibold text-[#2D2D2D] text-right">{formatPrezzo(p.prezzo)}</td>
                   <td className="py-3 px-4 text-sm text-[#6B7280]">{formatData(p.data_agg_prezzo)}</td>

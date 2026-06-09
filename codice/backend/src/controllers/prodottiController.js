@@ -27,7 +27,7 @@ const getById = async (req, res, next) => {
 // POST /api/v1/prodotti
 const create = async (req, res, next) => {
     try {
-        const { nome, sku, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo } = req.body;
+        const { nome, sku, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo, attivo } = req.body;
         const prodotto = await prodottiService.create({
             nome,
             sku,
@@ -36,7 +36,8 @@ const create = async (req, res, next) => {
             unita_misura,
             peso_kg,
             scorta_minima,
-            prezzo
+            prezzo,
+            attivo
         });
         return res.status(201).json({ status: 'success', data: prodotto });
     } catch (err) {
@@ -49,7 +50,7 @@ const create = async (req, res, next) => {
 const update = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
-        const { nome, sku, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo } = req.body;
+        const { nome, sku, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo, attivo } = req.body;
 
         const fields = {};
         if (nome         !== undefined) fields.nome         = nome;
@@ -60,6 +61,7 @@ const update = async (req, res, next) => {
         if (unita_misura !== undefined) fields.unita_misura = unita_misura;
         if (peso_kg      !== undefined) fields.peso_kg      = peso_kg;
         if (scorta_minima !== undefined) fields.scorta_minima = scorta_minima;
+        if (attivo       !== undefined) fields.attivo       = attivo;
 
         const prodotto = await prodottiService.update(id, fields);
         return res.status(200).json({ status: 'success', data: prodotto });

@@ -4,6 +4,8 @@ export interface ProdottoListino {
   nome: string;
   prezzo: number;
   data_agg_prezzo: string;
+  attivo: boolean;
+  created_at: string;
 }
 
 export interface Prodotto {
@@ -33,6 +35,7 @@ export interface ProdottoCreateRequest {
   peso_kg?: number | null;
   scorta_minima?: number;
   prezzo: number;
+  attivo?: boolean;
 }
 
 export interface ProdottoUpdateRequest {
@@ -44,4 +47,5 @@ export interface ProdottoUpdateRequest {
   peso_kg?: number | null;
   scorta_minima?: number;
   prezzo?: number;
+  attivo?: boolean;
 }

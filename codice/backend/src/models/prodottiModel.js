@@ -45,9 +45,10 @@ const findListino = () =>
              p.sku,
              p.nome,
              p.prezzo,
-             p.data_agg_prezzo
+             p.data_agg_prezzo,
+             p.attivo,
+             p.created_at
          FROM   prodotti p
-         WHERE  p.attivo = true
          ORDER  BY p.nome ASC`
     );
 
@@ -101,7 +102,7 @@ const create = ({ sku, nome, descrizione, categoria_id, unita_misura, peso_kg, s
         `INSERT INTO prodotti
              (sku, nome, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo, data_agg_prezzo, attivo)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9)
-         RETURNING id, sku, nome, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo, data_agg_prezzo, attivo`,
+         RETURNING id, sku, nome, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo, data_agg_prezzo, attivo, created_at, updated_at`,
         [sku, nome, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo, attivo]
     );
 
@@ -124,7 +125,7 @@ const update = (id, { sku, nome, descrizione, categoria_id, unita_misura, peso_k
              attivo        = COALESCE($9,  attivo),
              updated_at    = NOW()
          WHERE id = $10
-         RETURNING id, sku, nome, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo, data_agg_prezzo, attivo`,
+         RETURNING id, sku, nome, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo, data_agg_prezzo, attivo, created_at, updated_at`,
         [sku, nome, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo, attivo, id]
     );
 

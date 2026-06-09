@@ -301,6 +301,8 @@ export function WarehousePage() {
       nome: prodotto.nome,
       prezzo: prodotto.prezzo,
       data_agg_prezzo: prodotto.data_agg_prezzo,
+      attivo: prodotto.attivo,
+      created_at: prodotto.created_at,
     });
 
     try {
