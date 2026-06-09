@@ -3,8 +3,6 @@ import { Search, Filter, ArrowUpDown } from "lucide-react";
 import { giacenzeApi } from "../../../api/giacenzeApi";
 import type { Giacenza } from "../../../types/magazzino";
 
-
-
 const getStatoBadge = (item: Giacenza) => {
   if (item.sotto_scorta) {
     return { bg: "bg-[#FEE2E2]", text: "text-[#EF4444]", icon: "🔴", label: "Critico" };
@@ -21,17 +19,34 @@ export function StockTable() {
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
+  // FILTRI AVANZATI
+  const [filters, setFilters] = useState({
+    magazzino: "",
+    categoria: "",
+    ubicazione: "",
+    scorta: "",
+    q_min: "",
+    q_max: "",
+  });
+
   useEffect(() => {
-  setLoading(true);
+    setLoading(true);
 
-  giacenzeApi
-    .list({ search })
-    .then((res) => setRows(res))   // res è Giacenza[]
-    .finally(() => setLoading(false));
-}, [search]);
+    const params: Record<string, any> = {
+      search,
+      ...filters,
+    };
 
+    // Rimuove parametri vuoti
+    Object.keys(params).forEach((k) => {
+      if (params[k] === "" || params[k] === null) delete params[k];
+    });
 
-
+    giacenzeApi
+      .list(params)
+      .then((res) => setRows(res))
+      .finally(() => setLoading(false));
+  }, [search, filters]);
 
   return (
     <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
@@ -63,10 +78,78 @@ export function StockTable() {
         </div>
       </div>
 
-      {/* FILTRI (placeholder per Dev4 — verranno completati nei problemi 13/14) */}
+      {/* FILTRI AVANZATI */}
       {showFilters && (
-        <div className="mb-4 p-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg text-sm text-[#6B7280]">
-          <p>Filtri avanzati in sviluppo…</p>
+        <div className="mb-4 p-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg text-sm text-[#6B7280] space-y-4">
+
+          {/* MAGAZZINO */}
+          <div className="flex items-center gap-3">
+            <label className="w-32 font-medium text-[#2D2D2D]">Magazzino</label>
+            <select
+              value={filters.magazzino}
+              onChange={(e) => setFilters({ ...filters, magazzino: e.target.value })}
+              className="h-9 px-3 bg-white border border-[#E5EAF2] rounded-lg"
+            >
+              <option value="">Tutti</option>
+              <option value="1">Magazzino 1</option>
+              <option value="2">Magazzino 2</option>
+            </select>
+          </div>
+
+          {/* CATEGORIA */}
+          <div className="flex items-center gap-3">
+            <label className="w-32 font-medium text-[#2D2D2D]">Categoria</label>
+            <input
+              type="text"
+              value={filters.categoria}
+              onChange={(e) => setFilters({ ...filters, categoria: e.target.value })}
+              className="h-9 px-3 bg-white border border-[#E5EAF2] rounded-lg"
+              placeholder="Es. Alimentari"
+            />
+          </div>
+
+          {/* UBICAZIONE */}
+          <div className="flex items-center gap-3">
+            <label className="w-32 font-medium text-[#2D2D2D]">Ubicazione</label>
+            <input
+              type="text"
+              value={filters.ubicazione}
+              onChange={(e) => setFilters({ ...filters, ubicazione: e.target.value })}
+              className="h-9 px-3 bg-white border border-[#E5EAF2] rounded-lg"
+              placeholder="Es. A-01-03"
+            />
+          </div>
+
+          {/* SOTTO SCORTA */}
+          <div className="flex items-center gap-3">
+            <label className="w-32 font-medium text-[#2D2D2D]">Sotto Scorta</label>
+            <input
+              type="checkbox"
+              checked={filters.scorta === "sotto"}
+              onChange={(e) =>
+                setFilters({ ...filters, scorta: e.target.checked ? "sotto" : "" })
+              }
+            />
+          </div>
+
+          {/* RANGE QUANTITÀ */}
+          <div className="flex items-center gap-3">
+            <label className="w-32 font-medium text-[#2D2D2D]">Quantità</label>
+            <input
+              type="number"
+              placeholder="Min"
+              value={filters.q_min}
+              onChange={(e) => setFilters({ ...filters, q_min: e.target.value })}
+              className="h-9 w-24 px-3 bg-white border border-[#E5EAF2] rounded-lg"
+            />
+            <input
+              type="number"
+              placeholder="Max"
+              value={filters.q_max}
+              onChange={(e) => setFilters({ ...filters, q_max: e.target.value })}
+              className="h-9 w-24 px-3 bg-white border border-[#E5EAF2] rounded-lg"
+            />
+          </div>
         </div>
       )}
 
