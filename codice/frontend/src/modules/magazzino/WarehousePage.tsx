@@ -10,6 +10,8 @@ import { StockTable } from './components/StockTable';
 import { StockMovementsTimeline } from './components/StockMovementsTimeline';
 import { NewMovementModal } from './components/NewMovementModal';
 import { ProductFormModal } from './components/ProductFormModal';
+// da lasciare per il merge, componente dettaglio prodotto
+import { ProductDetailDrawer } from './components/ProductDetailDrawer';
 import { CategoryFormModal } from './components/CategoryFormModal';
 import { ProductsTab } from './components/ProductsTab';
 import { CategoriesTab } from './components/CategoriesTab';
@@ -84,6 +86,9 @@ export function WarehousePage() {
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [productModalMode, setProductModalMode] = useState<'create' | 'edit'>('create');
   const [selectedProduct, setSelectedProduct] = useState<ProdottoListino | null>(null);
+  // da lasciare per il merge useState per apertura dettaglio prodotto
+  const [productDetailOpen, setProductDetailOpen] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
 
   // ── Categorie ──────────────────────────────────────────────────────────────
   const [categorie, setCategorie] = useState<Categoria[]>([]);
@@ -435,7 +440,8 @@ export function WarehousePage() {
               canWriteProdotti={canWriteProdotti}
               canDeleteProdotti={canDeleteProdotti}
               onSearchChange={setSearchProdotti}
-              onView={() => toast.info('Dettaglio prodotto disponibile con M07')}
+              // richiamo il componente dettaglio prodotto
+              onView={(item) => { setSelectedProductId(item.id); setProductDetailOpen(true); }}
               onEdit={(item) => { setProductModalMode('edit'); setSelectedProduct(item); setProductModalOpen(true); }}
               onDelete={handleDeleteProduct}
             />
@@ -468,6 +474,13 @@ export function WarehousePage() {
 
       {/* ── Modali ── */}
       <NewMovementModal isOpen={isMovementModalOpen} onClose={() => setIsMovementModalOpen(false)} />
+
+      {/* componente dettaglio prodotto */}
+      <ProductDetailDrawer
+        productId={selectedProductId}
+        isOpen={productDetailOpen}
+        onClose={() => setProductDetailOpen(false)}
+      />
 
       <ProductFormModal
         open={productModalOpen}
