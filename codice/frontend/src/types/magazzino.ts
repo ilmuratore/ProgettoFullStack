@@ -12,6 +12,15 @@ export interface Magazzino {
   updated_at: string;
 }
 
+export type MovimentoTipo =
+  | "CARICO_ACQUISTO"
+  | "SCARICO_VENDITA"
+  | "SPOSTAMENTO"
+  | "RETTIFICA_POSITIVA"
+  | "RETTIFICA_NEGATIVA"
+  | "RESO";
+
+
 export interface MagazzinoConUbicazioni extends Magazzino {
   ubicazioni: Ubicazione[];
 }
@@ -57,4 +66,55 @@ export interface UbicazioneCreateRequest {
 
 export interface UbicazioneUpdateTemperaturaRequest {
   temperatura_controllata: boolean;
+}
+
+// ===============================
+// M07 — Giacenze
+// ===============================
+export interface Giacenza {
+  prodotto_id: number;
+  sku: string;
+  nome: string;
+  categoria?: string | null;
+  magazzino: string;
+  ubicazione: string;
+  quantita: number;
+  scorta_minima: number;
+  sotto_scorta: boolean;
+  ultimo_movimento?: string | null;
+}
+
+
+// ===============================
+// M07 — Movimenti Stock
+// ===============================
+export interface MovimentoStock {
+  id: number;
+  prodotto_id: number;
+  sku: string;
+  prodotto: string;
+  ubicazione_id: number;
+  ubicazione: string;
+  quantita: number;
+  tipo: MovimentoTipo;
+  riferimento?: string | null;
+  note?: string | null;
+  created_at: string;
+}
+
+// Payload per POST /movimenti-stock
+export interface MovimentoStockCreateRequest {
+  prodotto_id: number;
+  quantita: number;
+  movimento_tipo: string;
+
+  // per carico/scarico/rettifiche
+  ubicazione_id?: number;
+
+  // per spostamento
+  ubicazione_da_id?: number;
+  ubicazione_a_id?: number;
+
+  riferimento?: string;
+  note?: string;
 }
