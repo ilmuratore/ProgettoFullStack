@@ -92,10 +92,11 @@ function MagazzinoNode({
   onEditUbic: (ubic: Ubicazione) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
-
-  const ubicAttive = mag.ubicazioni.filter(u => u.attivo).length;
-  const totaleUbic = mag.ubicazioni.length;
-  const giacenzaTotale = mag.ubicazioni.reduce((s, u) => s + (u.totale_giacenza ?? 0), 0);
+  const ubicazioni = Array.isArray(mag.ubicazioni) ? mag.ubicazioni : [];
+  
+  const ubicAttive = ubicazioni.filter(u => u.attivo).length;
+  const totaleUbic = ubicazioni.length;
+  const giacenzaTotale = ubicazioni.reduce((s, u) => s + (u.totale_giacenza ?? 0), 0);
 
   const indirizzo = [mag.citta, mag.provincia].filter(Boolean).join(', ');
 
@@ -164,12 +165,12 @@ function MagazzinoNode({
 
       {expanded && (
         <div className="p-3 space-y-1 border-t border-[#E5EAF2] bg-white">
-          {mag.ubicazioni.length === 0 ? (
+          {ubicazioni.length === 0 ? (
             <div className="py-6 text-center text-sm text-[#9CA3AF]">
               Nessuna ubicazione. Clicca <span className="text-[#17E88F]">+</span> per aggiungerne una.
             </div>
           ) : (
-            mag.ubicazioni.map(u => (
+            ubicazioni.map(u => (
               <UbicazioneRow
                 key={u.id}
                 ubic={u}

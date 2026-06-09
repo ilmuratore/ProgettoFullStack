@@ -10,7 +10,6 @@ import { StockTable } from './components/StockTable';
 import { StockMovementsTimeline } from './components/StockMovementsTimeline';
 import { NewMovementModal } from './components/NewMovementModal';
 import { ProductFormModal } from './components/ProductFormModal';
-// da lasciare per il merge, componente dettaglio prodotto
 import { ProductDetailDrawer } from './components/ProductDetailDrawer';
 import { CategoryFormModal } from './components/CategoryFormModal';
 import { ProductsTab } from './components/ProductsTab';
@@ -99,7 +98,10 @@ export function WarehousePage() {
 
   const fetchMagazzini = useCallback(async () => {
     setLoading(true);
-    try { setMagazzini(await magazzinoApi.list()); }
+    try { 
+      const data = await magazzinoApi.list();
+      setMagazzini(
+        data.map((mag) => ({...mag, ubicazioni: Array.isArray(mag.ubicazioni) ? mag.ubicazioni : [],}))); }
     catch (err: any) { toast.error('Errore caricamento magazzini', { description: err?.message }); }
     finally { setLoading(false); }
   }, []);
@@ -159,7 +161,19 @@ export function WarehousePage() {
   const handleToggleMagazzino = async (id: number) => {
     try {
       const updated = await magazzinoApi.toggle(id);
-      setMagazzini(prev => prev.map(m => m.id === id ? { ...m, ...updated } : m));
+      setMagazzini(prev => prev.map(m => {
+  if (m.id !== id) return m;
+
+  return {
+    ...m,
+    ...updated,
+    ubicazioni: Array.isArray((updated as any).ubicazioni)
+      ? (updated as any).ubicazioni
+      : Array.isArray(m.ubicazioni)
+        ? m.ubicazioni
+        : [],
+  };
+}));
       toast.success(`Magazzino ${updated.attivo ? 'attivato' : 'disattivato'}`);
     } catch (err: any) { toast.error('Operazione fallita', { description: err?.message }); }
   };
@@ -185,7 +199,13 @@ export function WarehousePage() {
     try {
       const updated = await magazzinoApi.toggleUbicazione(ubicId);
       setMagazzini(prev => prev.map(m => m.id === magId
-        ? { ...m, ubicazioni: m.ubicazioni.map(u => u.id === ubicId ? { ...u, ...updated } : u) } : m
+        ? {
+    ...m,
+    ubicazioni: (Array.isArray(m.ubicazioni) ? m.ubicazioni : []).map(u =>
+      u.id === ubicId ? { ...u, ...updated } : u
+    )
+  }
+: m
       ));
       toast.success(`Ubicazione ${updated.attivo ? 'attivata' : 'disattivata'}`);
     } catch (err: any) { toast.error('Operazione fallita', { description: err?.message }); }
@@ -233,7 +253,19 @@ export function WarehousePage() {
           ...(magForm.paese.trim() && { paese: magForm.paese.trim() }),
         };
         const updated = await magazzinoApi.update(selectedMag.id, payload);
-        setMagazzini(prev => prev.map(m => m.id === selectedMag.id ? { ...m, ...updated } : m));
+        setMagazzini(prev => prev.map(m => {
+  if (m.id !== selectedMag.id) return m;
+
+  return {
+    ...m,
+    ...updated,
+    ubicazioni: Array.isArray((updated as any).ubicazioni)
+      ? (updated as any).ubicazioni
+      : Array.isArray(m.ubicazioni)
+        ? m.ubicazioni
+        : [],
+  };
+}));
         toast.success('Magazzino aggiornato');
       }
       setMagModalOpen(false);
@@ -265,13 +297,23 @@ export function WarehousePage() {
         };
         const created = await magazzinoApi.createUbicazione(selectedMagId, payload);
         setMagazzini(prev => prev.map(m => m.id === selectedMagId
-          ? { ...m, ubicazioni: [...m.ubicazioni, created] } : m
+          ? {
+    ...m,
+    ubicazioni: [...(Array.isArray(m.ubicazioni) ? m.ubicazioni : []), created]
+  }
+: m
         ));
         toast.success('Ubicazione creata');
       } else if (ubicModalMode === 'edit' && selectedUbic) {
         const updated = await magazzinoApi.updateTemperatura(selectedUbic.id, { temperatura_controllata: ubicForm.temperatura_controllata });
         setMagazzini(prev => prev.map(m => m.id === selectedUbic.magazzino_id
-          ? { ...m, ubicazioni: m.ubicazioni.map(u => u.id === selectedUbic.id ? { ...u, ...updated } : u) } : m
+          ? {
+    ...m,
+    ubicazioni: (Array.isArray(m.ubicazioni) ? m.ubicazioni : []).map(u =>
+      u.id === selectedUbic.id ? { ...u, ...updated } : u
+    )
+  }
+: m
         ));
         toast.success('Ubicazione aggiornata');
       }
