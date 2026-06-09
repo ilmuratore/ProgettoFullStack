@@ -29,7 +29,7 @@ import type {
 import type { ProdottoListino, ProdottoCreateRequest, ProdottoUpdateRequest } from '../../types/prodotti';
 import type { Categoria, CategoriaCreateRequest, CategoriaUpdateRequest } from '../../types/categorie';
 
-type WarehouseTab = 'struttura' | 'prodotti' | 'categorie' | 'giacenze' | 'movimenti' | 'rettifiche';
+type WarehouseTab = 'struttura' | 'prodotti' | 'categorie' | 'giacenze' | 'movimenti';
 
 const tabs: TabConfig[] = [
   { id: 'prodotti', label: 'Prodotti', icon: Package },

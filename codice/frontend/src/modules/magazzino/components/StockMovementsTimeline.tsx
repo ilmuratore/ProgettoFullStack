@@ -12,16 +12,6 @@ interface Movement {
 }
 
 const movements: Movement[] = [
-  { id: 1, tipo: 'Carico Acquisto', prodotto: 'Pallet Standard EUR 1200x800', sku: 'PLT-EUR-001', quantita: '+150', utente: 'Giovanni Bianchi', ora: '10:15', ubicazione: 'A-01-05' },
-  { id: 2, tipo: 'Scarico Vendita', prodotto: 'Scatola Cartone Ondulato 40x30', sku: 'SCT-OND-045', quantita: '-500', utente: 'Laura Verdi', ora: '10:08', ubicazione: 'A-02-12' },
-  { id: 3, tipo: 'Trasferimento', prodotto: 'Film Estensibile Trasparente 50cm', sku: 'FLM-EST-012', quantita: '80', utente: 'Marco Ferrari', ora: '09:52', ubicazione: 'B-01-08 → B-02-15' },
-  { id: 4, tipo: 'Rettifica Positiva', prodotto: 'Etichette Adesive A4 Bianche', sku: 'ETI-ADE-098', quantita: '+25', utente: 'Sofia Romano', ora: '09:47', ubicazione: 'A-03-04' },
-  { id: 5, tipo: 'Carico Acquisto', prodotto: 'Reggetta PP Automatica 12mm', sku: 'REG-PP-034', quantita: '+200', utente: 'Andrea Ricci', ora: '09:33', ubicazione: 'B-02-15' },
-  { id: 6, tipo: 'Scarico Vendita', prodotto: 'Nastro Adesivo Avana 50mm', sku: 'NST-AVA-056', quantita: '-120', utente: 'Chiara Colombo', ora: '09:28', ubicazione: 'A-01-18' },
-  { id: 7, tipo: 'Reso', prodotto: 'Angolare Cartone Protezione 50x50', sku: 'ANG-CRT-067', quantita: '+50', utente: 'Francesco Marino', ora: '09:14', ubicazione: 'B-03-07' },
-  { id: 8, tipo: 'Scarico Vendita', prodotto: 'Busta Pluriball 30x45cm', sku: 'BST-PLU-089', quantita: '-200', utente: 'Elena Greco', ora: '09:05', ubicazione: 'A-02-22' },
-  { id: 9, tipo: 'Rettifica Negativa', prodotto: 'Dispenser Nastro Adesivo Manuale', sku: 'DIS-NST-023', quantita: '-5', utente: 'Luca Bruno', ora: '08:58', ubicazione: 'REF-01-03' },
-  { id: 10, tipo: 'Carico Acquisto', prodotto: 'Scatola Fustellata 60x40x40', sku: 'SCT-FUS-078', quantita: '+250', utente: 'Giulia Gallo', ora: '08:42', ubicazione: 'A-03-16' },
 ];
 
 const getMovementIcon = (tipo: string) => {
@@ -83,11 +73,10 @@ export function StockMovementsTimeline() {
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-[#2D2D2D]">{movement.tipo}</span>
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                        movement.quantita.startsWith('+') ? 'bg-[#DCFCE7] text-[#22C55E]' :
-                        movement.quantita.startsWith('-') ? 'bg-[#FEE2E2] text-[#EF4444]' :
-                        'bg-[#DBEAFE] text-[#3B82F6]'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${movement.quantita.startsWith('+') ? 'bg-[#DCFCE7] text-[#22C55E]' :
+                          movement.quantita.startsWith('-') ? 'bg-[#FEE2E2] text-[#EF4444]' :
+                            'bg-[#DBEAFE] text-[#3B82F6]'
+                        }`}>
                         {movement.quantita}
                       </span>
                     </div>
