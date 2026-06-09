@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog';
 import type { Prodotto, ProdottoCreateRequest, ProdottoUpdateRequest } from '../../../types/prodotti';
 import type { Categoria } from '../../../types/categorie';
+import { flattenCategorieForSelect } from '../utils/categorieTree';
 
 interface ProductFormModalProps {
   open: boolean;
@@ -47,6 +48,7 @@ export function ProductFormModal({
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [loading, setLoading] = useState(false);
+  const categorieOptions = flattenCategorieForSelect(categorie);
 
   useEffect(() => {
     if (!open) return;
@@ -251,9 +253,9 @@ export function ProductFormModal({
                 className="w-full px-3 py-2 border border-[#E5EAF2] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all"
               >
                 <option value="">- Nessuna categoria -</option>
-                {categorie.map(categoria => (
-                  <option key={categoria.id} value={String(categoria.id)}>
-                    {categoria.nome}
+                {categorieOptions.map(option => (
+                  <option key={option.id} value={String(option.id)}>
+                    {option.livello > 0 ? `    ↳ ${option.nome}` : option.nome}
                   </option>
                 ))}
               </select>

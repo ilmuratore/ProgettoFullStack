@@ -309,10 +309,12 @@ export function WarehousePage() {
       if (productModalMode === 'create') {
         const created = await prodottiApi.create(data as ProdottoCreateRequest);
         setProdotti(prev => [...prev, toListinoItem(created)]);
+        await fetchCategorie();
         toast.success('Prodotto creato');
       } else if (id !== undefined) {
         const updated = await prodottiApi.update(id, data as ProdottoUpdateRequest);
         setProdotti(prev => prev.map(p => p.id === id ? toListinoItem(updated) : p));
+        await fetchCategorie();
         toast.success('Prodotto aggiornato');
       }
     } catch (err: any) {
@@ -338,6 +340,7 @@ export function WarehousePage() {
     try {
       await prodottiApi.remove(id);
       setProdotti(prev => prev.filter(p => p.id !== id));
+      await fetchCategorie();
       toast.success('Prodotto eliminato');
     } catch (err: any) { toast.error('Eliminazione fallita', { description: err?.message }); }
   };
