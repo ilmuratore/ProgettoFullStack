@@ -15,6 +15,7 @@ import { ProductsTab } from './components/ProductsTab';
 import { CategoriesTab } from './components/CategoriesTab';
 import { PageTabBar, type TabConfig } from '../../components/ui/PageTabBar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../../components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { magazzinoApi } from '../../api/magazzinoApi';
 import { prodottiApi } from '../../api/prodottiApi';
@@ -93,6 +94,7 @@ export function WarehousePage() {
   const [categoryModalMode, setCategoryModalMode] = useState<'create' | 'edit'>('create');
   const [selectedCategory, setSelectedCategory] = useState<Categoria | null>(null);
   const [initialParentCategoryId, setInitialParentCategoryId] = useState<number | undefined>(undefined);
+  const [categoryToDelete, setCategoryToDelete] = useState<Categoria | null>(null);
 
   // ── Fetch functions ────────────────────────────────────────────────────────
   const fetchMagazzini = useCallback(async () => {
@@ -331,14 +333,20 @@ export function WarehousePage() {
     }
   };
 
-  const handleDeleteCategory = async (id: number) => {
-    if (!confirm('Eliminare questa categoria? L\'operazione è definitiva.')) return;
+  const handleDeleteCategory = (id: number) => {
+    setCategoryToDelete(categorie.find(c => c.id === id) ?? null);
+  };
+
+  const handleConfirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
     try {
-      await categorieApi.remove(id);
-      setCategorie(prev => prev.filter(c => c.id !== id));
+      await categorieApi.remove(categoryToDelete.id);
+      setCategorie(prev => prev.filter(c => c.id !== categoryToDelete.id));
       toast.success('Categoria eliminata');
     } catch (err: any) {
       toast.error('Eliminazione bloccata', { description: err?.message });
+    } finally {
+      setCategoryToDelete(null);
     }
   };
 
@@ -487,6 +495,25 @@ export function WarehousePage() {
         initialParentId={initialParentCategoryId}
         categorie={categorie}
       />
+
+
+      <AlertDialog open={!!categoryToDelete} onOpenChange={(v) => { if (!v) setCategoryToDelete(null); }}>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Eliminare la categoria?</AlertDialogTitle>
+      <AlertDialogDescription>
+        Stai per eliminare <strong>{categoryToDelete?.nome}</strong>. L'operazione è definitiva e non può essere annullata.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel>Annulla</AlertDialogCancel>
+      <AlertDialogAction onClick={handleConfirmDeleteCategory} className="bg-red-600 hover:bg-red-700 text-white">
+        Elimina
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+
 
       {/* Modal Magazzino */}
       <Dialog open={magModalOpen} onOpenChange={(v) => { if (!v && !magLoading) setMagModalOpen(false); }}>
