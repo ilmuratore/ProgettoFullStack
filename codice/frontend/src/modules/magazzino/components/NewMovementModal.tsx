@@ -1,16 +1,75 @@
-import { X, Package, MapPin, Hash, FileText } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { X, Package, MapPin, Hash, FileText } from "lucide-react";
+
+import { movimentiStockApi } from "../../../api/movimentiStockApi";
+import { prodottiApi } from "../../../api/prodottiApi";
+import { magazzinoApi } from "../../../api/magazzinoApi";
+
+import type { MovimentoStockCreateRequest } from "../../../types/magazzino";
 
 interface NewMovementModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreated?: () => void;
 }
 
-export function NewMovementModal({ isOpen, onClose }: NewMovementModalProps) {
+export function NewMovementModal({ isOpen, onClose, onCreated }: NewMovementModalProps) {
+  const [prodotti, setProdotti] = useState<any[]>([]);
+  const [ubicazioni, setUbicazioni] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [form, setForm] = useState({
+    prodotto_id: "",
+    origine: "",
+    destinazione: "",
+    quantita: "",
+    note: "",
+  });
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setLoading(true);
+
+    Promise.all([
+      prodottiApi.list(),
+      magazzinoApi.listUbicazioni()
+    ])
+      .then(([prodottiRes, ubicazioniRes]) => {
+        setProdotti(prodottiRes);
+        setUbicazioni(ubicazioniRes);
+      })
+      .finally(() => setLoading(false));
+  }, [isOpen]);
+
+  const handleSubmit = async () => {
+    if (!form.prodotto_id || !form.origine || !form.destinazione || !form.quantita) {
+      alert("Compila tutti i campi obbligatori.");
+      return;
+    }
+
+    const body: MovimentoStockCreateRequest = {
+      prodotto_id: Number(form.prodotto_id),
+      quantita: Number(form.quantita),
+      movimento_tipo: "SPOSTAMENTO",
+      ubicazione_da_id: Number(form.origine),
+      ubicazione_a_id: Number(form.destinazione),
+      riferimento: form.note || null,
+      note: form.note || null,
+    };
+
+    await movimentiStockApi.create(body);
+
+    onClose();
+    onCreated?.();
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl animate-in fade-in duration-200">
+
         <div className="flex items-center justify-between p-6 border-b border-[#E5EAF2]">
           <div>
             <h2 className="text-xl font-semibold text-[#2D2D2D]">Nuovo Movimento Stock</h2>
@@ -25,18 +84,26 @@ export function NewMovementModal({ isOpen, onClose }: NewMovementModalProps) {
         </div>
 
         <div className="p-6 space-y-6">
+          {loading && (
+          <div className="text-sm text-[#6B7280]">Caricamento dati…</div>
+          )}
+
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-[#2D2D2D] mb-2">
               <Package className="w-4 h-4 text-[#6B7280]" />
               Prodotto
             </label>
-            <select className="w-full h-11 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all">
-              <option>Seleziona prodotto...</option>
-              <option>PLT-EUR-001 - Pallet Standard EUR 1200x800</option>
-              <option>SCT-OND-045 - Scatola Cartone Ondulato 40x30</option>
-              <option>FLM-EST-012 - Film Estensibile Trasparente 50cm</option>
-              <option>ETI-ADE-098 - Etichette Adesive A4 Bianche</option>
-              <option>REG-PP-034 - Reggetta PP Automatica 12mm</option>
+            <select
+              value={form.prodotto_id}
+              onChange={(e) => setForm({ ...form, prodotto_id: e.target.value })}
+              className="w-full h-11 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl"
+            >
+              <option value="">Seleziona prodotto...</option>
+              {prodotti.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.sku} - {p.nome}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -46,13 +113,17 @@ export function NewMovementModal({ isOpen, onClose }: NewMovementModalProps) {
                 <MapPin className="w-4 h-4 text-[#6B7280]" />
                 Ubicazione Origine
               </label>
-              <select className="w-full h-11 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all">
-                <option>Seleziona origine...</option>
-                <option>A-01-05</option>
-                <option>A-02-12</option>
-                <option>B-01-08</option>
-                <option>B-02-15</option>
-                <option>A-03-04</option>
+              <select
+                value={form.origine}
+                onChange={(e) => setForm({ ...form, origine: e.target.value })}
+                className="w-full h-11 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl"
+              >
+                <option value="">Seleziona origine...</option>
+                {ubicazioni.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.codice_composto}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -61,13 +132,17 @@ export function NewMovementModal({ isOpen, onClose }: NewMovementModalProps) {
                 <MapPin className="w-4 h-4 text-[#17E88F]" />
                 Ubicazione Destinazione
               </label>
-              <select className="w-full h-11 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all">
-                <option>Seleziona destinazione...</option>
-                <option>A-01-05</option>
-                <option>A-02-12</option>
-                <option>B-01-08</option>
-                <option>B-02-15</option>
-                <option>A-03-04</option>
+              <select
+                value={form.destinazione}
+                onChange={(e) => setForm({ ...form, destinazione: e.target.value })}
+                className="w-full h-11 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl"
+              >
+                <option value="">Seleziona destinazione...</option>
+                {ubicazioni.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.codice_composto}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -79,8 +154,10 @@ export function NewMovementModal({ isOpen, onClose }: NewMovementModalProps) {
             </label>
             <input
               type="number"
+              value={form.quantita}
+              onChange={(e) => setForm({ ...form, quantita: e.target.value })}
               placeholder="Inserisci quantità..."
-              className="w-full h-11 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all"
+              className="w-full h-11 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl"
             />
           </div>
 
@@ -91,36 +168,26 @@ export function NewMovementModal({ isOpen, onClose }: NewMovementModalProps) {
             </label>
             <textarea
               rows={3}
+              value={form.note}
+              onChange={(e) => setForm({ ...form, note: e.target.value })}
               placeholder="Aggiungi note sul movimento..."
-              className="w-full px-4 py-3 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all resize-none"
+              className="w-full px-4 py-3 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl resize-none"
             />
-          </div>
-
-          <div className="bg-[#F0FDF7] border border-[#17E88F]/20 rounded-xl p-4">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 bg-[#17E88F] rounded-lg flex items-center justify-center flex-shrink-0">
-                <Package className="w-4 h-4 text-white" />
-              </div>
-              <div className="flex-1">
-                <div className="font-medium text-sm text-[#2D2D2D] mb-1">Riepilogo Movimento</div>
-                <div className="text-xs text-[#6B7280] space-y-1">
-                  <div>Tipo: <span className="font-medium text-[#2D2D2D]">Trasferimento Inter-Ubicazione</span></div>
-                  <div>Operatore: <span className="font-medium text-[#2D2D2D]">Mario Rossi</span></div>
-                  <div>Data/Ora: <span className="font-medium text-[#2D2D2D]">03/06/2026 10:45</span></div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
         <div className="flex items-center justify-end gap-3 p-6 border-t border-[#E5EAF2]">
           <button
             onClick={onClose}
-            className="px-6 py-2.5 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-[#F7F9FC] transition-all font-medium"
+            className="px-6 py-2.5 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-[#F7F9FC]"
           >
             Annulla
           </button>
-          <button className="px-6 py-2.5 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all font-medium flex items-center gap-2">
+
+          <button
+            onClick={handleSubmit}
+            className="px-6 py-2.5 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg flex items-center gap-2"
+          >
             <Package className="w-4 h-4" />
             Conferma Spostamento
           </button>
