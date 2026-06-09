@@ -9,8 +9,14 @@ export const giacenzeApi = {
    * - magazzino
    * - scorta (sotto)
    */
-  list: (params?: Record<string, any>): Promise<Giacenza[]> =>
-    api.get<Giacenza[]>("/giacenze", { params }),
+  list: (params?: Record<string, any>): Promise<Giacenza[]> => {
+  const query = params
+    ? "?" + new URLSearchParams(params as Record<string, string>).toString()
+    : "";
+
+  return api.get<Giacenza[]>(`/giacenze${query}`);
+},
+
 
   /**
    * GET /api/v1/giacenze/:prodotto_id

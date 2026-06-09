@@ -35,8 +35,8 @@ export function StockTable() {
   setLoading(true);
 
   giacenzeApi
-    .list({ search })     // <— QUI È LA CHIAMATA CORRETTA
-    .then((res) => setRows(res))   // <— res è Giacenza[]
+    .list({ search })
+    .then((res) => setRows(res))   // res è Giacenza[]
     .finally(() => setLoading(false));
 }, [search]);
 
