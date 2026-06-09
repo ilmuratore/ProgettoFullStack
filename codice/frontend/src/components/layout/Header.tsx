@@ -22,9 +22,8 @@ interface HeaderProps {
 }
 
 const dropdownItems = [
-  { icon: User,       label: 'Il Mio Profilo',    page: 'profilo', color: 'text-[#3B82F6]', bg: 'bg-[#DBEAFE]' },
-  { icon: BellRing,   label: 'Notifiche',          page: null,              color: 'text-[#8B5CF6]', bg: 'bg-[#EDE9FE]' },
-  { icon: HelpCircle, label: 'Supporto',           page: null,              color: 'text-[#6B7280]', bg: 'bg-[#F3F4F6]' },
+  { icon: User,     label: 'Il Mio Profilo', page: 'profilo', color: 'text-[#3B82F6]', bg: 'bg-[#DBEAFE]' },
+  { icon: BellRing, label: 'Notifiche',       page: null,      color: 'text-[#8B5CF6]', bg: 'bg-[#EDE9FE]' },
 ];
 
 export function Header({ onNavigate, sidebarCollapsed = false, user, onLogout }: HeaderProps) {
@@ -60,15 +59,10 @@ export function Header({ onNavigate, sidebarCollapsed = false, user, onLogout }:
       <header className={`h-16 bg-white/80 backdrop-blur-sm border-b border-[#E5EAF2] fixed top-0 right-0 z-10 transition-all duration-300 ${sidebarCollapsed ? 'left-[72px]' : 'left-[260px]'}`}>
         <div className="h-full px-6 flex items-center justify-between">
 
-          {/* Breadcrumb */}
+          {/* Titolo pagina */}
           <div className="flex items-center gap-4">
             <div>
               <h2 className="font-semibold text-[#2D2D2D]">Dashboard Operativa</h2>
-              <div className="flex items-center gap-2 text-sm text-[#6B7280] mt-0.5">
-                <span>Home</span>
-                <ChevronRight className="w-3 h-3" />
-                <span className="text-[#17E88F]">Dashboard</span>
-              </div>
             </div>
           </div>
 
