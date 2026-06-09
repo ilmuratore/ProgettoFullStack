@@ -100,6 +100,7 @@ export interface MovimentoStock {
   riferimento?: string | null;
   note?: string | null;
   created_at: string;
+  utente?: string | null; // <— aggiunto magari per il futuro riferimento utente al movimento
 }
 
 // Payload per POST /movimenti-stock
@@ -108,13 +109,12 @@ export interface MovimentoStockCreateRequest {
   quantita: number;
   movimento_tipo: string;
 
-  // per carico/scarico/rettifiche
   ubicazione_id?: number;
 
-  // per spostamento
   ubicazione_da_id?: number;
   ubicazione_a_id?: number;
 
-  riferimento?: string;
-  note?: string;
+  riferimento?: string | null;
+  note?: string | null;
 }
+

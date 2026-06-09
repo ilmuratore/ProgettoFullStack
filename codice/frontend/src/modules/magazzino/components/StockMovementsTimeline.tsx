@@ -11,7 +11,8 @@ import {
 import { movimentiStockApi } from "../../../api/movimentiStockApi";
 import type { MovimentoStock } from "../../../types/magazzino";
 
-const mapTipo = {
+// Mappa ENUM backend → label UI
+const mapTipo: Record<string, string> = {
   CARICO_ACQUISTO: "Carico Acquisto",
   SCARICO_VENDITA: "Scarico Vendita",
   SPOSTAMENTO: "Trasferimento",
@@ -20,8 +21,9 @@ const mapTipo = {
   RESO: "Reso",
 };
 
-const getMovementIcon = (tipo: string) => {
-  switch (tipo) {
+// Icone e colori per ogni tipo
+const getMovementIcon = (label: string) => {
+  switch (label) {
     case "Carico Acquisto":
       return { icon: ArrowDownCircle, color: "text-[#22C55E]", bg: "bg-[#DCFCE7]" };
     case "Scarico Vendita":
@@ -39,42 +41,73 @@ const getMovementIcon = (tipo: string) => {
   }
 };
 
+// Quantità con segno
 const formatQuantita = (tipo: string, quantita: number) => {
   if (tipo === "SCARICO_VENDITA" || tipo === "RETTIFICA_NEGATIVA") return `-${quantita}`;
   return `+${quantita}`;
 };
 
+// Ora formattata
 const formatOra = (iso: string) => {
   const d = new Date(iso);
   return d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
 };
 
-export function StockMovementsTimeline() {
-  const [movements, setMovements] = useState<any[]>([]);
+export function StockMovementsTimeline({ refreshTrigger }: { refreshTrigger?: number }) {
+  const [movements, setMovements] = useState<
+    {
+      id: number;
+      tipo: string;
+      prodotto: string;
+      sku: string;
+      quantita: string;
+      ora: string;
+      utente: string;
+      ubicazione?: string | null;
+    }[]
+  >([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    movimentiStockApi
-      .list()
-      .then((data: MovimentoStock[]) => {
-        const mapped = data.map((m) => ({
-          id: m.id,
-          tipo: mapTipo[m.tipo],
-          prodotto: m.prodotto,
-          sku: m.sku,
-          quantita: formatQuantita(m.tipo, m.quantita),
-          ora: formatOra(m.created_at),
-          utente: "Sistema", // placeholder finché non aggiungiamo utente_id
-          ubicazione: m.ubicazione,
-        }));
+  // Funzione centralizzata per caricare i movimenti
+  const loadMovimenti = async () => {
+    setLoading(true);
 
-        setMovements(mapped);
-      })
-      .finally(() => setLoading(false));
+    const data: MovimentoStock[] = await movimentiStockApi.list();
+
+    const mapped = data.map((m) => {
+      const tipoLabel = mapTipo[m.tipo] ?? m.tipo;
+
+      return {
+        id: m.id,
+        tipo: tipoLabel,
+        prodotto: m.prodotto,
+        sku: m.sku,
+        quantita: formatQuantita(m.tipo, m.quantita),
+        ora: formatOra(m.created_at),
+        utente: m.utente ?? "Sistema",
+        ubicazione: m.ubicazione,
+      };
+    });
+
+    setMovements(mapped);
+    setLoading(false);
+  };
+
+  // Caricamento iniziale
+  useEffect(() => {
+    loadMovimenti();
   }, []);
+
+  // Refresh automatico dopo creazione movimento
+  useEffect(() => {
+    if (refreshTrigger !== undefined) {
+      loadMovimenti();
+    }
+  }, [refreshTrigger]);
 
   return (
     <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
+      {/* HEADER */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <h3 className="font-semibold text-[#2D2D2D]">Movimenti Magazzino in Tempo Reale</h3>
@@ -89,14 +122,17 @@ export function StockMovementsTimeline() {
         </div>
       </div>
 
+      {/* LOADING */}
       {loading && (
         <div className="py-10 text-center text-[#6B7280] text-sm">Caricamento movimenti…</div>
       )}
 
+      {/* EMPTY */}
       {!loading && movements.length === 0 && (
         <div className="py-10 text-center text-[#6B7280] text-sm">Nessun movimento trovato.</div>
       )}
 
+      {/* TIMELINE */}
       <div className="space-y-4">
         {movements.map((movement, index) => {
           const iconConfig = getMovementIcon(movement.tipo);
@@ -126,14 +162,13 @@ export function StockMovementsTimeline() {
                         className={`px-2 py-0.5 rounded text-xs font-medium ${
                           movement.quantita.startsWith("+")
                             ? "bg-[#DCFCE7] text-[#22C55E]"
-                            : movement.quantita.startsWith("-")
-                            ? "bg-[#FEE2E2] text-[#EF4444]"
-                            : "bg-[#DBEAFE] text-[#3B82F6]"
+                            : "bg-[#FEE2E2] text-[#EF4444]"
                         }`}
                       >
                         {movement.quantita}
                       </span>
                     </div>
+
                     <div className="text-sm text-[#2D2D2D] font-medium">{movement.prodotto}</div>
                     <div className="text-xs text-[#6B7280] font-mono mt-0.5">{movement.sku}</div>
                   </div>
@@ -156,9 +191,13 @@ export function StockMovementsTimeline() {
         })}
       </div>
 
+      {/* FOOTER */}
       {!loading && (
         <div className="flex items-center justify-center mt-6 pt-4 border-t border-[#E5EAF2]">
-          <button className="px-4 py-2 text-sm text-[#17E88F] hover:bg-[#F0FDF7] rounded-lg transition-all font-medium">
+          <button
+            onClick={loadMovimenti}
+            className="px-4 py-2 text-sm text-[#17E88F] hover:bg-[#F0FDF7] rounded-lg transition-all font-medium"
+          >
             Carica Altri Movimenti
           </button>
         </div>

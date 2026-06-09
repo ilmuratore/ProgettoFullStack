@@ -25,11 +25,16 @@ export const magazzinoApi = {
   toggle: (id: number): Promise<Magazzino> =>
     api.patch<Magazzino>(`/magazzini/${id}/toggle`),
 
+  // ⭐ AGGIUNTO
+  listUbicazioni: (): Promise<Ubicazione[]> =>
+    api.get<Ubicazione[]>('/ubicazioni'),
+
   createUbicazione: (magId: number, body: UbicazioneCreateRequest): Promise<Ubicazione> =>
     api.post<Ubicazione>(`/magazzini/${magId}/ubicazioni`, body),
 
   getUbicazione: (id: number): Promise<Ubicazione> =>
     api.get<Ubicazione>(`/ubicazioni/${id}`),
+
 
   updateTemperatura: (id: number, body: UbicazioneUpdateTemperaturaRequest): Promise<Ubicazione> =>
     api.patch<Ubicazione>(`/ubicazioni/${id}`, body),
