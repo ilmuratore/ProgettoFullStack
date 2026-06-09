@@ -114,6 +114,27 @@ info:
 
     > **Nota**: Dev ha gli stessi permessi di Admin (ALL). Resp. Azienda ha tutti tranne `utenti:write/delete`.
 
+    ## RBAC — Ruoli disponibili (ruolo_id)
+    Fonte: `seed_ruoli_permessi.js`. Il campo `ruolo_id` è richiesto da `POST /auth/register`
+    e restituito da `GET /auth/me` come `ruolo_id` + `ruolo_nome`.
+
+    | `ruolo_id` | `ruolo_nome` | Descrizione |
+    |---|---|---|
+    | `1` | Admin | Accesso completo al sistema |
+    | `2` | Dev | Accesso tecnico completo per sviluppo e manutenzione |
+    | `3` | Supporto | Accesso in sola lettura per assistenza clienti |
+    | `4` | Resp. Azienda | Responsabile aziendale con visibilità trasversale |
+    | `5` | Resp. HR | Gestione risorse umane e dipendenti |
+    | `6` | Resp. Vendite | Gestione ordini in uscita, clienti e giacenze commerciali |
+    | `7` | Resp. Acquisti | Gestione acquisti, fornitori e approvvigionamenti |
+    | `8` | Resp. Magazzino | Gestione magazzino, giacenze, spedizioni e corrieri |
+    | `9` | Operatore | Operatività su ordini, giacenze e spedizioni |
+    | `10` | Corriere | Visualizzazione e aggiornamento spedizioni assegnate |
+
+    > **Nota frontend**: `ruolo_id: 1` (Admin) è riservato — non assegnabile via UI.
+    > `ruolo_id: 2` (Dev) e `ruolo_id: 3` (Supporto) sono tecnici/interni.
+    > I ruoli operativi standard da esporre nel dropdown di registrazione sono `4`–`10`.
+
 servers:
   - url: http://localhost:3000/api/v1
     description: Sviluppo locale
@@ -256,8 +277,8 @@ components:
         nome:        { type: string,  example: Marco }
         cognome:     { type: string,  example: Bianchi }
         email:       { type: string,  format: email, example: marco.bianchi@logichain.it }
-        ruolo_id:    { type: integer, example: 2 }
-        ruolo_nome:  { type: string,  example: Responsabile Acquisti }
+        ruolo_id:    { type: integer, example: 7, description: "Vedi tabella 'Ruoli disponibili' — valori 1–10" }
+        ruolo_nome:  { type: string,  example: "Resp. Acquisti", description: "Nome del ruolo corrispondente a ruolo_id" }
         created_at:  { type: string,  format: date-time }
         updated_at:  { type: string,  format: date-time }
 
@@ -277,12 +298,16 @@ components:
     RegisterRequest:
       type: object
       required: [nome, cognome, email, password, ruolo_id]
+      description: |
+        `ruolo_id` deve corrispondere a un ruolo esistente nel DB.
+        Vedi tabella "Ruoli disponibili" nell'info per i valori validi (1–10).
+        Per la UI di registrazione standard usare i ruoli operativi: 4–10.
       properties:
         nome:     { type: string,  example: Laura }
         cognome:  { type: string,  example: Ferretti }
         email:    { type: string,  format: email, example: laura.ferretti@logichain.it }
         password: { type: string,  minLength: 6, example: sicura456 }
-        ruolo_id: { type: integer, example: 3 }
+        ruolo_id: { type: integer, minimum: 1, maximum: 10, example: 7, description: "ID ruolo — vedi tabella Ruoli disponibili" }
 
     # ── PRODOTTI ──────────────────────────────
 
