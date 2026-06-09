@@ -5,16 +5,26 @@ const auth                = require('../middleware/auth');
 const { requirePermesso } = require('../middleware/rbac');
 const validate            = require('../middleware/validate');
 
+// fix — aggiunti campi indirizzo strutturato (cap, citta, provincia, paese)
 const router = express.Router();
 const createMagazzinoBlueprint = {
     codice:    { required: true,  type: 'string' },
     nome:      { required: true,  type: 'string' },
-    indirizzo: { required: false, type: 'string' }
+    indirizzo: { required: false, type: 'string' },
+    cap:       { required: false, type: 'string' },
+    citta:     { required: false, type: 'string' },
+    provincia: { required: false, type: 'string' },
+    paese:     { required: false, type: 'string' }
 };
 
+// fix — aggiunti campi indirizzo strutturato (cap, citta, provincia, paese)
 const updateMagazzinoBlueprint = {
     nome:      { required: false, type: 'string' },
-    indirizzo: { required: false, type: 'string' }
+    indirizzo: { required: false, type: 'string' },
+    cap:       { required: false, type: 'string' },
+    citta:     { required: false, type: 'string' },
+    provincia: { required: false, type: 'string' },
+    paese:     { required: false, type: 'string' }
 };
 
 const createUbicazioneBlueprint = {

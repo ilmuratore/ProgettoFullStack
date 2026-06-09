@@ -31,13 +31,14 @@ const getById = async (id) => {
     return { ...magazzino, ubicazioni };
 };
 
-const create = async ({ codice, nome, indirizzo }) => {
+const create = async ({ codice, nome, indirizzo, cap, citta, provincia, paese }) => {
     const existing = await magazziniModel.findByCodice(codice);
     if (existing.rowCount > 0) {
         throwError('DUPLICATE_ENTRY', `Codice magazzino '${codice}' già esistente`);
     }
 
-    const result = await magazziniModel.create({ codice, nome, indirizzo });
+// fix — passati cap, citta, provincia, paese al model (prima venivano ignorati)
+    const result = await magazziniModel.create({ codice, nome, indirizzo, cap, citta, provincia, paese });
     return result.rows[0];
 };
 
@@ -46,10 +47,15 @@ const update = async (id, body) => {
     if (magResult.rowCount === 0) {
         throwError('RESOURCE_NOT_FOUND', 'Magazzino non trovato');
     }
-
+    
+// fix — aggiunti campi indirizzo strutturato all'oggetto fields
     const fields = {};
     if (body.nome      !== undefined) fields.nome      = body.nome;
     if (body.indirizzo !== undefined) fields.indirizzo = body.indirizzo;
+    if (body.cap       !== undefined) fields.cap       = body.cap;
+    if (body.citta     !== undefined) fields.citta     = body.citta;
+    if (body.provincia !== undefined) fields.provincia = body.provincia;
+    if (body.paese     !== undefined) fields.paese     = body.paese;
 
     if (Object.keys(fields).length === 0) {
         throwError('VALIDATION_ERROR', 'Nessun campo valido da aggiornare');
