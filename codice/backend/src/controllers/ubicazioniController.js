@@ -1,5 +1,14 @@
 const ubicazioniService = require('../services/ubicazioniService');
 
+const getAll = async (req, res, next) => {
+    try {
+        const ubicazioni = await ubicazioniService.getAll();
+        return res.status(200).json({ status: 'success', data: ubicazioni });
+    } catch (err) {
+        return next(err);
+    }
+};
+
 const getById = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -42,4 +51,4 @@ const toggleAttivo = async (req, res, next) => {
     }
 };
 
-module.exports = { getById, create, updateTemperatura, toggleAttivo };
+module.exports = { getAll, getById, create, updateTemperatura, toggleAttivo };

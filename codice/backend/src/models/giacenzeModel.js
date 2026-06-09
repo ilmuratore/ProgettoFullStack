@@ -1,6 +1,33 @@
 const pool = require('../config/db');
 
 
+const COLS_FULL = `
+    giacenze.id,
+    giacenze.prodotto_id,
+    prodotti.sku,
+    prodotti.nome        AS prodotto,
+    prodotti.scorta_minima,
+    (giacenze.quantita < prodotti.scorta_minima) AS sotto_scorta,
+    categorie.nome       AS categoria,
+    giacenze.ubicazione_id,
+    ubicazioni.codice    AS ubicazione,
+    magazzini.nome       AS magazzino,
+    giacenze.quantita,
+    (SELECT MAX(m.created_at)
+     FROM movimenti_stock m
+     WHERE m.prodotto_id   = giacenze.prodotto_id
+       AND m.ubicazione_id = giacenze.ubicazione_id) AS ultimo_movimento
+`;
+
+const JOINS_FULL = `
+    FROM giacenze
+    JOIN prodotti   ON giacenze.prodotto_id   = prodotti.id
+    JOIN ubicazioni ON giacenze.ubicazione_id = ubicazioni.id
+    JOIN magazzini  ON ubicazioni.magazzino_id = magazzini.id
+    LEFT JOIN categorie ON prodotti.categoria_id = categorie.id
+`;
+
+
 const findAll = () =>
     pool.query(
         `SELECT giacenze.id,
@@ -17,6 +44,57 @@ const findAll = () =>
      JOIN magazzini ON ubicazioni.magazzino_id = magazzini.id
      ORDER BY giacenze.id`
     );
+
+
+const findAllFiltered = ({ search, magazzino, scorta, ubicazione, q_min, q_max } = {}) => {
+    const conditions = [];
+    const values = [];
+    let i = 1;
+
+    if (search) {
+        conditions.push(`(prodotti.sku ILIKE $${i} OR prodotti.nome ILIKE $${i})`);
+        values.push(`%${search}%`);
+        i++;
+    }
+
+    if (magazzino) {
+        conditions.push(`magazzini.id = $${i}`);
+        values.push(parseInt(magazzino, 10));
+        i++;
+    }
+
+    if (scorta === 'sotto') {
+        conditions.push(`giacenze.quantita < prodotti.scorta_minima`);
+    }
+
+    if (ubicazione) {
+        conditions.push(`ubicazioni.codice ILIKE $${i}`);
+        values.push(`%${ubicazione}%`);
+        i++;
+    }
+
+    if (q_min !== undefined && q_min !== '') {
+        conditions.push(`giacenze.quantita >= $${i}`);
+        values.push(parseInt(q_min, 10));
+        i++;
+    }
+
+    if (q_max !== undefined && q_max !== '') {
+        conditions.push(`giacenze.quantita <= $${i}`);
+        values.push(parseInt(q_max, 10));
+        i++;
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    return pool.query(
+        `SELECT ${COLS_FULL}
+         ${JOINS_FULL}
+         ${where}
+         ORDER BY magazzini.nome, ubicazioni.codice, prodotti.nome`,
+        values
+    );
+};
 
 
 const findById = (id) =>
@@ -137,7 +215,15 @@ const remove = (id) =>
 
 
 module.exports = {
-    findAll, findById, findByProdottoId, findByUbicazioneId,
-    findByProdottoIdAndUbicazioneId, lockByProdottoIdAndUbicazioneId,
-    create, update, incrementaQuantita, remove
+    findAll,
+    findAllFiltered,
+    findById,
+    findByProdottoId,
+    findByUbicazioneId,
+    findByProdottoIdAndUbicazioneId,
+    lockByProdottoIdAndUbicazioneId,
+    create,
+    update,
+    incrementaQuantita,
+    remove,
 };

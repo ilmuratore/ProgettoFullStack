@@ -7,6 +7,11 @@ const throwError = (code, message) => {
     throw err;
 };
 
+const getAll = async (params = {}) => {
+    const result = await giacenzeModel.findAllFiltered(params);
+    return result.rows;
+};
+
 const getByProdottoId = async (prodotto_id) => {
     const prodottoResult = await prodottiModel.findById(prodotto_id);
     if (prodottoResult.rowCount === 0 || prodottoResult.rows[0].attivo === false) {
@@ -17,4 +22,4 @@ const getByProdottoId = async (prodotto_id) => {
     return result.rows;
 };
 
-module.exports = { getByProdottoId };
+module.exports = { getAll, getByProdottoId };

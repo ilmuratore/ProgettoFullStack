@@ -47,7 +47,8 @@ const login = async (email, password) => {
             nome: utente.nome,
             cognome: utente.cognome,
             email: utente.email,
-            ruolo: utente.ruolo
+            ruolo_id: utente.ruolo_id,
+            ruolo_nome: utente.ruolo,
         }
     };
 };
@@ -85,7 +86,8 @@ const register = async ({ nome, cognome, email, password, ruolo_id, attivo = tru
         nome: utenteCreato.nome,
         cognome: utenteCreato.cognome,
         email: utenteCreato.email,
-        ruolo: utenteCompleto?.ruolo || ruolo.nome
+        ruolo_id: utenteCreato.ruolo_id,
+        ruolo_nome: utenteCompleto?.ruolo || ruolo.nome,
     };
 };
 
@@ -103,7 +105,8 @@ const getMe = async (utente_id) => {
         nome: utente.nome,
         cognome: utente.cognome,
         email: utente.email,
-        ruolo: utente.ruolo
+        ruolo_id: utente.ruolo_id,
+        ruolo_nome: utente.ruolo,
     };
 };
 
@@ -132,5 +135,5 @@ module.exports = {
     login,
     register,
     getMe,
-    changePassword
+    changePassword,
 };
