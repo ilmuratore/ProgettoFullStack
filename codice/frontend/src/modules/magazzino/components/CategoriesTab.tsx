@@ -1,6 +1,8 @@
 import { ChevronRight, MoreVertical, Edit, Trash2, Search } from 'lucide-react';
+import { useState } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../../components/ui/dropdown-menu';
 import type { Categoria } from '../../../types/categorie';
+import { filterCategorieTree } from '../utils/categorieTree';
 
 interface CategoriesTabProps {
   categorie: Categoria[];
@@ -61,10 +63,18 @@ export function CategoriesTab({
   onEdit,
   onDelete,
 }: CategoriesTabProps) {
-  const filteredCategorie = categorie.filter((c) =>
-    c.nome.toLowerCase().includes(search.toLowerCase())
-  );
-  const categorieRadice = filteredCategorie.filter((c) => c.categoria_padre_id === null);
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+
+  const toggleExpanded = (id: number) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const filteredCategorie = filterCategorieTree(categorie, search);
+const categorieRadice = filteredCategorie.filter((c) => c.categoria_padre_id === null);
 
   return (
     <>
@@ -93,22 +103,30 @@ export function CategoriesTab({
       ) : (
         <div className="space-y-4">
           {categorieRadice.map((cat) => {
-            const subcategories = categorie.filter((c) => c.categoria_padre_id === cat.id);
+            const subcategories = filteredCategorie.filter((c) => c.categoria_padre_id === cat.id);
             const totalProdotti = cat.prodotti_count + subcategories.reduce((s, sub) => s + sub.prodotti_count, 0);
+           const isExpanded = search.trim() !== '' || expandedIds.has(cat.id);
 
             return (
               <div key={cat.id} className="border border-[#E5EAF2] rounded-xl overflow-hidden">
                 <div className="flex items-center justify-between p-4 bg-[#F7F9FC]">
-                  <div className="flex items-center gap-3">
-                    <ChevronRight className="w-5 h-5 text-[#6B7280]" />
+                  <button
+                    onClick={() => toggleExpanded(cat.id)}
+                    disabled={subcategories.length === 0}
+                    className="flex items-center gap-3 flex-1 text-left"
+                  >
+                    <ChevronRight
+                      className={`w-5 h-5 text-[#6B7280] transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''
+                        } ${subcategories.length === 0 ? 'opacity-30' : ''}`}
+                    />
                     <div>
                       <h3 className="font-semibold text-[#2D2D2D]">{cat.nome}</h3>
                       <p className="text-xs text-[#6B7280] mt-0.5">
-                        {totalProdotti} prodotto{totalProdotti !== 1 ? 'i' : ''} totali
+                        {totalProdotti} prodott{totalProdotti !== 1 ? 'i' : 'o'} totali
                         {subcategories.length > 0 && ` · ${subcategories.length} sottocategor${subcategories.length !== 1 ? 'ie' : 'ia'}`}
                       </p>
                     </div>
-                  </div>
+                  </button>
                   <div className="flex items-center gap-2">
                     {canWriteProdotti && (
                       <button
@@ -127,13 +145,13 @@ export function CategoriesTab({
                     />
                   </div>
                 </div>
-                {subcategories.map((sub) => (
+                {isExpanded && subcategories.map((sub) => (
                   <div key={sub.id} className="flex items-center justify-between p-3 px-6 border-t border-[#E5EAF2] hover:bg-[#F7F9FC] transition-all">
                     <div className="flex items-center gap-3">
                       <div className="w-1 h-8 bg-[#E5EAF2] rounded" />
                       <div>
                         <p className="text-sm font-medium text-[#2D2D2D]">{sub.nome}</p>
-                        <p className="text-xs text-[#6B7280]">{sub.prodotti_count} prodotto{sub.prodotti_count !== 1 ? 'i' : ''}</p>
+                        <p className="text-xs text-[#6B7280]">{sub.prodotti_count} prodott{sub.prodotti_count !== 1 ? 'i' : 'o'}</p>
                       </div>
                     </div>
                     <CategoryActions

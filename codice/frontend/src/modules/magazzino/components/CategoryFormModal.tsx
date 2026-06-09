@@ -35,7 +35,9 @@ export function CategoryFormModal({
   const [loading, setLoading] = useState(false);
 
   // Solo le categorie radice possono essere padre (max 2 livelli)
-  const categorieRadice = categorie.filter(c => c.categoria_padre_id === null);
+  const categorieRadice = categorie
+  .filter(c => c.categoria_padre_id === null)
+  .sort((a, b) => a.nome.localeCompare(b.nome));
 
   useEffect(() => {
     if (!open) return;
