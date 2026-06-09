@@ -9,12 +9,20 @@ const router = express.Router();
 const createMagazzinoBlueprint = {
     codice:    { required: true,  type: 'string' },
     nome:      { required: true,  type: 'string' },
-    indirizzo: { required: false, type: 'string' }
+    indirizzo: { required: false, type: 'string' },
+    cap:       { required: false, type: 'string' },
+    citta:     { required: false, type: 'string' },
+    provincia: { required: false, type: 'string' },
+    paese:     { required: false, type: 'string' }
 };
 
 const updateMagazzinoBlueprint = {
     nome:      { required: false, type: 'string' },
-    indirizzo: { required: false, type: 'string' }
+    indirizzo: { required: false, type: 'string' },
+    cap:       { required: false, type: 'string' },
+    citta:     { required: false, type: 'string' },
+    provincia: { required: false, type: 'string' },
+    paese:     { required: false, type: 'string' }
 };
 
 const createUbicazioneBlueprint = {
