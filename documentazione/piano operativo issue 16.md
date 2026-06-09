@@ -32,8 +32,8 @@ Questa PR va fatta per prima e mergiata prima che gli altri inizino le proprie P
 | --- | --- | --- |
 | 1, 17 | Riordinare i tab e rimuovere il tab `rettifiche` | `codice/frontend/src/modules/magazzino/WarehousePage.tsx` | FATTO!!
 | 1 | Impostare ordine finale tab: `prodotti`, `categorie`, `struttura`, `giacenze`, `movimenti` | `WarehousePage.tsx` | FATTO!!
-| 17 | Eliminare tipo `rettifiche`, dati statici `rettificheData`, action button rettifiche e render della sezione rettifiche | `WarehousePage.tsx` |
-| Refactor consigliato | Estrarre tab prodotti e categorie in componenti dedicati per ridurre conflitti futuri | `ProductsTab.tsx`, `CategoriesTab.tsx` |
+| 17 | Eliminare tipo `rettifiche`, dati statici `rettificheData`, action button rettifiche e render della sezione rettifiche | `WarehousePage.tsx` | FATTO!!
+| Refactor consigliato | Estrarre tab prodotti e categorie in componenti dedicati per ridurre conflitti futuri | `ProductsTab.tsx`, `CategoriesTab.tsx` | FATTO!!
 
 Ordine tab finale:
 
