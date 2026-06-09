@@ -1,11 +1,56 @@
 import { useState } from 'react';
-import { Lock, Smartphone, Key, CheckCircle, Eye, EyeOff, Shield } from 'lucide-react';
+import { Lock, Smartphone, Key, CheckCircle, Eye, EyeOff, Shield, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
+import { authApi } from '../api/authApi';
+
+const REQUISITI = [
+  { label: 'Almeno 6 caratteri',    check: (p: string) => p.length >= 6 },
+  { label: 'Una lettera maiuscola', check: (p: string) => /[A-Z]/.test(p) },
+  { label: 'Un numero',             check: (p: string) => /[0-9]/.test(p) },
+];
 
 export function SicurezzaPage() {
-  const [showOld, setShowOld] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [showConf, setShowConf] = useState(false);
+  const [show, setShow] = useState({ attuale: false, nuova: false, conferma: false });
+  const [form, setForm] = useState({ attuale: '', nuova: '', conferma: '' });
+  const [errors, setErrors] = useState<Partial<typeof form>>({});
+  const [loading, setLoading] = useState(false);
   const [twoFa, setTwoFa] = useState(true);
+
+  const setF = (field: keyof typeof form) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setForm(prev => ({ ...prev, [field]: e.target.value }));
+      if (errors[field]) setErrors(prev => ({ ...prev, [field]: undefined }));
+    };
+
+  const validate = (): boolean => {
+    const errs: Partial<typeof form> = {};
+    if (!form.attuale) errs.attuale = 'Inserisci la password attuale';
+    if (form.nuova.length < 6) errs.nuova = 'Minimo 6 caratteri';
+    if (form.nuova === form.attuale) errs.nuova = 'La nuova password deve essere diversa';
+    if (form.conferma !== form.nuova) errs.conferma = 'Le password non coincidono';
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+    setLoading(true);
+    try {
+      await authApi.changePassword(form.attuale, form.nuova);
+      toast.success('Password aggiornata');
+      setForm({ attuale: '', nuova: '', conferma: '' });
+      setErrors({});
+    } catch (err: any) {
+      if (err?.code === 'PASSWORD_NON_VALIDA') {
+        setErrors({ attuale: 'La password attuale non è corretta' });
+      } else {
+        toast.error('Aggiornamento fallito', { description: err?.message });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -20,25 +65,65 @@ export function SicurezzaPage() {
           <Lock className="w-4 h-4 text-[#3B82F6]" />
           <h3 className="font-semibold text-[#2D2D2D]">Cambia Password</h3>
         </div>
-        <div className="max-w-md space-y-4">
-          <PwdField label="Password Attuale"       show={showOld}  toggle={() => setShowOld(v => !v)} />
-          <PwdField label="Nuova Password"         show={showNew}  toggle={() => setShowNew(v => !v)} />
-          <PwdField label="Conferma Nuova Password" show={showConf} toggle={() => setShowConf(v => !v)} />
 
-          <div className="bg-[#F7F9FC] rounded-xl p-4 space-y-2">
-            <p className="text-xs font-medium text-[#6B7280] mb-1">Requisiti</p>
-            {['Almeno 8 caratteri', 'Una lettera maiuscola', 'Un numero', 'Un carattere speciale'].map(r => (
-              <div key={r} className="flex items-center gap-2">
-                <CheckCircle className="w-3.5 h-3.5 text-[#E5EAF2]" />
-                <span className="text-xs text-[#6B7280]">{r}</span>
-              </div>
-            ))}
-          </div>
+        <form onSubmit={handleSubmit} className="max-w-md space-y-4">
+          <PwdField
+            label="Password Attuale"
+            value={form.attuale}
+            show={show.attuale}
+            toggle={() => setShow(s => ({ ...s, attuale: !s.attuale }))}
+            onChange={setF('attuale')}
+            error={errors.attuale}
+          />
+          <PwdField
+            label="Nuova Password"
+            value={form.nuova}
+            show={show.nuova}
+            toggle={() => setShow(s => ({ ...s, nuova: !s.nuova }))}
+            onChange={setF('nuova')}
+            error={errors.nuova}
+          />
+          <PwdField
+            label="Conferma Nuova Password"
+            value={form.conferma}
+            show={show.conferma}
+            toggle={() => setShow(s => ({ ...s, conferma: !s.conferma }))}
+            onChange={setF('conferma')}
+            error={errors.conferma}
+          />
 
-          <button className="w-full py-2.5 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl font-medium hover:shadow-lg transition-all text-sm">
+          {form.nuova && (
+            <div className="bg-[#F7F9FC] rounded-xl p-4 space-y-2">
+              <p className="text-xs font-medium text-[#6B7280] mb-1">Requisiti</p>
+              {REQUISITI.map(r => {
+                const ok = r.check(form.nuova);
+                return (
+                  <div key={r.label} className="flex items-center gap-2">
+                    {ok
+                      ? <CheckCircle className="w-3.5 h-3.5 text-[#17E88F]" />
+                      : <AlertCircle className="w-3.5 h-3.5 text-[#E5EAF2]" />
+                    }
+                    <span className={`text-xs ${ok ? 'text-[#2D2D2D]' : 'text-[#9CA3AF]'}`}>{r.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-2.5 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl font-medium hover:shadow-lg transition-all text-sm disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {loading && (
+              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              </svg>
+            )}
             Aggiorna Password
           </button>
-        </div>
+        </form>
       </div>
 
       {/* 2FA */}
@@ -77,7 +162,7 @@ export function SicurezzaPage() {
         </div>
       </div>
 
-      {/* Sessioni attive */}
+      {/* Sessioni */}
       <div className="bg-white rounded-2xl border border-[#E5EAF2] p-6">
         <div className="flex items-center gap-2 mb-5">
           <Shield className="w-4 h-4 text-[#3B82F6]" />
@@ -100,16 +185,33 @@ export function SicurezzaPage() {
   );
 }
 
-function PwdField({ label, show, toggle }: { label: string; show: boolean; toggle: () => void }) {
+function PwdField({
+  label, value, show, toggle, onChange, error,
+}: {
+  label: string;
+  value: string;
+  show: boolean;
+  toggle: () => void;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  error?: string;
+}) {
   return (
     <div>
       <label className="text-xs text-[#9CA3AF] mb-2 block">{label}</label>
       <div className="relative">
-        <input type={show ? 'text' : 'password'} className="w-full h-10 px-4 pr-10 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20" />
+        <input
+          type={show ? 'text' : 'password'}
+          value={value}
+          onChange={onChange}
+          className={`w-full h-10 px-4 pr-10 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all ${
+            error ? 'border-red-400 bg-red-50' : 'bg-[#F7F9FC] border-[#E5EAF2]'
+          }`}
+        />
         <button type="button" onClick={toggle} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#6B7280]">
           {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
         </button>
       </div>
+      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>
   );
 }
