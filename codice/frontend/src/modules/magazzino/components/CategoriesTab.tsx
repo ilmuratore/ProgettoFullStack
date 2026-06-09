@@ -2,6 +2,7 @@ import { ChevronRight, MoreVertical, Edit, Trash2, Search } from 'lucide-react';
 import { useState } from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../../components/ui/dropdown-menu';
 import type { Categoria } from '../../../types/categorie';
+import { filterCategorieTree } from '../utils/categorieTree';
 
 interface CategoriesTabProps {
   categorie: Categoria[];
@@ -72,10 +73,8 @@ export function CategoriesTab({
     });
   };
 
-  const filteredCategorie = categorie.filter((c) =>
-    c.nome.toLowerCase().includes(search.toLowerCase())
-  );
-  const categorieRadice = filteredCategorie.filter((c) => c.categoria_padre_id === null);
+  const filteredCategorie = filterCategorieTree(categorie, search);
+const categorieRadice = filteredCategorie.filter((c) => c.categoria_padre_id === null);
 
   return (
     <>
@@ -104,9 +103,9 @@ export function CategoriesTab({
       ) : (
         <div className="space-y-4">
           {categorieRadice.map((cat) => {
-            const subcategories = categorie.filter((c) => c.categoria_padre_id === cat.id);
+            const subcategories = filteredCategorie.filter((c) => c.categoria_padre_id === cat.id);
             const totalProdotti = cat.prodotti_count + subcategories.reduce((s, sub) => s + sub.prodotti_count, 0);
-            const isExpanded = expandedIds.has(cat.id);
+           const isExpanded = search.trim() !== '' || expandedIds.has(cat.id);
 
             return (
               <div key={cat.id} className="border border-[#E5EAF2] rounded-xl overflow-hidden">
@@ -123,7 +122,7 @@ export function CategoriesTab({
                     <div>
                       <h3 className="font-semibold text-[#2D2D2D]">{cat.nome}</h3>
                       <p className="text-xs text-[#6B7280] mt-0.5">
-                        {totalProdotti} prodotto{totalProdotti !== 1 ? 'i' : ''} totali
+                        {totalProdotti} prodott{totalProdotti !== 1 ? 'i' : 'o'} totali
                         {subcategories.length > 0 && ` · ${subcategories.length} sottocategor${subcategories.length !== 1 ? 'ie' : 'ia'}`}
                       </p>
                     </div>
@@ -152,7 +151,7 @@ export function CategoriesTab({
                       <div className="w-1 h-8 bg-[#E5EAF2] rounded" />
                       <div>
                         <p className="text-sm font-medium text-[#2D2D2D]">{sub.nome}</p>
-                        <p className="text-xs text-[#6B7280]">{sub.prodotti_count} prodotto{sub.prodotti_count !== 1 ? 'i' : ''}</p>
+                        <p className="text-xs text-[#6B7280]">{sub.prodotti_count} prodott{sub.prodotti_count !== 1 ? 'i' : 'o'}</p>
                       </div>
                     </div>
                     <CategoryActions
