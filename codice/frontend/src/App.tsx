@@ -132,7 +132,6 @@ function AppShell() {
         onNavigate={handleNavigate}
         activePage={activePage}
         onCollapsedChange={handleCollapse}
-        user={uiUser}
         accessiblePages={accessiblePages}
         onLogout={logout}
       />

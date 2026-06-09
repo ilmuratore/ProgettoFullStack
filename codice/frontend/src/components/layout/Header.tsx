@@ -22,7 +22,7 @@ interface HeaderProps {
 }
 
 const dropdownItems = [
-  { icon: User,       label: 'Il Mio Profilo',    page: 'amministrazione', color: 'text-[#3B82F6]', bg: 'bg-[#DBEAFE]' },
+  { icon: User,       label: 'Il Mio Profilo',    page: 'profilo', color: 'text-[#3B82F6]', bg: 'bg-[#DBEAFE]' },
   { icon: BellRing,   label: 'Notifiche',          page: null,              color: 'text-[#8B5CF6]', bg: 'bg-[#EDE9FE]' },
   { icon: HelpCircle, label: 'Supporto',           page: null,              color: 'text-[#6B7280]', bg: 'bg-[#F3F4F6]' },
 ];

@@ -9,30 +9,17 @@ import {
   Shield,
   ChevronsLeft,
   ChevronsRight,
-  UserCog,
   LogOut,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import type { UiUser as User } from '../../types/auth';
-
-type Page = 'dashboard' | 'anagrafiche' | 'magazzino' | 'acquisti' | 'vendite' | 'logistica' | 'amministrazione';
 
 interface SidebarProps {
   onNavigate?: (page: string) => void;
   activePage?: string;
   onCollapsedChange?: (collapsed: boolean) => void;
-  user?: User;
   accessiblePages?: string[];
   onLogout?: () => void;
 }
-
-const ROLE_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  Admin:                    { bg: '#1E293B', text: '#17E88F',  dot: '#17E88F'  },
-  'Responsabile Acquisti':  { bg: '#1E3A5F', text: '#60A5FA',  dot: '#3B82F6'  },
-  'Responsabile Magazzino': { bg: '#0F3535', text: '#2DD4BF',  dot: '#0D9488'  },
-  Operatore:                { bg: '#0F2D1A', text: '#4ADE80',  dot: '#16A34A'  },
-  Corriere:                 { bg: '#2D1A0F', text: '#FB923C',  dot: '#EA580C'  },
-};
 
 const ALL_MENU_ITEMS = [
   { id: 'dashboard',       label: 'Generale',        icon: LayoutDashboard },
@@ -48,7 +35,6 @@ export function Sidebar({
   onNavigate,
   activePage = 'dashboard',
   onCollapsedChange,
-  user,
   accessiblePages,
   onLogout,
 }: SidebarProps) {
@@ -74,12 +60,6 @@ export function Sidebar({
   const menuItems = accessiblePages
     ? ALL_MENU_ITEMS.filter(item => accessiblePages.includes(item.id))
     : ALL_MENU_ITEMS;
-
-  const displayName    = user ? `${user.nome} ${user.cognome}` : '—';
-  const displayRole    = user?.ruolo ?? 'Admin';
-  const displayAvatar  = user?.avatar ?? '??';
-  const displayAvatarBg = user?.avatarBg ?? '#17E88F';
-  const roleStyle      = ROLE_COLORS[displayRole] ?? ROLE_COLORS['Admin'];
 
   return (
     <aside className={`h-screen bg-white border-r border-[#E5EAF2] flex flex-col fixed left-0 top-0 transition-all duration-300 z-20 overflow-hidden ${isCollapsed ? 'w-[72px]' : 'w-[260px]'}`}>
@@ -153,35 +133,6 @@ export function Sidebar({
           )}
         </div>
 
-        {/* User block → naviga a /profilo */}
-        <div className="relative group/user">
-          <button
-            onClick={() => navigate('profilo')}
-            className={`w-full flex items-center rounded-xl hover:bg-[#F7F9FC] transition-all ${isCollapsed ? 'justify-center p-2' : 'gap-3 p-2'}`}
-          >
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-              style={{ backgroundColor: displayAvatarBg }}
-            >
-              {displayAvatar}
-            </div>
-            {!isCollapsed && (
-              <>
-                <div className="flex-1 text-left min-w-0">
-                  <p className="text-xs font-medium text-[#2D2D2D] truncate">{displayName}</p>
-                  <p className="text-xs truncate" style={{ color: roleStyle.dot }}>{displayRole}</p>
-                </div>
-                <UserCog className="w-4 h-4 text-[#C4CDD6] opacity-0 group-hover/user:opacity-100 transition-opacity" />
-              </>
-            )}
-          </button>
-          {isCollapsed && (
-            <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1E293B] text-white text-xs font-medium rounded-lg opacity-0 group-hover/user:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
-              {displayName} — {displayRole}
-              <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#1E293B]" />
-            </div>
-          )}
-        </div>
 
         {/* Logout */}
         {onLogout && (
