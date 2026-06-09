@@ -1,26 +1,41 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog';
-import type { ProdottoListino, ProdottoCreateRequest, ProdottoUpdateRequest } from '../../../types/prodotti';
+import type { Prodotto, ProdottoCreateRequest, ProdottoUpdateRequest } from '../../../types/prodotti';
 import type { Categoria } from '../../../types/categorie';
+import { flattenCategorieForSelect } from '../utils/categorieTree';
 
 interface ProductFormModalProps {
   open: boolean;
   onClose: () => void;
   onSave: (data: ProdottoCreateRequest | ProdottoUpdateRequest, id?: number) => Promise<void>;
-  initialData?: ProdottoListino | null;
+  initialData?: Prodotto | null;
   mode: 'create' | 'edit';
-  /** Lista categorie per il select — passata dal componente padre che le ha già caricate */
   categorie?: Categoria[];
 }
 
 interface FormState {
   nome: string;
   sku: string;
+  descrizione: string;
   prezzo: string;
-  categoria_id: string; // stringa vuota = nessuna categoria selezionata
+  categoria_id: string;
+  unita_misura: string;
+  peso_kg: string;
+  scorta_minima: string;
+  attivo: boolean;
 }
 
-const EMPTY_FORM: FormState = { nome: '', sku: '', prezzo: '', categoria_id: '' };
+const EMPTY_FORM: FormState = {
+  nome: '',
+  sku: '',
+  descrizione: '',
+  prezzo: '',
+  categoria_id: '',
+  unita_misura: '',
+  peso_kg: '',
+  scorta_minima: '0',
+  attivo: true,
+};
 
 export function ProductFormModal({
   open,
@@ -33,31 +48,58 @@ export function ProductFormModal({
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [loading, setLoading] = useState(false);
+  const categorieOptions = flattenCategorieForSelect(categorie);
 
   useEffect(() => {
     if (!open) return;
+
     setErrors({});
+
     if (mode === 'edit' && initialData) {
       setForm({
         nome: initialData.nome,
         sku: initialData.sku,
+        descrizione: initialData.descrizione ?? '',
         prezzo: String(initialData.prezzo),
-        // ProdottoListino non contiene categoria_id: l'utente può solo aggiungerne una.
-        // Il campo parte vuoto ("nessuna modifica") — la categoria esistente è preservata.
-        categoria_id: '',
+        categoria_id: initialData.categoria_id !== null ? String(initialData.categoria_id) : '',
+        unita_misura: initialData.unita_misura ?? '',
+        peso_kg: initialData.peso_kg !== null ? String(initialData.peso_kg) : '',
+        scorta_minima: String(initialData.scorta_minima),
+        attivo: initialData.attivo,
       });
-    } else {
-      setForm(EMPTY_FORM);
+      return;
     }
+
+    setForm(EMPTY_FORM);
   }, [open, mode, initialData]);
 
   const validate = (): boolean => {
     const errs: Partial<Record<keyof FormState, string>> = {};
-    if (!form.nome.trim()) errs.nome = 'Il nome è obbligatorio';
-    if (!form.sku.trim()) errs.sku = 'Lo SKU è obbligatorio';
+
+    if (!form.nome.trim()) errs.nome = 'Il nome e obbligatorio';
+    if (!form.sku.trim()) errs.sku = 'Lo SKU e obbligatorio';
+
     const prezzoNum = parseFloat(form.prezzo.replace(',', '.'));
-    if (!form.prezzo.trim()) errs.prezzo = 'Il prezzo è obbligatorio';
-    else if (isNaN(prezzoNum) || prezzoNum <= 0) errs.prezzo = 'Il prezzo deve essere un numero positivo';
+    if (!form.prezzo.trim()) {
+      errs.prezzo = 'Il prezzo e obbligatorio';
+    } else if (Number.isNaN(prezzoNum) || prezzoNum <= 0) {
+      errs.prezzo = 'Il prezzo deve essere un numero positivo';
+    }
+
+    if (form.peso_kg.trim()) {
+      const pesoNum = parseFloat(form.peso_kg.replace(',', '.'));
+      if (Number.isNaN(pesoNum) || pesoNum < 0) {
+        errs.peso_kg = 'Il peso deve essere un numero maggiore o uguale a zero';
+      }
+    }
+
+    const scortaMinima = Number(form.scorta_minima);
+    if (form.scorta_minima.trim() === '') {
+      errs.scorta_minima = 'La scorta minima e obbligatoria';
+    } else if (!Number.isInteger(scortaMinima) || scortaMinima < 0) {
+      errs.scorta_minima = 'La scorta minima deve essere un intero maggiore o uguale a zero';
+    }
+
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -66,40 +108,47 @@ export function ProductFormModal({
     e.preventDefault();
     if (!validate()) return;
 
-    const prezzoNum = parseFloat(form.prezzo.replace(',', '.'));
+    const prezzo = parseFloat(form.prezzo.replace(',', '.'));
+    const pesoKg = form.peso_kg.trim() ? parseFloat(form.peso_kg.replace(',', '.')) : undefined;
     const categoriaId = form.categoria_id !== '' ? parseInt(form.categoria_id, 10) : undefined;
+    const scortaMinima = parseInt(form.scorta_minima, 10);
+
+    const payload = {
+      nome: form.nome.trim(),
+      sku: form.sku.trim(),
+      scorta_minima: scortaMinima,
+      prezzo,
+      attivo: form.attivo,
+      ...(form.descrizione.trim() && { descrizione: form.descrizione.trim() }),
+      ...(categoriaId !== undefined && { categoria_id: categoriaId }),
+      ...(form.unita_misura.trim() && { unita_misura: form.unita_misura.trim() }),
+      ...(pesoKg !== undefined && { peso_kg: pesoKg }),
+    };
 
     setLoading(true);
     try {
       if (mode === 'create') {
-        const payload: ProdottoCreateRequest = {
-          nome: form.nome.trim(),
-          sku: form.sku.trim(),
-          prezzo: prezzoNum,
-          ...(categoriaId !== undefined && { categoria_id: categoriaId }),
-        };
-        await onSave(payload);
+        await onSave(payload as ProdottoCreateRequest);
       } else {
-        const payload: ProdottoUpdateRequest = {
-          nome: form.nome.trim(),
-          sku: form.sku.trim(),
-          prezzo: prezzoNum,
-          // Invia categoria_id solo se l'utente ha selezionato qualcosa
-          ...(categoriaId !== undefined && { categoria_id: categoriaId }),
-        };
-        await onSave(payload, initialData?.id);
+        await onSave(payload as ProdottoUpdateRequest, initialData?.id);
       }
       onClose();
     } catch {
-      // errore già toastato dal chiamante
+      // Errore gia gestito dal chiamante.
     } finally {
       setLoading(false);
     }
   };
 
-  const set = (field: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm(prev => ({ ...prev, [field]: e.target.value }));
-    if (errors[field as keyof FormState]) setErrors(prev => ({ ...prev, [field]: undefined }));
+  const set =
+    (field: keyof FormState) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+      setForm(prev => ({ ...prev, [field]: e.target.value }));
+      if (errors[field]) setErrors(prev => ({ ...prev, [field]: undefined }));
+    };
+
+  const toggleAttivo = () => {
+    setForm(prev => ({ ...prev, attivo: !prev.attivo }));
   };
 
   const inputClass = (err?: string) =>
@@ -108,8 +157,13 @@ export function ProductFormModal({
     }`;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v && !loading) onClose(); }}>
-      <DialogContent className="max-w-lg">
+    <Dialog
+      open={open}
+      onOpenChange={value => {
+        if (!value && !loading) onClose();
+      }}
+    >
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-[#2D2D2D]">
             {mode === 'create' ? 'Nuovo Prodotto' : 'Modifica Prodotto'}
@@ -117,69 +171,77 @@ export function ProductFormModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-
-          {/* Nome */}
-          <div>
-            <label className="block text-sm font-medium text-[#2D2D2D] mb-1.5">
-              Nome Prodotto <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={form.nome}
-              onChange={set('nome')}
-              placeholder='Es. Valvola a sfera 1/2"'
-              className={inputClass(errors.nome)}
-            />
-            {errors.nome && <p className="mt-1 text-xs text-red-500">{errors.nome}</p>}
-          </div>
-
-          {/* SKU */}
-          <div>
-            <label className="block text-sm font-medium text-[#2D2D2D] mb-1.5">
-              SKU <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={form.sku}
-              onChange={set('sku')}
-              placeholder="Es. VLV-001"
-              className={`${inputClass(errors.sku)} font-mono`}
-            />
-            {errors.sku && <p className="mt-1 text-xs text-red-500">{errors.sku}</p>}
-            <p className="mt-1 text-xs text-[#6B7280]">
-              Lo SKU deve essere univoco.
-            </p>
-          </div>
-
-          {/* Prezzo */}
-          <div>
-            <label className="block text-sm font-medium text-[#2D2D2D] mb-1.5">
-              Prezzo (€) <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280] text-sm">€</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#2D2D2D] mb-1.5">
+                Nome Prodotto <span className="text-red-500">*</span>
+              </label>
               <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={form.prezzo}
-                onChange={set('prezzo')}
-                placeholder="0.00"
-                className={`w-full pl-7 pr-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all ${
-                  errors.prezzo ? 'border-red-400 bg-red-50' : 'border-[#E5EAF2]'
-                }`}
+                type="text"
+                value={form.nome}
+                onChange={set('nome')}
+                placeholder='Es. Valvola a sfera 1/2"'
+                className={inputClass(errors.nome)}
               />
+              {errors.nome && <p className="mt-1 text-xs text-red-500">{errors.nome}</p>}
             </div>
-            {errors.prezzo && <p className="mt-1 text-xs text-red-500">{errors.prezzo}</p>}
-            {mode === 'edit' && (
-              <p className="mt-1 text-xs text-[#6B7280]">
-                La data di aggiornamento prezzo viene registrata automaticamente.
-              </p>
-            )}
-          </div>
 
-          {/* Categoria */}
-          {categorie.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-[#2D2D2D] mb-1.5">
+                SKU <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={form.sku}
+                onChange={set('sku')}
+                placeholder="Es. VLV-001"
+                className={`${inputClass(errors.sku)} font-mono`}
+              />
+              {errors.sku && <p className="mt-1 text-xs text-red-500">{errors.sku}</p>}
+              <p className="mt-1 text-xs text-[#6B7280]">Lo SKU deve essere univoco.</p>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-[#2D2D2D] mb-1.5">
+                Descrizione
+                <span className="ml-1 text-xs font-normal text-[#9CA3AF]">(opzionale)</span>
+              </label>
+              <textarea
+                value={form.descrizione}
+                onChange={set('descrizione')}
+                placeholder="Descrizione del prodotto"
+                rows={4}
+                className={`${inputClass(errors.descrizione)} resize-none`}
+              />
+              {errors.descrizione && <p className="mt-1 text-xs text-red-500">{errors.descrizione}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#2D2D2D] mb-1.5">
+                Prezzo (EUR) <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280] text-sm">EUR</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={form.prezzo}
+                  onChange={set('prezzo')}
+                  placeholder="0.00"
+                  className={`w-full pl-12 pr-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all ${
+                    errors.prezzo ? 'border-red-400 bg-red-50' : 'border-[#E5EAF2]'
+                  }`}
+                />
+              </div>
+              {errors.prezzo && <p className="mt-1 text-xs text-red-500">{errors.prezzo}</p>}
+              {mode === 'edit' && (
+                <p className="mt-1 text-xs text-[#6B7280]">
+                  La data di aggiornamento prezzo viene registrata automaticamente.
+                </p>
+              )}
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-[#2D2D2D] mb-1.5">
                 Categoria
@@ -190,22 +252,86 @@ export function ProductFormModal({
                 onChange={set('categoria_id')}
                 className="w-full px-3 py-2 border border-[#E5EAF2] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all"
               >
-                <option value="">
-                  {mode === 'edit' ? '— Nessuna modifica alla categoria —' : '— Nessuna categoria —'}
-                </option>
-                {categorie.map(c => (
-                  <option key={c.id} value={String(c.id)}>
-                    {c.categoria_padre_id !== null ? `  ↳ ${c.nome}` : c.nome}
+                <option value="">- Nessuna categoria -</option>
+                {categorieOptions.map(option => (
+                  <option key={option.id} value={String(option.id)}>
+                    {option.livello > 0 ? `    ↳ ${option.nome}` : option.nome}
                   </option>
                 ))}
               </select>
-              {mode === 'edit' && (
-                <p className="mt-1 text-xs text-[#9CA3AF]">
-                  Seleziona una categoria per cambiarla. Lascia vuoto per mantenerla invariata.
-                </p>
-              )}
             </div>
-          )}
+
+            <div>
+              <label className="block text-sm font-medium text-[#2D2D2D] mb-1.5">
+                Unita di misura
+                <span className="ml-1 text-xs font-normal text-[#9CA3AF]">(opzionale)</span>
+              </label>
+              <input
+                type="text"
+                value={form.unita_misura}
+                onChange={set('unita_misura')}
+                placeholder="Es. pz, kg, m, lt"
+                className={inputClass(errors.unita_misura)}
+              />
+              {errors.unita_misura && <p className="mt-1 text-xs text-red-500">{errors.unita_misura}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#2D2D2D] mb-1.5">
+                Peso (kg)
+                <span className="ml-1 text-xs font-normal text-[#9CA3AF]">(opzionale)</span>
+              </label>
+              <input
+                type="number"
+                step="0.001"
+                min="0"
+                value={form.peso_kg}
+                onChange={set('peso_kg')}
+                placeholder="0.000"
+                className={inputClass(errors.peso_kg)}
+              />
+              {errors.peso_kg && <p className="mt-1 text-xs text-red-500">{errors.peso_kg}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#2D2D2D] mb-1.5">
+                Scorta minima <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={form.scorta_minima}
+                onChange={set('scorta_minima')}
+                placeholder="0"
+                className={inputClass(errors.scorta_minima)}
+              />
+              {errors.scorta_minima && <p className="mt-1 text-xs text-red-500">{errors.scorta_minima}</p>}
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-[#2D2D2D] mb-2">Stato prodotto</label>
+              <div className="flex items-center justify-between gap-4 px-4 py-3 border border-[#E5EAF2] rounded-2xl bg-[#F7F9FC]">
+                <div>
+                  <p className="text-sm font-medium text-[#2D2D2D]">
+                    {form.attivo ? 'Prodotto attivo' : 'Prodotto disattivato'}
+                  </p>
+                  <p className="text-xs text-[#6B7280] mt-1">
+                    {form.attivo
+                      ? 'Il prodotto sara visibile come attivo nel modulo magazzino.'
+                      : 'Il prodotto verra salvato come disattivato.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleAttivo}
+                  className={`w-11 h-6 rounded-full transition-colors flex items-center ${form.attivo ? 'bg-[#17E88F]' : 'bg-[#D1D5DB]'}`}
+                >
+                  <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform mx-1 ${form.attivo ? 'translate-x-5' : ''}`} />
+                </button>
+              </div>
+            </div>
+          </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-[#E5EAF2]">
             <button

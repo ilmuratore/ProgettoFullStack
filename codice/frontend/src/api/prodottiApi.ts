@@ -15,11 +15,11 @@ export const prodottiApi = {
   getById: (id: number): Promise<Prodotto> =>
     api.get<Prodotto>(`/prodotti/${id}`),
 
-  create: (body: ProdottoCreateRequest): Promise<ProdottoListino> =>
-    api.post<ProdottoListino>('/prodotti', body),
+  create: (body: ProdottoCreateRequest): Promise<Prodotto> =>
+    api.post<Prodotto>('/prodotti', body),
 
-  update: (id: number, body: ProdottoUpdateRequest): Promise<ProdottoListino> =>
-    api.patch<ProdottoListino>(`/prodotti/${id}`, body),
+  update: (id: number, body: ProdottoUpdateRequest): Promise<Prodotto> =>
+    api.patch<Prodotto>(`/prodotti/${id}`, body),
 
   remove: (id: number): Promise<void> =>
     api.delete<void>(`/prodotti/${id}`),

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Plus, GitMerge, Package, ArrowLeftRight, ClipboardEdit,
-  Tag, Search, Filter, MoreVertical, Edit, Trash2, Eye, ChevronRight,
+  Plus, GitMerge, Package, ArrowLeftRight,
+  Tag,
 } from 'lucide-react';
 import { WarehouseKPIs } from './components/WarehouseKPIs';
 import { WarehouseTreeView } from './components/WarehouseTreeView';
@@ -10,10 +10,14 @@ import { StockTable } from './components/StockTable';
 import { StockMovementsTimeline } from './components/StockMovementsTimeline';
 import { NewMovementModal } from './components/NewMovementModal';
 import { ProductFormModal } from './components/ProductFormModal';
+// da lasciare per il merge, componente dettaglio prodotto
+import { ProductDetailDrawer } from './components/ProductDetailDrawer';
 import { CategoryFormModal } from './components/CategoryFormModal';
+import { ProductsTab } from './components/ProductsTab';
+import { CategoriesTab } from './components/CategoriesTab';
 import { PageTabBar, type TabConfig } from '../../components/ui/PageTabBar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../../components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { magazzinoApi } from '../../api/magazzinoApi';
 import { prodottiApi } from '../../api/prodottiApi';
@@ -26,24 +30,20 @@ import type {
   Ubicazione,
   UbicazioneCreateRequest,
 } from '../../types/magazzino';
-import type { ProdottoListino, ProdottoCreateRequest, ProdottoUpdateRequest } from '../../types/prodotti';
+// aggiunto Prodotto nei type importati
+import type { Prodotto, ProdottoListino, ProdottoCreateRequest, ProdottoUpdateRequest } from '../../types/prodotti';
 import type { Categoria, CategoriaCreateRequest, CategoriaUpdateRequest } from '../../types/categorie';
 
-type WarehouseTab = 'struttura' | 'prodotti' | 'categorie' | 'giacenze' | 'movimenti' | 'rettifiche';
+type WarehouseTab = 'prodotti' | 'categorie' | 'struttura' | 'giacenze' | 'movimenti';
 
 const tabs: TabConfig[] = [
-  { id: 'struttura',  label: 'Struttura',  icon: GitMerge     },
-  { id: 'prodotti',   label: 'Prodotti',   icon: Package      },
-  { id: 'categorie',  label: 'Categorie',  icon: Tag          },
-  { id: 'giacenze',   label: 'Giacenze',   icon: Package      },
-  { id: 'movimenti',  label: 'Movimenti',  icon: ArrowLeftRight },
-  { id: 'rettifiche', label: 'Rettifiche', icon: ClipboardEdit },
+  { id: 'prodotti', label: 'Prodotti', icon: Package },
+  { id: 'categorie', label: 'Categorie', icon: Tag },
+  { id: 'struttura', label: 'Struttura', icon: GitMerge },
+  { id: 'giacenze', label: 'Giacenze', icon: Package },
+  { id: 'movimenti', label: 'Movimenti', icon: ArrowLeftRight },
 ];
 
-const rettificheData: {
-  id: number; prodotto: string; sku: string; ubicazione: string;
-  quantitaPrecedente: number; quantitaNuova: number; nota: string; utente: string; data: string;
-}[] = [];
 
 interface MagazzinoFormState {
   codice: string; nome: string; indirizzo: string;
@@ -54,15 +54,9 @@ const EMPTY_MAG: MagazzinoFormState = { codice: '', nome: '', indirizzo: '', cap
 interface UbicazioneFormState { corsia: string; scaffale: string; temperatura_controllata: boolean; }
 const EMPTY_UBIC: UbicazioneFormState = { corsia: '', scaffale: '', temperatura_controllata: false };
 
-const formatPrezzo = (n: number) =>
-  new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n);
-
-const formatData = (iso: string) =>
-  new Date(iso).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
 export function WarehousePage() {
   const { hasPermesso } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<WarehouseTab>('struttura');
+  const [activeTab, setActiveTab] = useState<WarehouseTab>('prodotti');
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
 
   // ── Magazzini ──────────────────────────────────────────────────────────────
@@ -83,10 +77,8 @@ export function WarehousePage() {
   const [ubicErrors, setUbicErrors] = useState<Partial<Record<keyof UbicazioneFormState, string>>>({});
   const [ubicLoading, setUbicLoading] = useState(false);
 
-  const [selectedMagDetail, setSelectedMagDetail] = useState<MagazzinoConUbicazioni | null>(null);
-
   const canWrite = hasPermesso('magazzino:write');
-  const canWriteProdotti  = hasPermesso('prodotti:write');
+  const canWriteProdotti = hasPermesso('prodotti:write');
   const canDeleteProdotti = hasPermesso('prodotti:delete');
 
   // ── Prodotti ───────────────────────────────────────────────────────────────
@@ -95,7 +87,11 @@ export function WarehousePage() {
   const [searchProdotti, setSearchProdotti] = useState('');
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [productModalMode, setProductModalMode] = useState<'create' | 'edit'>('create');
-  const [selectedProduct, setSelectedProduct] = useState<ProdottoListino | null>(null);
+  // aggiunto prodotto selezionato
+  const [selectedProduct, setSelectedProduct] = useState<Prodotto | null>(null);
+  // da lasciare per il merge useState per apertura dettaglio prodotto
+  const [productDetailOpen, setProductDetailOpen] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
 
   // ── Categorie ──────────────────────────────────────────────────────────────
   const [categorie, setCategorie] = useState<Categoria[]>([]);
@@ -105,6 +101,7 @@ export function WarehousePage() {
   const [categoryModalMode, setCategoryModalMode] = useState<'create' | 'edit'>('create');
   const [selectedCategory, setSelectedCategory] = useState<Categoria | null>(null);
   const [initialParentCategoryId, setInitialParentCategoryId] = useState<number | undefined>(undefined);
+  const [categoryToDelete, setCategoryToDelete] = useState<Categoria | null>(null);
 
   // ── Fetch functions ────────────────────────────────────────────────────────
   const fetchMagazzini = useCallback(async () => {
@@ -133,9 +130,9 @@ export function WarehousePage() {
   const fetchForTab = useCallback((tab: WarehouseTab) => {
     if (fetchedTabs.current.has(tab)) return;
     fetchedTabs.current.add(tab);
-    if (tab === 'struttura')  fetchMagazzini();
-    if (tab === 'prodotti')   { fetchProdotti(); fetchCategorie(); } // categorie servono anche per il modal prodotti
-    if (tab === 'categorie')  fetchCategorie();
+    if (tab === 'struttura') fetchMagazzini();
+    if (tab === 'prodotti') { fetchProdotti(); fetchCategorie(); } // categorie servono anche per il modal prodotti
+    if (tab === 'categorie') fetchCategorie();
   }, [fetchMagazzini, fetchProdotti, fetchCategorie]);
 
   useEffect(() => { fetchForTab('struttura'); }, []);
@@ -145,20 +142,24 @@ export function WarehousePage() {
   const getActionButton = (): { label: string; action: () => void; show: boolean } => {
     switch (activeTab) {
       case 'struttura':
-        return { label: 'Nuovo Magazzino', show: canWrite,
-          action: () => { setMagModalMode('create'); setMagForm(EMPTY_MAG); setMagErrors({}); setMagModalOpen(true); } };
+        return {
+          label: 'Nuovo Magazzino', show: canWrite,
+          action: () => { setMagModalMode('create'); setMagForm(EMPTY_MAG); setMagErrors({}); setMagModalOpen(true); }
+        };
       case 'prodotti':
-        return { label: 'Nuovo Prodotto', show: canWriteProdotti,
-          action: () => { setProductModalMode('create'); setSelectedProduct(null); setProductModalOpen(true); } };
+        return {
+          label: 'Nuovo Prodotto', show: canWriteProdotti,
+          action: () => { setProductModalMode('create'); setSelectedProduct(null); setProductModalOpen(true); }
+        };
       case 'categorie':
-        return { label: 'Nuova Categoria', show: canWriteProdotti,
-          action: () => { setCategoryModalMode('create'); setSelectedCategory(null); setInitialParentCategoryId(undefined); setCategoryModalOpen(true); } };
+        return {
+          label: 'Nuova Categoria', show: canWriteProdotti,
+          action: () => { setCategoryModalMode('create'); setSelectedCategory(null); setInitialParentCategoryId(undefined); setCategoryModalOpen(true); }
+        };
       case 'giacenze':
         return { label: 'Aggiorna Giacenze', show: true, action: () => toast.info('Disponibile con M07') };
       case 'movimenti':
         return { label: 'Nuovo Movimento', show: true, action: () => setIsMovementModalOpen(true) };
-      case 'rettifiche':
-        return { label: 'Nuova Rettifica', show: true, action: () => toast.info('Disponibile con M07') };
     }
   };
 
@@ -176,8 +177,10 @@ export function WarehousePage() {
   const handleEditMagazzino = (mag: MagazzinoConUbicazioni) => {
     setMagModalMode('edit');
     setSelectedMag(mag);
-    setMagForm({ codice: mag.codice, nome: mag.nome, indirizzo: mag.indirizzo ?? '',
-      cap: mag.cap ?? '', citta: mag.citta ?? '', provincia: mag.provincia ?? '', paese: mag.paese ?? 'Italia' });
+    setMagForm({
+      codice: mag.codice, nome: mag.nome, indirizzo: mag.indirizzo ?? '',
+      cap: mag.cap ?? '', citta: mag.citta ?? '', provincia: mag.provincia ?? '', paese: mag.paese ?? 'Italia'
+    });
     setMagErrors({});
     setMagModalOpen(true);
   };
@@ -284,21 +287,36 @@ export function WarehousePage() {
       }
       setUbicModalOpen(false);
     } catch (err: any) {
-      toast.error('Salvataggio fallito', { description: err?.code === 'DUPLICATE_ENTRY'
-        ? 'Slot già occupato (stessa corsia e scaffale in questo magazzino)' : err?.message });
+      toast.error('Salvataggio fallito', {
+        description: err?.code === 'DUPLICATE_ENTRY'
+          ? 'Slot già occupato (stessa corsia e scaffale in questo magazzino)' : err?.message
+      });
     } finally { setUbicLoading(false); }
   };
 
   // ── Prodotti handlers ──────────────────────────────────────────────────────
   const handleSaveProduct = async (data: ProdottoCreateRequest | ProdottoUpdateRequest, id?: number) => {
+    // serve a dire quali dati del prodotto mostrare
+    const toListinoItem = (prodotto: Prodotto): ProdottoListino => ({
+      id: prodotto.id,
+      sku: prodotto.sku,
+      nome: prodotto.nome,
+      prezzo: prodotto.prezzo,
+      data_agg_prezzo: prodotto.data_agg_prezzo,
+      attivo: prodotto.attivo,
+      created_at: prodotto.created_at,
+    });
+
     try {
       if (productModalMode === 'create') {
         const created = await prodottiApi.create(data as ProdottoCreateRequest);
-        setProdotti(prev => [...prev, created]);
+        setProdotti(prev => [...prev, toListinoItem(created)]);
+        await fetchCategorie();
         toast.success('Prodotto creato');
       } else if (id !== undefined) {
         const updated = await prodottiApi.update(id, data as ProdottoUpdateRequest);
-        setProdotti(prev => prev.map(p => p.id === id ? updated : p));
+        setProdotti(prev => prev.map(p => p.id === id ? toListinoItem(updated) : p));
+        await fetchCategorie();
         toast.success('Prodotto aggiornato');
       }
     } catch (err: any) {
@@ -307,11 +325,24 @@ export function WarehousePage() {
     }
   };
 
+  // aggiunta di 1 nuovo handle per la modifica
+  const handleEditProduct = async (productId: number) => {
+    try {
+      const product = await prodottiApi.getById(productId);
+      setProductModalMode('edit');
+      setSelectedProduct(product);
+      setProductModalOpen(true);
+    } catch (err: any) {
+      toast.error('Errore caricamento prodotto', { description: err?.message });
+    }
+  };
+
   const handleDeleteProduct = async (id: number) => {
     if (!confirm('Eliminare questo prodotto? L\'operazione è reversibile (soft delete).')) return;
     try {
       await prodottiApi.remove(id);
       setProdotti(prev => prev.filter(p => p.id !== id));
+      await fetchCategorie();
       toast.success('Prodotto eliminato');
     } catch (err: any) { toast.error('Eliminazione fallita', { description: err?.message }); }
   };
@@ -335,14 +366,20 @@ export function WarehousePage() {
     }
   };
 
-  const handleDeleteCategory = async (id: number) => {
-    if (!confirm('Eliminare questa categoria? L\'operazione è definitiva.')) return;
+  const handleDeleteCategory = (id: number) => {
+    setCategoryToDelete(categorie.find(c => c.id === id) ?? null);
+  };
+
+  const handleConfirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
     try {
-      await categorieApi.remove(id);
-      setCategorie(prev => prev.filter(c => c.id !== id));
+      await categorieApi.remove(categoryToDelete.id);
+      setCategorie(prev => prev.filter(c => c.id !== categoryToDelete.id));
       toast.success('Categoria eliminata');
     } catch (err: any) {
       toast.error('Eliminazione bloccata', { description: err?.message });
+    } finally {
+      setCategoryToDelete(null);
     }
   };
 
@@ -362,53 +399,6 @@ export function WarehousePage() {
   const inputClass = (err?: string) =>
     `w-full px-3 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all ${err ? 'border-red-400 bg-red-50' : 'border-[#E5EAF2]'}`;
 
-  const ProdottiKebab = ({ item }: { item: ProdottoListino }) => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button className="p-1.5 hover:bg-[#F7F9FC] text-[#6B7280] rounded-lg transition-all">
-          <MoreVertical className="w-4 h-4" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40">
-        <DropdownMenuItem onClick={() => toast.info('Dettaglio prodotto disponibile con M07')} className="cursor-pointer">
-          <Eye className="w-4 h-4 mr-2" />Visualizza
-        </DropdownMenuItem>
-        {canWriteProdotti && (
-          <DropdownMenuItem onClick={() => { setProductModalMode('edit'); setSelectedProduct(item); setProductModalOpen(true); }} className="cursor-pointer">
-            <Edit className="w-4 h-4 mr-2" />Modifica
-          </DropdownMenuItem>
-        )}
-        {canDeleteProdotti && (
-          <DropdownMenuItem onClick={() => handleDeleteProduct(item.id)} className="cursor-pointer text-red-600">
-            <Trash2 className="w-4 h-4 mr-2" />Elimina
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-
-  const CategorieKebab = ({ item }: { item: Categoria }) => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button className="p-1.5 hover:bg-[#F7F9FC] text-[#6B7280] rounded-lg transition-all">
-          <MoreVertical className="w-4 h-4" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40">
-        {canWriteProdotti && (
-          <DropdownMenuItem onClick={() => { setCategoryModalMode('edit'); setSelectedCategory(item); setInitialParentCategoryId(undefined); setCategoryModalOpen(true); }} className="cursor-pointer">
-            <Edit className="w-4 h-4 mr-2" />Modifica
-          </DropdownMenuItem>
-        )}
-        {canDeleteProdotti && (
-          <DropdownMenuItem onClick={() => handleDeleteCategory(item.id)} className="cursor-pointer text-red-600">
-            <Trash2 className="w-4 h-4 mr-2" />Elimina
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-
   const SkeletonTree = () => (
     <div className="space-y-4">
       {[1, 2].map(i => (
@@ -424,32 +414,6 @@ export function WarehousePage() {
       ))}
     </div>
   );
-
-  const SkeletonRows = ({ cols }: { cols: number }) => (
-    <>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <tr key={i} className="border-b border-[#E5EAF2]">
-          {Array.from({ length: cols }).map((_, j) => (
-            <td key={j} className="py-3 px-4">
-              <div className="h-4 bg-[#E5EAF2] rounded animate-pulse" style={{ width: j === 0 ? '60%' : '45%' }} />
-            </td>
-          ))}
-        </tr>
-      ))}
-    </>
-  );
-
-  // Prodotti filtrati
-  const filteredProdotti = prodotti.filter(p => {
-    const q = searchProdotti.toLowerCase();
-    return p.nome.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
-  });
-
-  // Categorie filtrate (per la ricerca)
-  const filteredCategorie = categorie.filter(c =>
-    c.nome.toLowerCase().includes(searchCategorie.toLowerCase())
-  );
-  const categorieRadice = filteredCategorie.filter(c => c.categoria_padre_id === null);
 
   return (
     <div className="space-y-6">
@@ -505,210 +469,55 @@ export function WarehousePage() {
 
           {/* ── PRODOTTI ── */}
           {activeTab === 'prodotti' && (
-            <>
-              <div className="flex items-center gap-4">
-                <div className="flex-1 relative">
-                  <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Cerca prodotti per nome o SKU..."
-                    value={searchProdotti}
-                    onChange={e => setSearchProdotti(e.target.value)}
-                    className="w-full h-10 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all"
-                  />
-                </div>
-                <button className="px-4 py-2 bg-[#F7F9FC] border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-white transition-all flex items-center gap-2">
-                  <Filter className="w-4 h-4" /> Filtri
-                </button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-[#E5EAF2]">
-                      <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Nome Prodotto</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">SKU</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-[#6B7280]">Prezzo</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Agg. Prezzo</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Azioni</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loadingProdotti ? <SkeletonRows cols={5} /> : filteredProdotti.length === 0
-                      ? <tr><td colSpan={5} className="py-12 text-center text-[#6B7280] text-sm">
-                          {searchProdotti ? 'Nessun prodotto corrisponde alla ricerca' : 'Nessun prodotto. Clicca "Nuovo Prodotto" per iniziare.'}
-                        </td></tr>
-                      : filteredProdotti.map((p, i) => (
-                        <tr key={p.id} className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
-                          <td className="py-3 px-4 font-medium text-[#2D2D2D]">{p.nome}</td>
-                          <td className="py-3 px-4 text-sm text-[#6B7280] font-mono">{p.sku}</td>
-                          <td className="py-3 px-4 text-sm font-semibold text-[#2D2D2D] text-right">{formatPrezzo(p.prezzo)}</td>
-                          <td className="py-3 px-4 text-sm text-[#6B7280]">{formatData(p.data_agg_prezzo)}</td>
-                          <td className="py-3 px-4"><ProdottiKebab item={p} /></td>
-                        </tr>
-                      ))
-                    }
-                  </tbody>
-                </table>
-              </div>
-              <div className="flex items-center justify-between pt-4 border-t border-[#E5EAF2]">
-                <p className="text-sm text-[#6B7280]">
-                  Mostrando <span className="font-medium text-[#2D2D2D]">{loadingProdotti ? '…' : filteredProdotti.length}</span> prodotti
-                </p>
-              </div>
-            </>
+            <ProductsTab
+              prodotti={prodotti}
+              loading={loadingProdotti}
+              search={searchProdotti}
+              canWriteProdotti={canWriteProdotti}
+              canDeleteProdotti={canDeleteProdotti}
+              onSearchChange={setSearchProdotti}
+              // richiamo il componente dettaglio prodotto
+              onView={(item) => { setSelectedProductId(item.id); setProductDetailOpen(true); }}
+              //aggiunta del nuovo handle per la modifica
+              onEdit={(item) => { void handleEditProduct(item.id); }}
+              onDelete={handleDeleteProduct}
+            />
           )}
+
 
           {/* ── CATEGORIE ── */}
           {activeTab === 'categorie' && (
-            <>
-              <div className="flex items-center gap-4">
-                <div className="flex-1 relative">
-                  <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Cerca categorie..."
-                    value={searchCategorie}
-                    onChange={e => setSearchCategorie(e.target.value)}
-                    className="w-full h-10 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all"
-                  />
-                </div>
-              </div>
-
-              {loadingCategorie ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="h-16 bg-[#F7F9FC] rounded-xl animate-pulse" />
-                  ))}
-                </div>
-              ) : categorieRadice.length === 0 ? (
-                <p className="py-12 text-center text-[#6B7280] text-sm">
-                  {searchCategorie ? 'Nessuna categoria corrisponde alla ricerca' : 'Nessuna categoria. Clicca "Nuova Categoria" per iniziare.'}
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {categorieRadice.map((cat) => {
-                    const subcategories = categorie.filter(c => c.categoria_padre_id === cat.id);
-                    const totalProdotti = cat.prodotti_count + subcategories.reduce((s, sub) => s + sub.prodotti_count, 0);
-                    return (
-                      <div key={cat.id} className="border border-[#E5EAF2] rounded-xl overflow-hidden">
-                        <div className="flex items-center justify-between p-4 bg-[#F7F9FC]">
-                          <div className="flex items-center gap-3">
-                            <ChevronRight className="w-5 h-5 text-[#6B7280]" />
-                            <div>
-                              <h3 className="font-semibold text-[#2D2D2D]">{cat.nome}</h3>
-                              <p className="text-xs text-[#6B7280] mt-0.5">
-                                {totalProdotti} prodotto{totalProdotti !== 1 ? 'i' : ''} totali
-                                {subcategories.length > 0 && ` · ${subcategories.length} sottocategor${subcategories.length !== 1 ? 'ie' : 'ia'}`}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {canWriteProdotti && (
-                              <button
-                                onClick={() => handleAddSubcategory(cat.id)}
-                                className="px-3 py-1.5 text-xs bg-white border border-[#E5EAF2] text-[#6B7280] rounded-lg hover:bg-[#F7F9FC] transition-all"
-                              >
-                                + Sottocategoria
-                              </button>
-                            )}
-                            <CategorieKebab item={cat} />
-                          </div>
-                        </div>
-                        {subcategories.map((sub) => (
-                          <div key={sub.id} className="flex items-center justify-between p-3 px-6 border-t border-[#E5EAF2] hover:bg-[#F7F9FC] transition-all">
-                            <div className="flex items-center gap-3">
-                              <div className="w-1 h-8 bg-[#E5EAF2] rounded" />
-                              <div>
-                                <p className="text-sm font-medium text-[#2D2D2D]">{sub.nome}</p>
-                                <p className="text-xs text-[#6B7280]">{sub.prodotti_count} prodotto{sub.prodotti_count !== 1 ? 'i' : ''}</p>
-                              </div>
-                            </div>
-                            <CategorieKebab item={sub} />
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div className="flex items-center pt-4 border-t border-[#E5EAF2]">
-                <p className="text-sm text-[#6B7280]">
-                  <span className="font-medium text-[#2D2D2D]">{categorie.filter(c => c.categoria_padre_id === null).length}</span> categorie radice ·{' '}
-                  <span className="font-medium text-[#2D2D2D]">{categorie.filter(c => c.categoria_padre_id !== null).length}</span> sottocategorie
-                </p>
-              </div>
-            </>
+            <CategoriesTab
+              categorie={categorie}
+              loading={loadingCategorie}
+              search={searchCategorie}
+              canWriteProdotti={canWriteProdotti}
+              canDeleteProdotti={canDeleteProdotti}
+              onSearchChange={setSearchCategorie}
+              onAddSubcategory={handleAddSubcategory}
+              onEdit={(item) => { setCategoryModalMode('edit'); setSelectedCategory(item); setInitialParentCategoryId(undefined); setCategoryModalOpen(true); }}
+              onDelete={handleDeleteCategory}
+            />
           )}
+
 
           {activeTab === 'giacenze' && <StockTable />}
 
           {activeTab === 'movimenti' && <StockMovementsTimeline />}
 
-          {activeTab === 'rettifiche' && (
-            <div className="space-y-6">
-              <div className="bg-[#FEF3C7] border border-[#FDE68A] rounded-xl p-4 flex items-start gap-3">
-                <ClipboardEdit className="w-5 h-5 text-[#D97706] mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-[#92400E]">Rettifiche manuali giacenza</p>
-                  <p className="text-xs text-[#B45309] mt-0.5">Le rettifiche manuali generano un movimento di tipo RETTIFICA e richiedono una nota obbligatoria. Solo Admin e Responsabile Magazzino possono eseguire rettifiche.</p>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-[#F7F9FC] border-b border-[#E5EAF2]">
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Prodotto / SKU</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Ubicazione</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Qtà Precedente</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Qtà Nuova</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Delta</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Nota</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Utente / Data</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#E5EAF2]">
-                    {rettificheData.length === 0 && (
-                      <tr>
-                        <td colSpan={7} className="py-12 text-center text-sm text-[#9CA3AF]">
-                          Integrazione rettifiche disponibile con milestone M07.
-                        </td>
-                      </tr>
-                    )}
-                    {rettificheData.map((r) => {
-                      const delta = r.quantitaNuova - r.quantitaPrecedente;
-                      return (
-                        <tr key={r.id} className="hover:bg-[#F7F9FC] transition-colors">
-                          <td className="px-4 py-3">
-                            <p className="text-sm font-medium text-[#2D2D2D] truncate max-w-[180px]">{r.prodotto}</p>
-                            <p className="text-xs text-[#6B7280]">{r.sku}</p>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-[#374151]">{r.ubicazione}</td>
-                          <td className="px-4 py-3 text-sm text-right text-[#374151]">{r.quantitaPrecedente}</td>
-                          <td className="px-4 py-3 text-sm text-right font-medium text-[#2D2D2D]">{r.quantitaNuova}</td>
-                          <td className="px-4 py-3 text-right">
-                            <span className={`text-sm font-semibold ${delta < 0 ? 'text-[#DC2626]' : 'text-[#16A34A]'}`}>
-                              {delta > 0 ? '+' : ''}{delta}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-[#6B7280] max-w-[200px] truncate">{r.nota}</td>
-                          <td className="px-4 py-3">
-                            <p className="text-sm text-[#374151]">{r.utente}</p>
-                            <p className="text-xs text-[#9CA3AF]">{r.data}</p>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+
         </div>
       </div>
 
       {/* ── Modali ── */}
       <NewMovementModal isOpen={isMovementModalOpen} onClose={() => setIsMovementModalOpen(false)} />
+
+      {/* componente dettaglio prodotto */}
+      <ProductDetailDrawer
+        productId={selectedProductId}
+        isOpen={productDetailOpen}
+        onClose={() => setProductDetailOpen(false)}
+      />
 
       <ProductFormModal
         open={productModalOpen}
@@ -728,6 +537,25 @@ export function WarehousePage() {
         initialParentId={initialParentCategoryId}
         categorie={categorie}
       />
+
+
+      <AlertDialog open={!!categoryToDelete} onOpenChange={(v) => { if (!v) setCategoryToDelete(null); }}>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Eliminare la categoria?</AlertDialogTitle>
+      <AlertDialogDescription>
+        Stai per eliminare <strong>{categoryToDelete?.nome}</strong>. L'operazione è definitiva e non può essere annullata.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel>Annulla</AlertDialogCancel>
+      <AlertDialogAction onClick={handleConfirmDeleteCategory} className="bg-red-600 hover:bg-red-700 text-white">
+        Elimina
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+
 
       {/* Modal Magazzino */}
       <Dialog open={magModalOpen} onOpenChange={(v) => { if (!v && !magLoading) setMagModalOpen(false); }}>

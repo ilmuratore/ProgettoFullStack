@@ -1,17 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, ChevronRight, Search, Plus, Trash2, CheckCircle, User, MapPin, Package, ClipboardList, Check } from 'lucide-react';
+import { toast } from 'sonner';
+import { ClientFormModal } from '../../anagrafiche/components/ClientFormModal';
+import { clientiApi } from '../../../api/clientiApi';
+import type { Cliente, ClienteCreateRequest, ClienteUpdateRequest } from '../../../types/clienti';
 
 interface NewSalesOrderModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const clienti = [
-  { id: '1', nome: 'Ferrero S.p.A.', piva: 'IT00144010050', destinazioni: ['Torino - Via Eugenio Ferrero 1', 'Milano - Via Dante 12', 'Roma - Via Appia 88'] },
-  { id: '2', nome: 'Barilla Group S.p.A.', piva: 'IT01131870345', destinazioni: ['Parma - Via Mantova 166', 'Milano - Viale Fulvio Testi 280'] },
-  { id: '3', nome: 'Lavazza S.p.A.', piva: 'IT00248560010', destinazioni: ['Torino - Corso Novara 59', 'Roma - Via Sistina 31'] },
-  { id: '4', nome: 'Mutti S.p.A.', piva: 'IT00360820341', destinazioni: ['Montechiarugolo - Via Traversante 106'] },
-];
+type ClienteOption = Cliente & { destinazioni?: string[] };
 
 const prodotti = [
   { sku: 'PKG-BOX-001', nome: 'Scatola Cartone 40x30x20', disponibilita: 1200, prezzo: 0.85 },
@@ -34,7 +33,10 @@ interface OrderLine { sku: string; nome: string; disponibilita: number; prezzo: 
 
 export function NewSalesOrderModal({ isOpen, onClose }: NewSalesOrderModalProps) {
   const [step, setStep] = useState(1);
-  const [selectedCliente, setSelectedCliente] = useState<typeof clienti[0] | null>(null);
+  const [clienti, setClienti] = useState<ClienteOption[]>([]);
+  const [loadingClienti, setLoadingClienti] = useState(false);
+  const [isClientFormOpen, setIsClientFormOpen] = useState(false);
+  const [selectedCliente, setSelectedCliente] = useState<ClienteOption | null>(null);
   const [clienteSearch, setClienteSearch] = useState('');
   const [selectedDest, setSelectedDest] = useState('');
   const [orderLines, setOrderLines] = useState<OrderLine[]>([]);
@@ -42,14 +44,26 @@ export function NewSalesOrderModal({ isOpen, onClose }: NewSalesOrderModalProps)
   const [note, setNote] = useState('');
   const [confirmed, setConfirmed] = useState(false);
 
-  const filteredClienti = clienti.filter(c =>
-    c.nome.toLowerCase().includes(clienteSearch.toLowerCase()) ||
-    c.piva.includes(clienteSearch)
-  );
+  useEffect(() => {
+    if (!isOpen) return;
+    loadClienti();
+  }, [isOpen]);
 
-  const filteredProdotti = prodotti.filter(p =>
-    p.sku.toLowerCase().includes(prodSearch.toLowerCase()) ||
-    p.nome.toLowerCase().includes(prodSearch.toLowerCase())
+  const loadClienti = async () => {
+    setLoadingClienti(true);
+    try {
+      const data = await clientiApi.list();
+      setClienti(data.map(c => ({ ...c })));
+    } catch (err: any) {
+      toast.error('Errore caricamento clienti', { description: err?.message });
+    } finally {
+      setLoadingClienti(false);
+    }
+  };
+
+  const filteredClienti = clienti.filter(c =>
+    c.ragione_sociale.toLowerCase().includes(clienteSearch.toLowerCase()) ||
+    (c.piva_cf ?? '').toLowerCase().includes(clienteSearch.toLowerCase())
   );
 
   const addLine = (p: typeof prodotti[0]) => {
@@ -69,11 +83,45 @@ export function NewSalesOrderModal({ isOpen, onClose }: NewSalesOrderModalProps)
   const totale = orderLines.reduce((sum, l) => sum + l.prezzo * l.qty, 0);
   const pesoTotale = orderLines.reduce((sum, l) => sum + l.qty * 0.5, 0);
 
+  const handleSaveClient = async (data: ClienteCreateRequest | ClienteUpdateRequest, id?: number) => {
+    if (id !== undefined) {
+      return;
+    }
+    const created = await clientiApi.create(data as ClienteCreateRequest);
+    setClienti(prev => [...prev, created]);
+    setSelectedCliente(created);
+    setSelectedDest('Nessuna destinazione disponibile');
+    toast.success('Cliente creato');
+  };
+
+  const handleSelectCliente = (cliente: ClienteOption) => {
+    setSelectedCliente(cliente);
+    if (!cliente.destinazioni?.length) {
+      setSelectedDest('Nessuna destinazione disponibile');
+    } else {
+      setSelectedDest('');
+    }
+  };
+
   const handleClose = () => {
-    setStep(1); setSelectedCliente(null); setClienteSearch('');
-    setSelectedDest(''); setOrderLines([]); setNote(''); setConfirmed(false);
+    setStep(1);
+    setClienti([]);
+    setLoadingClienti(false);
+    setIsClientFormOpen(false);
+    setSelectedCliente(null);
+    setClienteSearch('');
+    setSelectedDest('');
+    setOrderLines([]);
+    setProdSearch('');
+    setNote('');
+    setConfirmed(false);
     onClose();
   };
+
+  const filteredProdotti = prodotti.filter(p =>
+    p.sku.toLowerCase().includes(prodSearch.toLowerCase()) ||
+    p.nome.toLowerCase().includes(prodSearch.toLowerCase())
+  );
 
   if (!isOpen) return null;
 
@@ -117,7 +165,18 @@ export function NewSalesOrderModal({ isOpen, onClose }: NewSalesOrderModalProps)
           {/* Step 1: Cliente */}
           {step === 1 && (
             <div className="space-y-4">
-              <p className="text-sm text-[#6B7280]">Seleziona il cliente per questo ordine di vendita.</p>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <p className="text-sm text-[#6B7280]">Seleziona il cliente per questo ordine di vendita.</p>
+                </div>
+                <button
+                  onClick={() => setIsClientFormOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#17E88F] text-white rounded-xl hover:bg-[#0FA67A] transition-all text-sm font-medium"
+                >
+                  <Plus className="w-4 h-4" />
+                  Nuovo Cliente
+                </button>
+              </div>
               <div className="relative">
                 <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -128,51 +187,75 @@ export function NewSalesOrderModal({ isOpen, onClose }: NewSalesOrderModalProps)
                   className="w-full h-10 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
                 />
               </div>
-              <div className="space-y-2">
-                {filteredClienti.map(c => (
-                  <div
-                    key={c.id}
-                    onClick={() => setSelectedCliente(c)}
-                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                      selectedCliente?.id === c.id
-                        ? 'border-[#17E88F] bg-[#F0FDF7]'
-                        : 'border-[#E5EAF2] hover:border-[#17E88F]/40 hover:bg-[#F7F9FC]'
-                    }`}
+              {loadingClienti ? (
+                <div className="rounded-2xl border border-[#E5EAF2] bg-[#F7F9FC] p-6 text-center text-sm text-[#6B7280]">
+                  Caricamento clienti...
+                </div>
+              ) : filteredClienti.length === 0 ? (
+                <div className="rounded-2xl border border-[#E5EAF2] bg-[#F7F9FC] p-6 text-center text-sm text-[#6B7280] space-y-3">
+                  <p>Nessun cliente trovato con questi criteri.</p>
+                  <button
+                    onClick={() => setIsClientFormOpen(true)}
+                    className="px-4 py-2 bg-[#17E88F] text-white rounded-xl hover:bg-[#0FA67A] transition-all text-sm font-medium"
                   >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-[#2D2D2D]">{c.nome}</p>
-                        <p className="text-xs text-[#9CA3AF] mt-0.5">{c.piva}</p>
+                    Crea nuovo cliente
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredClienti.map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => handleSelectCliente(c)}
+                      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                        selectedCliente?.id === c.id
+                          ? 'border-[#17E88F] bg-[#F0FDF7]'
+                          : 'border-[#E5EAF2] hover:border-[#17E88F]/40 hover:bg-[#F7F9FC]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-[#2D2D2D]">{c.ragione_sociale}</p>
+                          <p className="text-xs text-[#9CA3AF] mt-0.5">{c.piva_cf ?? 'P.IVA non disponibile'}</p>
+                        </div>
+                        {selectedCliente?.id === c.id && <CheckCircle className="w-5 h-5 text-[#17E88F]" />}
                       </div>
-                      {selectedCliente?.id === c.id && <CheckCircle className="w-5 h-5 text-[#17E88F]" />}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
           {/* Step 2: Destinazione */}
           {step === 2 && selectedCliente && (
             <div className="space-y-4">
-              <p className="text-sm text-[#6B7280]">Seleziona la destinazione di consegna per <strong>{selectedCliente.nome}</strong>.</p>
-              <div className="space-y-2">
-                {selectedCliente.destinazioni.map((dest, i) => (
-                  <div
-                    key={i}
-                    onClick={() => setSelectedDest(dest)}
-                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3 ${
-                      selectedDest === dest
-                        ? 'border-[#17E88F] bg-[#F0FDF7]'
-                        : 'border-[#E5EAF2] hover:border-[#17E88F]/40'
-                    }`}
-                  >
-                    <MapPin className={`w-5 h-5 flex-shrink-0 ${selectedDest === dest ? 'text-[#17E88F]' : 'text-[#9CA3AF]'}`} />
-                    <span className="text-sm text-[#2D2D2D]">{dest}</span>
-                    {selectedDest === dest && <CheckCircle className="w-5 h-5 text-[#17E88F] ml-auto" />}
-                  </div>
-                ))}
-              </div>
+              <p className="text-sm text-[#6B7280]">Seleziona la destinazione di consegna per <strong>{selectedCliente.ragione_sociale}</strong>.</p>
+              {selectedCliente.destinazioni?.length ? (
+                <div className="space-y-2">
+                  {selectedCliente.destinazioni.map((dest, i) => (
+                    <div
+                      key={i}
+                      onClick={() => setSelectedDest(dest)}
+                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3 ${
+                        selectedDest === dest
+                          ? 'border-[#17E88F] bg-[#F0FDF7]'
+                          : 'border-[#E5EAF2] hover:border-[#17E88F]/40'
+                      }`}
+                    >
+                      <MapPin className={`w-5 h-5 flex-shrink-0 ${selectedDest === dest ? 'text-[#17E88F]' : 'text-[#9CA3AF]'}`} />
+                      <span className="text-sm text-[#2D2D2D]">{dest}</span>
+                      {selectedDest === dest && <CheckCircle className="w-5 h-5 text-[#17E88F] ml-auto" />}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-[#E5EAF2] bg-[#F7F9FC] p-6 text-sm text-[#6B7280]">
+                  <p className="font-medium text-[#2D2D2D] mb-2">Nessuna destinazione disponibile.</p>
+                  <p>Procedi con l'ordine e aggiungi la destinazione successivamente.</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -243,7 +326,7 @@ export function NewSalesOrderModal({ isOpen, onClose }: NewSalesOrderModalProps)
               <div className="bg-[#F7F9FC] rounded-xl p-4 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-[#6B7280]">Cliente</span>
-                  <span className="font-medium text-[#2D2D2D]">{selectedCliente?.nome}</span>
+                  <span className="font-medium text-[#2D2D2D]">{selectedCliente?.ragione_sociale}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-[#6B7280]">Destinazione</span>
@@ -287,7 +370,7 @@ export function NewSalesOrderModal({ isOpen, onClose }: NewSalesOrderModalProps)
                   <div className="bg-[#F7F9FC] rounded-xl p-4 w-full text-left space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-[#6B7280]">Cliente</span>
-                      <span className="font-medium">{selectedCliente?.nome}</span>
+                      <span className="font-medium">{selectedCliente?.ragione_sociale}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-[#6B7280]">Totale</span>
@@ -349,6 +432,12 @@ export function NewSalesOrderModal({ isOpen, onClose }: NewSalesOrderModalProps)
           )}
         </div>
       </div>
+      <ClientFormModal
+        open={isClientFormOpen}
+        onClose={() => setIsClientFormOpen(false)}
+        onSave={handleSaveClient}
+        mode="create"
+      />
     </div>
   );
 }

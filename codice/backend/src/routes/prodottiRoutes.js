@@ -9,15 +9,25 @@ const router = express.Router();
 const createBlueprint = {
     nome:          { required: true,  type: 'string' },
     sku:           { required: true,  type: 'string' },
+    descrizione:   { required: false, type: 'string' },
     prezzo:        { required: true,  type: 'number', min: 0.01 },
     categoria_id:  { required: false, type: 'number', integer: true, min: 1 },
+    unita_misura:  { required: false, type: 'string' },
+    peso_kg:       { required: false, type: 'number', min: 0 },
+    scorta_minima: { required: false, type: 'number', integer: true, min: 0 },
+    attivo:        { required: false, type: 'boolean' },
 };
 
 const updateBlueprint = {
     nome:          { required: false, type: 'string' },
     sku:           { required: false, type: 'string' },
+    descrizione:   { required: false, type: 'string' },
     prezzo:        { required: false, type: 'number', min: 0.01 },
     categoria_id:  { required: false, type: 'number', integer: true, min: 1 },
+    unita_misura:  { required: false, type: 'string' },
+    peso_kg:       { required: false, type: 'number', min: 0 },
+    scorta_minima: { required: false, type: 'number', integer: true, min: 0 },
+    attivo:        { required: false, type: 'boolean' },
 };
 
 router.get(   '/',    auth, requirePermesso('prodotti:read'),   prodottiController.getAll);
