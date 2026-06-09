@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, ChevronRight, LogOut, User, Shield, BellRing, Settings, FileText, HelpCircle, ChevronDown } from 'lucide-react';
+import { Search, ChevronRight, LogOut, User, BellRing, HelpCircle, ChevronDown } from 'lucide-react';
 import { GlobalSearch } from './GlobalSearch';
 import { NotificationsPanel } from './NotificationsPanel';
 import type { UiUser as AuthUser } from '../../types/auth';
@@ -22,11 +22,8 @@ interface HeaderProps {
 }
 
 const dropdownItems = [
-  { icon: User,       label: 'Il Mio Profilo',    page: 'amministrazione', color: 'text-[#3B82F6]', bg: 'bg-[#DBEAFE]' },
-  { icon: Shield,     label: 'Sicurezza',          page: null,              color: 'text-[#F59E0B]', bg: 'bg-[#FEF3C7]' },
+  { icon: User,       label: 'Il Mio Profilo',    page: 'profilo', color: 'text-[#3B82F6]', bg: 'bg-[#DBEAFE]' },
   { icon: BellRing,   label: 'Notifiche',          page: null,              color: 'text-[#8B5CF6]', bg: 'bg-[#EDE9FE]' },
-  { icon: Settings,   label: 'Preferenze',         page: null,              color: 'text-[#6B7280]', bg: 'bg-[#F3F4F6]' },
-  { icon: FileText,   label: 'Attività Recenti',   page: null,              color: 'text-[#17E88F]', bg: 'bg-[#F0FDF7]' },
   { icon: HelpCircle, label: 'Supporto',           page: null,              color: 'text-[#6B7280]', bg: 'bg-[#F3F4F6]' },
 ];
 

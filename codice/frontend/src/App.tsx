@@ -9,7 +9,6 @@ import { DashboardPage }      from './pages/DashboardPage';
 import { LoginPage }          from './pages/LoginPage';
 import { UserProfilePage }    from './pages/UserProfilePage';
 import { SicurezzaPage }      from './pages/SicurezzaPage';
-import { PreferenzePage }     from './pages/PreferenzePage';
 import { SupportoPage }       from './pages/SupportoPage';
 import { AnagrafichePage }    from './modules/anagrafiche/AnagrafichePage';
 import { WarehousePage }      from './modules/magazzino/WarehousePage';
@@ -36,7 +35,6 @@ const PAGE_TO_PATH: Record<string, string> = {
   amministrazione: '/amministrazione',
   profilo:         '/profilo',
   sicurezza:       '/sicurezza',
-  preferenze:      '/preferenze',
   supporto:        '/supporto',
 };
 
@@ -132,7 +130,6 @@ function AppShell() {
         onNavigate={handleNavigate}
         activePage={activePage}
         onCollapsedChange={handleCollapse}
-        user={uiUser}
         accessiblePages={accessiblePages}
         onLogout={logout}
       />
@@ -188,7 +185,6 @@ function AppRouter() {
         {/* Pagine utente — accessibili a tutti gli autenticati */}
         <Route path="/profilo"    element={<UserProfilePage />} />
         <Route path="/sicurezza"  element={<SicurezzaPage />} />
-        <Route path="/preferenze" element={<PreferenzePage />} />
         <Route path="/supporto"   element={<SupportoPage />} />
 
       </Route>
