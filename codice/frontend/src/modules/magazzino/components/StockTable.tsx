@@ -1,19 +1,9 @@
 import { useEffect, useState } from "react";
 import { Search, Filter, ArrowUpDown } from "lucide-react";
 import { giacenzeApi } from "../../../api/giacenzeApi";
+import type { Giacenza } from "../../../types/magazzino";
 
-interface Giacenza {
-  prodotto_id: number;
-  sku: string;
-  nome: string;
-  categoria?: string;
-  magazzino: string;
-  ubicazione: string;
-  quantita: number;
-  scorta_minima: number;
-  sotto_scorta: boolean;
-  ultimo_movimento?: string;
-}
+
 
 const getStatoBadge = (item: Giacenza) => {
   if (item.sotto_scorta) {
