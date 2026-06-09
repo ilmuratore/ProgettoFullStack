@@ -10,6 +10,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   LogOut,
+  HelpCircle,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -65,7 +66,7 @@ export function Sidebar({
     <aside className={`h-screen bg-white border-r border-[#E5EAF2] flex flex-col fixed left-0 top-0 transition-all duration-300 z-20 overflow-hidden ${isCollapsed ? 'w-[72px]' : 'w-[260px]'}`}>
 
       {/* ── Logo ── */}
-      <div className={`border-b border-[#E5EAF2] flex items-center gap-3 flex-shrink-0 ${isCollapsed ? 'p-4 justify-center' : 'p-5'}`}>
+      <div className={`h-16 border-b border-[#E5EAF2] flex items-center gap-3 flex-shrink-0 ${isCollapsed ? 'px-4 justify-center' : 'px-5'}`}>
         <div className="w-9 h-9 bg-gradient-to-br from-[#17E88F] to-[#0FA67A] rounded-xl flex items-center justify-center flex-shrink-0">
           <Package className="w-5 h-5 text-white" />
         </div>
@@ -133,6 +134,22 @@ export function Sidebar({
           )}
         </div>
 
+         {/* Supporto */}
+        <div className="relative group/supporto">
+          <button
+            onClick={() => navigate('supporto')}
+            className={`w-full flex items-center rounded-xl hover:bg-[#F7F9FC] transition-all ${isCollapsed ? 'justify-center p-3' : 'gap-3 px-4 py-2.5'}`}
+          >
+            <HelpCircle className="w-4 h-4 text-[#9CA3AF] flex-shrink-0" />
+            {!isCollapsed && <span className="text-sm text-[#6B7280]">Supporto</span>}
+          </button>
+          {isCollapsed && (
+            <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1E293B] text-white text-xs font-medium rounded-lg opacity-0 group-hover/supporto:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
+              Supporto<div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#1E293B]" />
+            </div>
+          )}
+        </div>
+
 
         {/* Logout */}
         {onLogout && (
@@ -142,7 +159,7 @@ export function Sidebar({
               className={`w-full flex items-center rounded-xl hover:bg-[#FEF2F2] transition-all ${isCollapsed ? 'justify-center p-3' : 'gap-3 px-4 py-2.5'}`}
             >
               <LogOut className="w-4 h-4 text-[#EF4444] flex-shrink-0" />
-              {!isCollapsed && <span className="text-sm text-[#EF4444] font-medium">Esci</span>}
+              {!isCollapsed && <span className="text-sm text-[#EF4444] font-medium">Logout</span>}
             </button>
             {isCollapsed && (
               <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1E293B] text-white text-xs font-medium rounded-lg opacity-0 group-hover/logout:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
