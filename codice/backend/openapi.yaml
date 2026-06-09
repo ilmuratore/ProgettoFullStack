@@ -46,9 +46,8 @@ info:
     | `prodotti:read` / `prodotti:write` / `prodotti:delete` | Prodotti |
     | `fornitori:read` / `fornitori:write` / `fornitori:delete` | Fornitori |
     | `clienti:read` / `clienti:write` / `clienti:delete` | Clienti |
-    | `corrieri:read` / `corrieri:write` / `corrieri:delete` | Corrieri |
     | `dipendenti:read` / `dipendenti:write` / `dipendenti:delete` | Dipendenti |
-    | `magazzino:read` / `magazzino:write` | Magazzini e Ubicazioni |
+    | `magazzino:read` / `magazzino:write` | Magazzini, Ubicazioni e **Corrieri** |
     | `giacenze:read` / `giacenze:write` | Giacenze e Movimenti Stock |
 
 servers:
@@ -62,12 +61,14 @@ tags:
     description: Autenticazione e profilo utente
   - name: Prodotti
     description: Anagrafica prodotti e listino prezzi (M02)
+  - name: Categorie
+    description: Categorie prodotti — dominio Prodotti, permessi prodotti:* (M02 ext)
   - name: Fornitori
     description: Anagrafica fornitori (M03)
   - name: Clienti
     description: Anagrafica clienti (M04)
   - name: Corrieri
-    description: Anagrafica aziende corriere (M05)
+    description: Anagrafica aziende corriere — permessi magazzino:read/write (M05)
   - name: Dipendenti
     description: Anagrafica personale operativo interno (M05)
   - name: Magazzini
@@ -229,7 +230,7 @@ components:
         nome:            { type: string,  example: Valvola a sfera 1/2" }
         descrizione:     { type: string,  example: Valvola in ottone per impianti idraulici, nullable: true }
         categoria_id:    { type: integer, example: 3, nullable: true }
-        categoria_nome:  { type: string,  example: Valvolame, nullable: true }
+        categoria:       { type: string,  example: Valvolame, nullable: true, description: "Nome categoria — presente solo nelle GET con JOIN (findById). Assente in POST/PATCH response." }
         unita_misura:    { type: string,  example: pz, nullable: true }
         peso_kg:         { type: number,  format: float, example: 0.35, nullable: true }
         scorta_minima:   { type: integer, example: 50 }
@@ -248,22 +249,36 @@ components:
         nome:            { type: string,  example: "Valvola a sfera 1/2\"" }
         prezzo:          { type: number,  format: float, example: 12.50 }
         data_agg_prezzo: { type: string,  format: date-time, example: "2026-05-15T10:30:00.000Z" }
+        attivo:          { type: boolean, example: true }
+        created_at:      { type: string,  format: date-time }
 
     ProdottoCreateRequest:
       type: object
       required: [nome, sku, prezzo]
       properties:
-        nome:   { type: string, example: "Tubo in acciaio inox DN50" }
-        sku:    { type: string, example: TUB-INOX-050 }
-        prezzo: { type: number, minimum: 0.01, example: 48.00 }
+        nome:          { type: string,  example: "Tubo in acciaio inox DN50" }
+        sku:           { type: string,  example: TUB-INOX-050 }
+        prezzo:        { type: number,  minimum: 0.01, example: 48.00 }
+        descrizione:   { type: string,  example: "Tubo in acciaio inox AISI 316L, spessore 2mm" }
+        categoria_id:  { type: integer, minimum: 1, example: 3, description: "ID categoria esistente" }
+        unita_misura:  { type: string,  example: mt }
+        peso_kg:       { type: number,  minimum: 0, example: 1.20 }
+        scorta_minima: { type: integer, minimum: 0, example: 10, description: "Default 0 se omesso" }
+        attivo:        { type: boolean, example: true, description: "Default true se omesso" }
 
     ProdottoUpdateRequest:
       type: object
       description: Tutti i campi sono opzionali. Inviare solo quelli da modificare.
       properties:
-        nome:   { type: string, example: "Tubo in acciaio inox DN50 — rev." }
-        sku:    { type: string, example: TUB-INOX-050-R }
-        prezzo: { type: number, minimum: 0.01, example: 52.00 }
+        nome:          { type: string,  example: "Tubo in acciaio inox DN50 — rev." }
+        sku:           { type: string,  example: TUB-INOX-050-R }
+        prezzo:        { type: number,  minimum: 0.01, example: 52.00 }
+        descrizione:   { type: string,  example: "Revisione specifiche tecniche" }
+        categoria_id:  { type: integer, minimum: 1, example: 4 }
+        unita_misura:  { type: string,  example: pz }
+        peso_kg:       { type: number,  minimum: 0, example: 0.80 }
+        scorta_minima: { type: integer, minimum: 0, example: 20 }
+        attivo:        { type: boolean, example: true }
 
     # ── CATEGORIE ─────────────────────────────
 
@@ -506,6 +521,10 @@ components:
       properties:
         nome:      { type: string, example: "Magazzino secondario Monza — aggiornato" }
         indirizzo: { type: string, example: "Via Borgazzi 100" }
+        cap:       { type: string, example: "20900" }
+        citta:     { type: string, example: Monza }
+        provincia: { type: string, example: MB }
+        paese:     { type: string, example: Italia }
 
     UbicazioneCreateRequest:
       type: object
@@ -779,10 +798,10 @@ paths:
   /prodotti:
     get:
       tags: [Prodotti]
-      summary: Lista prodotti attivi (listino)
-      description: |
-        Restituisce la lista dei prodotti attivi.
-        Vista ridotta: `id`, `sku`, `nome`, `prezzo`, `data_agg_prezzo`.
+      summary: Lista prodotti (listino)
+      description: |-
+        Restituisce la lista di tutti i prodotti (inclusi disattivi — filtrabile lato client).
+        Vista ridotta: `id`, `sku`, `nome`, `prezzo`, `data_agg_prezzo`, `attivo`, `created_at`.
         Richiede permesso `prodotti:read`.
       x-required-permission: prodotti:read
       responses:
@@ -800,9 +819,9 @@ paths:
               example:
                 status: success
                 data:
-                  - { id: 1, sku: VLV-001, nome: "Valvola a sfera 1/2\"", prezzo: 12.50, data_agg_prezzo: "2026-05-15T10:30:00.000Z" }
-                  - { id: 2, sku: TUB-INOX-050, nome: "Tubo in acciaio inox DN50", prezzo: 48.00, data_agg_prezzo: "2026-04-20T14:00:00.000Z" }
-                  - { id: 3, sku: GUA-NBR-32, nome: "Guarnizione NBR 32mm", prezzo: 2.80, data_agg_prezzo: "2026-03-01T09:00:00.000Z" }
+                  - { id: 1, sku: VLV-001, nome: "Valvola a sfera 1/2\"", prezzo: 12.50, data_agg_prezzo: "2026-05-15T10:30:00.000Z", attivo: true, created_at: "2026-01-20T09:00:00.000Z" }
+                  - { id: 2, sku: TUB-INOX-050, nome: "Tubo in acciaio inox DN50", prezzo: 48.00, data_agg_prezzo: "2026-04-20T14:00:00.000Z", attivo: true, created_at: "2026-02-10T10:00:00.000Z" }
+                  - { id: 3, sku: GUA-NBR-32, nome: "Guarnizione NBR 32mm", prezzo: 2.80, data_agg_prezzo: "2026-03-01T09:00:00.000Z", attivo: false, created_at: "2026-01-25T11:00:00.000Z" }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
 
@@ -812,6 +831,7 @@ paths:
       description: |
         Richiede permesso `prodotti:write`.
         `sku` deve essere univoco tra i prodotti attivi.
+        `prezzo` deve essere > 0.
       x-required-permission: prodotti:write
       requestBody:
         required: true
@@ -822,6 +842,11 @@ paths:
               nome: "Raccordo a T 3/4\""
               sku: RAC-T-034
               prezzo: 6.90
+              descrizione: "Raccordo a T in ottone filettato 3/4\""
+              categoria_id: 2
+              unita_misura: pz
+              peso_kg: 0.12
+              scorta_minima: 20
       responses:
         "201":
           description: Prodotto creato
@@ -831,15 +856,24 @@ paths:
                 type: object
                 properties:
                   status: { type: string, example: success }
-                  data:   { $ref: '#/components/schemas/ProdottoListino' }
+                  data:   { $ref: '#/components/schemas/Prodotto' }
               example:
                 status: success
                 data:
                   id: 8
                   sku: RAC-T-034
                   nome: "Raccordo a T 3/4\""
+                  descrizione: "Raccordo a T in ottone filettato 3/4\""
+                  categoria_id: 2
+                  categoria: null
+                  unita_misura: pz
+                  peso_kg: 0.12
+                  scorta_minima: 20
                   prezzo: 6.90
                   data_agg_prezzo: "2026-06-07T11:00:00.000Z"
+                  attivo: true
+                  created_at: "2026-06-07T11:00:00.000Z"
+                  updated_at: "2026-06-07T11:00:00.000Z"
         "400": { $ref: '#/components/responses/ValidationError' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
@@ -878,7 +912,7 @@ paths:
                   nome: "Valvola a sfera 1/2\""
                   descrizione: "Valvola in ottone per impianti idraulici. Temperatura max 120°C."
                   categoria_id: 3
-                  categoria_nome: Valvolame
+                  categoria: Valvolame
                   unita_misura: pz
                   peso_kg: 0.35
                   scorta_minima: 50
@@ -897,7 +931,8 @@ paths:
       description: |
         Richiede permesso `prodotti:write`.
         Inviare solo i campi da modificare.
-        Se `prezzo` viene modificato, `data_agg_prezzo` viene aggiornata automaticamente dal trigger DB.
+        Se `prezzo` viene modificato, `data_agg_prezzo` viene aggiornata automaticamente dal trigger DB (`trg_data_agg_prezzo`).
+        Il campo `attivo` può essere aggiornato qui (re-attivazione o disattivazione senza DELETE).
       x-required-permission: prodotti:write
       requestBody:
         required: true
@@ -915,15 +950,24 @@ paths:
                 type: object
                 properties:
                   status: { type: string, example: success }
-                  data:   { $ref: '#/components/schemas/ProdottoListino' }
+                  data:   { $ref: '#/components/schemas/Prodotto' }
               example:
                 status: success
                 data:
                   id: 1
                   sku: VLV-001
                   nome: "Valvola a sfera 1/2\""
+                  descrizione: "Valvola in ottone per impianti idraulici. Temperatura max 120°C."
+                  categoria_id: 3
+                  categoria: null
+                  unita_misura: pz
+                  peso_kg: 0.35
+                  scorta_minima: 50
                   prezzo: 14.00
                   data_agg_prezzo: "2026-06-07T12:00:00.000Z"
+                  attivo: true
+                  created_at: "2026-01-20T09:00:00.000Z"
+                  updated_at: "2026-06-07T12:00:00.000Z"
         "400": { $ref: '#/components/responses/ValidationError' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
@@ -956,7 +1000,7 @@ paths:
         Le categorie radice (senza padre) appaiono prima, ordinate per nome.
       x-required-permission: prodotti:read
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       responses:
         "200":
           description: Lista categorie
@@ -998,7 +1042,7 @@ paths:
         Massimo 2 livelli di profondità (radice → sottocategoria).
       x-required-permission: prodotti:write
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -1054,7 +1098,7 @@ paths:
       summary: Dettaglio categoria
       x-required-permission: prodotti:read
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       responses:
         "200":
           description: Dettaglio categoria
@@ -1087,7 +1131,7 @@ paths:
         Inviare `categoria_padre_id: null` per rimuovere il padre e promuovere a categoria radice.
       x-required-permission: prodotti:write
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -1137,7 +1181,7 @@ paths:
         Codici di errore specifici: `CATEGORIA_CON_PRODOTTI` (409), `CATEGORIA_CON_SOTTOCATEGORIE` (409).
       x-required-permission: prodotti:delete
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       responses:
         "204": { $ref: '#/components/responses/NoContent' }
         "401": { $ref: '#/components/responses/Unauthorized' }
@@ -1529,7 +1573,7 @@ paths:
     get:
       tags: [Corrieri]
       summary: Lista corrieri
-      x-required-permission: corrieri:read
+      x-required-permission: magazzino:read
       responses:
         "200":
           description: Lista corrieri
@@ -1554,7 +1598,7 @@ paths:
     post:
       tags: [Corrieri]
       summary: Crea un nuovo corriere
-      x-required-permission: corrieri:write
+      x-required-permission: magazzino:write
       requestBody:
         required: true
         content:
@@ -1602,7 +1646,7 @@ paths:
     get:
       tags: [Corrieri]
       summary: Dettaglio corriere
-      x-required-permission: corrieri:read
+      x-required-permission: magazzino:read
       responses:
         "200":
           description: Dettaglio corriere
@@ -1631,7 +1675,7 @@ paths:
     patch:
       tags: [Corrieri]
       summary: Aggiorna corriere (parziale)
-      x-required-permission: corrieri:write
+      x-required-permission: magazzino:write
       requestBody:
         required: true
         content:
@@ -1658,7 +1702,7 @@ paths:
     delete:
       tags: [Corrieri]
       summary: Elimina corriere (soft delete)
-      x-required-permission: corrieri:delete
+      x-required-permission: magazzino:write
       responses:
         "204": { $ref: '#/components/responses/NoContent' }
         "401": { $ref: '#/components/responses/Unauthorized' }
@@ -1984,7 +2028,8 @@ paths:
       tags: [Magazzini]
       summary: Aggiorna magazzino
       description: |
-        Aggiorna `nome` e/o `indirizzo`. `codice` non è modificabile.
+        Aggiorna `nome` e/o i campi dell'indirizzo strutturato (`indirizzo`, `cap`, `citta`, `provincia`, `paese`).
+        `codice` non è modificabile.
       x-required-permission: magazzino:write
       requestBody:
         required: true
@@ -1993,6 +2038,8 @@ paths:
             schema: { $ref: '#/components/schemas/MagazzinoUpdateRequest' }
             example:
               nome: "Magazzino principale Sesto — ampliato"
+              citta: "Sesto San Giovanni"
+              provincia: MI
       responses:
         "200":
           description: Magazzino aggiornato

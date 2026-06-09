@@ -1,7 +1,6 @@
 const fornitoriService = require("../services/fornitoriService");
 
 
-// GET /api/v1/fornitori
 const getAll = async (req, res, next) => {
     try {
         const fornitori = await fornitoriService.getAll();
@@ -16,7 +15,6 @@ const getAll = async (req, res, next) => {
 };
 
 
-// GET /api/v1/fornitori/:id
 const getById = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -32,7 +30,6 @@ const getById = async (req, res, next) => {
 };
 
 
-// POST /api/v1/fornitori
 const create = async (req, res, next) => {
     try {
         const { ragione_sociale, piva, indirizzo, email, telefono, sito_web, descrizione_aziendale } = req.body;
@@ -57,7 +54,6 @@ const create = async (req, res, next) => {
 };
 
 
-// PATCH /api/v1/fornitori/:id
 const update = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -83,7 +79,6 @@ const update = async (req, res, next) => {
 };
 
 
-// DELETE /api/v1/fornitori/:id
 const elimina = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);

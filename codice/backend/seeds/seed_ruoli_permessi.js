@@ -2,8 +2,6 @@ require('dotenv').config();
 
 const pool = require('../src/config/db');
 
-// ─── Ruoli ────────────────────────────────────────────────────────────────────
-// Admin mantiene id:1 — seed_admin.js dipende da ADMIN_RUOLO_ID = 1
 const ruoli = [
     { id:  1, nome: 'Admin',            descrizione: 'Accesso completo al sistema' },
     { id:  2, nome: 'Dev',              descrizione: 'Accesso tecnico completo per sviluppo e manutenzione' },
@@ -17,12 +15,6 @@ const ruoli = [
     { id: 10, nome: 'Corriere',         descrizione: 'Visualizzazione e aggiornamento spedizioni assegnate' },
 ];
 
-// ─── Permessi (30 — allineati alla matrice V2) ────────────────────────────────
-// Rimossi rispetto al seed precedente:
-//   ecosystem:write, richieste:read, richieste:write (seed_ruoli_permessi v1)
-//   corrieri:read, corrieri:write, corrieri:delete   (seed_m05_permessi)
-// Consolidati da seed_m05_permessi:
-//   dipendenti:read, dipendenti:write, dipendenti:delete
 const permessi = [
     { codice: 'utenti:read',        descrizione: 'Visualizza utenti' },
     { codice: 'utenti:write',       descrizione: 'Crea/modifica utenti' },
@@ -56,7 +48,6 @@ const permessi = [
     { codice: 'dipendenti:delete',  descrizione: 'Elimina dipendenti' },
 ];
 
-// ─── Matrice ruoli → permessi (fonte: Matrice_ruoli.xlsx) ─────────────────────
 const ALL = permessi.map((p) => p.codice);
 
 const permessiPerRuolo = {
@@ -156,7 +147,6 @@ const permessiPerRuolo = {
     ],
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const seedRuoli = async (client) => {
     for (const ruolo of ruoli) {
         await client.query(
@@ -224,7 +214,6 @@ const seedRuoliPermessi = async (client, ruoliByNome, permessiByCodice) => {
     }
 };
 
-// ─── Entry point ──────────────────────────────────────────────────────────────
 const seed = async () => {
     const client = await pool.connect();
 
@@ -246,7 +235,6 @@ const seed = async () => {
         console.log(`   Ruoli: ${ruoli.length}`);
         console.log(`   Permessi: ${permessi.length}`);
 
-        // Verifica conteggio assegnazioni
         const check = await client.query(
             `SELECT r.nome, COUNT(rp.permesso_id) AS n_permessi
              FROM ruoli r

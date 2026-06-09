@@ -30,7 +30,6 @@ const create = async (data) => {
         throwError('VALIDATION_ERROR', 'Il prezzo deve essere maggiore di zero');
     }
 
-    // categoria_id: se presente nel data, viene passata al model (già in firma)
     const result = await prodottiModel.create(data);
     return result.rows[0];
 };
@@ -60,7 +59,6 @@ const update = async (id, fields) => {
         throwError('VALIDATION_ERROR', 'Nessun campo valido da aggiornare');
     }
 
-    // categoria_id è già inclusa in fields se presente nel body (gestita dal controller)
     const result = await prodottiModel.update(id, fields);
     return result.rows[0];
 };

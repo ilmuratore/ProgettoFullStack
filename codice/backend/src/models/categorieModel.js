@@ -1,6 +1,5 @@
 const db = require('../config/db');
 
-// Colonne base con join padre + conteggio prodotti attivi
 const BASE_COLS = `
     c.id,
     c.nome,
@@ -31,21 +30,18 @@ const findById = (id) =>
         GROUP  BY c.id, padre.nome
     `, [id]);
 
-// Usato per check unicità nome (case-insensitive)
 const findByNome = (nome) =>
     db.query(
         `SELECT id FROM categorie WHERE LOWER(nome) = LOWER($1)`,
         [nome]
     );
 
-// Conta prodotti attivi associati a questa categoria
 const countProdotti = (id) =>
     db.query(
         `SELECT COUNT(*)::int AS cnt FROM prodotti WHERE categoria_id = $1 AND attivo = true`,
         [id]
     );
 
-// Conta sottocategorie dirette
 const countSubcategorie = (id) =>
     db.query(
         `SELECT COUNT(*)::int AS cnt FROM categorie WHERE categoria_padre_id = $1`,
@@ -60,8 +56,6 @@ const create = ({ nome, categoria_padre_id }) =>
         [nome, categoria_padre_id ?? null]
     );
 
-// Update dinamico: gestisce null esplicito per categoria_padre_id
-// (rimozione padre → promozione a categoria radice)
 const update = (id, fields) => {
     const setClauses = [];
     const values     = [];
@@ -72,14 +66,13 @@ const update = (id, fields) => {
         values.push(fields.nome);
     }
 
-    // 'categoria_padre_id' in fields: supporta sia null (rimozione padre) che intero
     if ('categoria_padre_id' in fields) {
         setClauses.push(`categoria_padre_id = $${idx++}`);
         values.push(fields.categoria_padre_id);
     }
 
     setClauses.push('updated_at = NOW()');
-    values.push(id); // ultimo parametro = WHERE id
+    values.push(id);
 
     return db.query(
         `UPDATE categorie

@@ -1,6 +1,5 @@
 const ubicazioniService = require('../services/ubicazioniService');
 
-// GET /api/v1/ubicazioni/:id
 const getById = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -11,7 +10,6 @@ const getById = async (req, res, next) => {
     }
 };
 
-// POST /api/v1/magazzini/:magId/ubicazioni
 const create = async (req, res, next) => {
     try {
         const magazzino_id = parseInt(req.params.magId, 10);
@@ -22,7 +20,6 @@ const create = async (req, res, next) => {
     }
 };
 
-// PATCH /api/v1/ubicazioni/:id
 const updateTemperatura = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -35,7 +32,6 @@ const updateTemperatura = async (req, res, next) => {
     }
 };
 
-// PATCH /api/v1/ubicazioni/:id/toggle
 const toggleAttivo = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);

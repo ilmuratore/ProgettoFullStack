@@ -71,12 +71,21 @@ const findByUbicazioneId = (ubicazione_id) =>
         [ubicazione_id]
     );
 
-const findByProdottoIdAndUbicazioneId = (prodotto_id, ubicazione_id) =>
-    pool.query(
+const findByProdottoIdAndUbicazioneId = (prodotto_id, ubicazione_id, client) =>
+    (client || pool).query(
         `SELECT id, prodotto_id, ubicazione_id, quantita
      FROM giacenze
      WHERE prodotto_id = $1
        AND ubicazione_id = $2`,
+        [prodotto_id, ubicazione_id]
+    );
+
+const lockByProdottoIdAndUbicazioneId = (prodotto_id, ubicazione_id, client) =>
+    (client || pool).query(
+        `SELECT id FROM giacenze
+     WHERE prodotto_id = $1
+       AND ubicazione_id = $2
+     FOR UPDATE`,
         [prodotto_id, ubicazione_id]
     );
 
@@ -104,8 +113,8 @@ const update = (id, { prodotto_id, ubicazione_id, quantita }) =>
     );
 
 
-const incrementaQuantita = (prodotto_id, ubicazione_id, quantita) =>
-    pool.query(
+const incrementaQuantita = (prodotto_id, ubicazione_id, quantita, client) =>
+    (client || pool).query(
         `INSERT INTO giacenze (prodotto_id, ubicazione_id, quantita)
      SELECT $1, $2, $3
      WHERE $3 >= 0
@@ -128,6 +137,7 @@ const remove = (id) =>
 
 
 module.exports = {
-    findAll, findById, findByProdottoId, findByUbicazioneId, findByProdottoIdAndUbicazioneId,
+    findAll, findById, findByProdottoId, findByUbicazioneId,
+    findByProdottoIdAndUbicazioneId, lockByProdottoIdAndUbicazioneId,
     create, update, incrementaQuantita, remove
 };

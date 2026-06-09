@@ -5,10 +5,6 @@ const { requirePermesso }  = require('../middleware/rbac');
 const validate             = require('../middleware/validate');
 
 const router = express.Router();
-
-// Le categorie appartengono al dominio Prodotti → riutilizza i permessi prodotti:*
-// (coerente con il fatto che solo chi gestisce prodotti gestisce le loro categorie)
-
 const createBlueprint = {
     nome:               { required: true,  type: 'string', minLength: 1 },
     categoria_padre_id: { required: false, type: 'number', integer: true, min: 1 },
@@ -17,7 +13,6 @@ const createBlueprint = {
 const updateBlueprint = {
     nome:               { required: false, type: 'string', minLength: 1 },
     categoria_padre_id: { required: false, type: 'number', integer: true, min: 1 },
-    // null esplicito per rimuovere il padre è gestito nel controller prima di validate
 };
 
 router.get(   '/',    auth, requirePermesso('prodotti:read'),   categorieController.getAll);

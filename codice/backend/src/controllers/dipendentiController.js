@@ -1,6 +1,5 @@
 const dipendentiService = require('../services/dipendentiService');
 
-// GET /api/v1/dipendenti
 const getAll = async (req, res, next) => {
     try {
         const dipendenti = await dipendentiService.getAll();
@@ -10,7 +9,6 @@ const getAll = async (req, res, next) => {
     }
 };
 
-// GET /api/v1/dipendenti/:id
 const getById = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -21,7 +19,6 @@ const getById = async (req, res, next) => {
     }
 };
 
-// POST /api/v1/dipendenti
 const create = async (req, res, next) => {
     try {
         const { nome, cognome, codice_fiscale, ruolo_operativo, data_assunzione, utente_id } = req.body;
@@ -39,7 +36,6 @@ const create = async (req, res, next) => {
     }
 };
 
-// PATCH /api/v1/dipendenti/:id
 const update = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -60,7 +56,6 @@ const update = async (req, res, next) => {
     }
 };
 
-// DELETE /api/v1/dipendenti/:id
 const elimina = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
