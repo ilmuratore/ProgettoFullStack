@@ -37,6 +37,7 @@ const create = async ({ codice, nome, indirizzo, cap, citta, provincia, paese })
         throwError('DUPLICATE_ENTRY', `Codice magazzino '${codice}' già esistente`);
     }
 
+// fix — passati cap, citta, provincia, paese al model (prima venivano ignorati)
     const result = await magazziniModel.create({ codice, nome, indirizzo, cap, citta, provincia, paese });
     return result.rows[0];
 };
@@ -46,7 +47,8 @@ const update = async (id, body) => {
     if (magResult.rowCount === 0) {
         throwError('RESOURCE_NOT_FOUND', 'Magazzino non trovato');
     }
-
+    
+// fix — aggiunti campi indirizzo strutturato all'oggetto fields
     const fields = {};
     if (body.nome      !== undefined) fields.nome      = body.nome;
     if (body.indirizzo !== undefined) fields.indirizzo = body.indirizzo;
