@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Search, Plus, Download, Upload, Filter, MoreVertical,
   Edit, Trash2, Mail, Phone, MapPin, Building2,
-  User, Truck, Globe, ExternalLink, Users, Calendar, AlertTriangle,
+  User, Truck, Globe, ExternalLink, Users, Calendar, AlertTriangle, ArrowUpDown,
 } from 'lucide-react';
 import { PageTabBar } from '../../components/ui/PageTabBar';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../../components/ui/alert-dialog';
@@ -34,6 +34,12 @@ export function AnagrafichePage() {
 
   const [activeTab, setActiveTab] = useState<TabType>('fornitori');
   const [searchQuery, setSearchQuery] = useState('');
+
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [statoFilter, setStatoFilter] = useState<'tutti' | 'attivo' | 'disattivo'>('tutti');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [ruoloFilter, setRuoloFilter] = useState<string>('tutti');
+  const [dipendentiSortField, setDipendentiSortField] = useState<'nominativo' | 'data_assunzione'>('nominativo');
 
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [clientModalOpen, setClientModalOpen] = useState(false);
@@ -101,6 +107,14 @@ export function AnagrafichePage() {
 
   useEffect(() => { fetchForTab('fornitori'); }, []);
   useEffect(() => { fetchForTab(activeTab); }, [activeTab, fetchForTab]);
+
+  useEffect(() => {
+    setFiltersOpen(false);
+    setStatoFilter('tutti');
+    setSortOrder('asc');
+    setRuoloFilter('tutti');
+    setDipendentiSortField('nominativo');
+  }, [activeTab]);
 
   const tabs = [
     { id: 'fornitori' as TabType,  label: 'Fornitori',  icon: Building2, count: fornitori.length },
@@ -286,32 +300,53 @@ export function AnagrafichePage() {
     }
   };
 
+  const ruoliOperativi = Array.from(
+    new Set(dipendenti.map(d => d.ruolo_operativo).filter((r): r is string => !!r))
+  ).sort((a, b) => a.localeCompare(b, 'it'));
+
   const getFilteredData = () => {
     const q = searchQuery.toLowerCase();
+    const sortDir = sortOrder === 'asc' ? 1 : -1;
     switch (activeTab) {
-      case 'fornitori':
-        return fornitori.filter(f =>
+      case 'fornitori': {
+        let data = fornitori.filter(f =>
           f.ragione_sociale.toLowerCase().includes(q) ||
           (f.piva ?? '').toLowerCase().includes(q) ||
           (f.email ?? '').toLowerCase().includes(q)
         );
-      case 'clienti':
-        return clienti.filter(c =>
+        if (statoFilter !== 'tutti') data = data.filter(f => f.attivo === (statoFilter === 'attivo'));
+        return [...data].sort((a, b) => sortDir * a.ragione_sociale.localeCompare(b.ragione_sociale, 'it'));
+      }
+      case 'clienti': {
+        let data = clienti.filter(c =>
           c.ragione_sociale.toLowerCase().includes(q) ||
           (c.piva_cf ?? '').toLowerCase().includes(q) ||
           (c.email ?? '').toLowerCase().includes(q)
         );
+        if (statoFilter !== 'tutti') data = data.filter(c => c.attivo === (statoFilter === 'attivo'));
+        return [...data].sort((a, b) => sortDir * a.ragione_sociale.localeCompare(b.ragione_sociale, 'it'));
+      }
       case 'corrieri':
         return corrieri.filter(c =>
           c.nome.toLowerCase().includes(q) || c.codice.toLowerCase().includes(q)
         );
-      case 'dipendenti':
-        return dipendenti.filter(d =>
+      case 'dipendenti': {
+        let data = dipendenti.filter(d =>
           d.nome.toLowerCase().includes(q) ||
           d.cognome.toLowerCase().includes(q) ||
           d.codice_fiscale.toLowerCase().includes(q) ||
           (d.ruolo_operativo ?? '').toLowerCase().includes(q)
         );
+        if (ruoloFilter !== 'tutti') data = data.filter(d => (d.ruolo_operativo ?? '') === ruoloFilter);
+        return [...data].sort((a, b) => {
+          if (dipendentiSortField === 'nominativo') {
+            return sortDir * `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`, 'it');
+          }
+          const da = a.data_assunzione ? new Date(a.data_assunzione).getTime() : 0;
+          const db = b.data_assunzione ? new Date(b.data_assunzione).getTime() : 0;
+          return sortDir * (da - db);
+        });
+      }
       default: return [];
     }
   };
@@ -417,10 +452,86 @@ export function AnagrafichePage() {
                 className="w-full h-10 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all"
               />
             </div>
-            <button className="px-4 py-2 bg-[#F7F9FC] border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-white transition-all flex items-center gap-2">
-              <Filter className="w-4 h-4" /> Filtri
-            </button>
+            {activeTab !== 'corrieri' && (
+              <button
+                onClick={() => setFiltersOpen(o => !o)}
+                className={`px-4 py-2 border rounded-xl transition-all flex items-center gap-2 ${
+                  filtersOpen ? 'bg-[#F0FDF7] border-[#17E88F] text-[#0FA67A]' : 'bg-[#F7F9FC] border-[#E5EAF2] text-[#6B7280] hover:bg-white'
+                }`}
+              >
+                <Filter className="w-4 h-4" /> Filtri
+              </button>
+            )}
           </div>
+
+          {filtersOpen && (activeTab === 'fornitori' || activeTab === 'clienti') && (
+            <div className="flex flex-wrap items-end gap-4 mb-6 p-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl">
+              <div>
+                <label className="block text-xs font-medium text-[#6B7280] mb-1.5">
+                  Ordina per {activeTab === 'fornitori' ? 'Ragione Sociale' : 'Denominazione Cliente'}
+                </label>
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+                  className="h-10 px-3 bg-white border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
+                >
+                  <option value="asc">A → Z</option>
+                  <option value="desc">Z → A</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[#6B7280] mb-1.5">Stato</label>
+                <select
+                  value={statoFilter}
+                  onChange={(e) => setStatoFilter(e.target.value as 'tutti' | 'attivo' | 'disattivo')}
+                  className="h-10 px-3 bg-white border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
+                >
+                  <option value="tutti">Tutti</option>
+                  <option value="attivo">Attivo</option>
+                  <option value="disattivo">Disattivo</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          {filtersOpen && activeTab === 'dipendenti' && (
+            <div className="flex flex-wrap items-end gap-4 mb-6 p-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl">
+              <div>
+                <label className="block text-xs font-medium text-[#6B7280] mb-1.5">Ordina per</label>
+                <select
+                  value={dipendentiSortField}
+                  onChange={(e) => setDipendentiSortField(e.target.value as 'nominativo' | 'data_assunzione')}
+                  className="h-10 px-3 bg-white border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
+                >
+                  <option value="nominativo">Nominativo</option>
+                  <option value="data_assunzione">Data Assunzione</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[#6B7280] mb-1.5">Ordine</label>
+                <button
+                  onClick={() => setSortOrder(o => o === 'asc' ? 'desc' : 'asc')}
+                  className="h-10 px-3 bg-white border border-[#E5EAF2] rounded-xl hover:bg-[#F7F9FC] transition-all text-sm flex items-center gap-2 text-[#6B7280]"
+                >
+                  <ArrowUpDown className="w-4 h-4" />
+                  {dipendentiSortField === 'nominativo'
+                    ? (sortOrder === 'asc' ? 'A → Z' : 'Z → A')
+                    : (sortOrder === 'asc' ? 'Meno recente' : 'Più recente')}
+                </button>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[#6B7280] mb-1.5">Ruolo Operativo</label>
+                <select
+                  value={ruoloFilter}
+                  onChange={(e) => setRuoloFilter(e.target.value)}
+                  className="h-10 px-3 bg-white border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
+                >
+                  <option value="tutti">Tutti</option>
+                  {ruoliOperativi.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
 
           {/* ── FORNITORI ── */}
           {activeTab === 'fornitori' && (
@@ -487,7 +598,7 @@ export function AnagrafichePage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-[#E5EAF2]">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Ragione Sociale</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Denominazione Cliente</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">P. IVA / CF</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Contatti</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Sorgente</th>
