@@ -142,11 +142,7 @@ export function CategoryFormModal({
             <select
               value={form.categoria_padre_id}
               onChange={e => setForm(p => ({ ...p, categoria_padre_id: e.target.value }))}
-              disabled={
-                // Non può diventare sottocategoria se ha già figli
-                mode === 'edit' && (initialData?.prodotti_count ?? 0) > 0 && false
-                // Nota: il check effettivo sui figli è server-side
-              }
+              disabled={false}
               className="w-full px-3 py-2 border border-[#E5EAF2] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all"
             >
               <option value="">— Nessuna (categoria radice) —</option>

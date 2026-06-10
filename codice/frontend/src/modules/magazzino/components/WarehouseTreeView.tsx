@@ -7,7 +7,6 @@ import type { MagazzinoConUbicazioni, Ubicazione } from '../../../types/magazzin
 
 interface WarehouseTreeViewProps {
   magazzini: MagazzinoConUbicazioni[];
-  onToggleMagazzino: (id: number) => void;
   onEditMagazzino: (mag: MagazzinoConUbicazioni) => void;
   onAddUbicazione: (magId: number) => void;
   onToggleUbicazione: (ubicId: number, magId: number) => void;
@@ -78,14 +77,12 @@ function UbicazioneRow({
 
 function MagazzinoNode({
   mag,
-  onToggleMag,
   onEditMag,
   onAddUbic,
   onToggleUbic,
   onEditUbic,
 }: {
   mag: MagazzinoConUbicazioni;
-  onToggleMag: (id: number) => void;
   onEditMag: (mag: MagazzinoConUbicazioni) => void;
   onAddUbic: (magId: number) => void;
   onToggleUbic: (ubicId: number, magId: number) => void;
@@ -93,7 +90,7 @@ function MagazzinoNode({
 }) {
   const [expanded, setExpanded] = useState(true);
   const ubicazioni = Array.isArray(mag.ubicazioni) ? mag.ubicazioni : [];
-  
+
   const ubicAttive = ubicazioni.filter(u => u.attivo).length;
   const totaleUbic = ubicazioni.length;
   const giacenzaTotale = ubicazioni.reduce((s, u) => s + (u.totale_giacenza ?? 0), 0);
@@ -151,15 +148,6 @@ function MagazzinoNode({
           >
             <Plus className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => onToggleMag(mag.id)}
-            className="p-1.5 hover:bg-white rounded-lg text-[#6B7280] hover:text-[#17E88F] transition-all"
-            title={mag.attivo ? 'Disattiva magazzino' : 'Attiva magazzino'}
-          >
-            {mag.attivo
-              ? <ToggleRight className="w-5 h-5 text-[#17E88F]" />
-              : <ToggleLeft className="w-5 h-5" />}
-          </button>
         </div>
       </div>
 
@@ -187,7 +175,6 @@ function MagazzinoNode({
 
 export function WarehouseTreeView({
   magazzini,
-  onToggleMagazzino,
   onEditMagazzino,
   onAddUbicazione,
   onToggleUbicazione,
@@ -204,7 +191,7 @@ export function WarehouseTreeView({
           </div>
           <div className="flex items-center gap-1.5">
             <ToggleRight className="w-4 h-4 text-[#17E88F]" />
-            <span>Attivo / Disattivo</span>
+            <span> Attivo / Disattivo </span>
           </div>
         </div>
       </div>
@@ -219,7 +206,6 @@ export function WarehouseTreeView({
             <MagazzinoNode
               key={mag.id}
               mag={mag}
-              onToggleMag={onToggleMagazzino}
               onEditMag={onEditMagazzino}
               onAddUbic={onAddUbicazione}
               onToggleUbic={onToggleUbicazione}

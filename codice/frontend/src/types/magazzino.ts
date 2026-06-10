@@ -72,10 +72,12 @@ export interface UbicazioneUpdateTemperaturaRequest {
 // M07 — Giacenze
 // ===============================
 export interface Giacenza {
+  id: number;
   prodotto_id: number;
   sku: string;
-  nome: string;
+  prodotto: string;
   categoria?: string | null;
+  ubicazione_id: number;
   magazzino: string;
   ubicazione: string;
   quantita: number;

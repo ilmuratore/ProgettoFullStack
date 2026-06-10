@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MoreVertical, Edit, Trash2, Eye, Search } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, MoreVertical, Edit, Eye, Search } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../../components/ui/dropdown-menu';
 import type { ProdottoListino } from '../../../types/prodotti';
 import { EMPTY_PRODUCT_FILTERS, ProductsFilter, type ProductFiltersState } from './ProductsFilter';
@@ -9,18 +9,58 @@ interface ProductsTabProps {
   loading: boolean;
   search: string;
   canWriteProdotti: boolean;
-  canDeleteProdotti: boolean;
   onSearchChange: (value: string) => void;
   onView: (item: ProdottoListino) => void;
   onEdit: (item: ProdottoListino) => void;
-  onDelete: (id: number) => void;
 }
+
+type SortKey = 'nome' | 'sku' | 'prezzo' | 'data_agg_prezzo';
+type SortDirection = 'asc' | 'desc';
+
+type SortConfig = {
+  key: SortKey;
+  direction: SortDirection;
+};
 
 const formatPrezzo = (n: number) =>
   new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n);
 
 const formatData = (iso: string) =>
   new Date(iso).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+const compareText = (left: string, right: string) =>
+  left.localeCompare(right, 'it', { sensitivity: 'base', numeric: true });
+
+const compareProductsByKey = (left: ProdottoListino, right: ProdottoListino, key: SortKey) => {
+  switch (key) {
+    case 'nome':
+      return compareText(left.nome ?? '', right.nome ?? '');
+    case 'sku':
+      return compareText(left.sku ?? '', right.sku ?? '');
+    case 'prezzo':
+      return Number(left.prezzo ?? 0) - Number(right.prezzo ?? 0);
+    case 'data_agg_prezzo':
+      return new Date(left.data_agg_prezzo ?? 0).getTime() - new Date(right.data_agg_prezzo ?? 0).getTime();
+    default:
+      return 0;
+  }
+};
+
+const sortByProductFilter = (left: ProdottoListino, right: ProdottoListino, ordinamento: ProductFiltersState['ordinamento']) => {
+  switch (ordinamento) {
+    case 'prezzo_crescente':
+      return Number(left.prezzo ?? 0) - Number(right.prezzo ?? 0);
+    case 'prezzo_decrescente':
+      return Number(right.prezzo ?? 0) - Number(left.prezzo ?? 0);
+    case 'data_inserimento_recente':
+      return new Date(right.created_at ?? 0).getTime() - new Date(left.created_at ?? 0).getTime();
+    case 'data_inserimento_vecchio':
+      return new Date(left.created_at ?? 0).getTime() - new Date(right.created_at ?? 0).getTime();
+    case 'alfabetico':
+    default:
+      return compareText(left.nome ?? '', right.nome ?? '');
+  }
+};
 
 const SkeletonRows = ({ cols }: { cols: number }) => (
   <>
@@ -36,20 +76,49 @@ const SkeletonRows = ({ cols }: { cols: number }) => (
   </>
 );
 
+function SortableHeader({
+  label,
+  sortKey,
+  sort,
+  align = 'left',
+  onSort,
+}: {
+  label: string;
+  sortKey: SortKey;
+  sort: SortConfig | null;
+  align?: 'left' | 'right';
+  onSort: (key: SortKey) => void;
+}) {
+  const active = sort?.key === sortKey;
+  const Icon = !active ? ArrowUpDown : sort.direction === 'asc' ? ArrowUp : ArrowDown;
+
+  return (
+    <th
+      className={`py-3 px-4 text-sm font-medium text-[#6B7280] ${align === 'right' ? 'text-right' : 'text-left'}`}
+      aria-sort={!active ? 'none' : sort.direction === 'asc' ? 'ascending' : 'descending'}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={`inline-flex items-center gap-1.5 hover:text-[#2D2D2D] transition-colors ${align === 'right' ? 'justify-end' : 'justify-start'}`}
+      >
+        <span>{label}</span>
+        <Icon className={`w-3.5 h-3.5 ${active ? 'text-[#2D2D2D]' : 'text-[#9CA3AF]'}`} />
+      </button>
+    </th>
+  );
+}
+
 function ProductActions({
   item,
   canWriteProdotti,
-  canDeleteProdotti,
   onView,
   onEdit,
-  onDelete,
 }: {
   item: ProdottoListino;
   canWriteProdotti: boolean;
-  canDeleteProdotti: boolean;
   onView: (item: ProdottoListino) => void;
   onEdit: (item: ProdottoListino) => void;
-  onDelete: (id: number) => void;
 }) {
   return (
     <DropdownMenu>
@@ -67,11 +136,6 @@ function ProductActions({
             <Edit className="w-4 h-4 mr-2" />Modifica
           </DropdownMenuItem>
         )}
-        {canDeleteProdotti && (
-          <DropdownMenuItem onClick={() => onDelete(item.id)} className="cursor-pointer text-red-600">
-            <Trash2 className="w-4 h-4 mr-2" />Elimina
-          </DropdownMenuItem>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -82,16 +146,33 @@ export function ProductsTab({
   loading,
   search,
   canWriteProdotti,
-  canDeleteProdotti,
   onSearchChange,
   onView,
   onEdit,
-  onDelete,
 }: ProductsTabProps) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<ProductFiltersState>(EMPTY_PRODUCT_FILTERS);
+  const [sort, setSort] = useState<SortConfig | null>(null);
 
   const activeFiltersCount = (filters.ordinamento !== 'alfabetico' ? 1 : 0) + (filters.stato !== 'tutti' ? 1 : 0);
+
+  const handleSort = (key: SortKey) => {
+    setSort((prev) => {
+      if (prev?.key !== key) {
+        return { key, direction: 'asc' };
+      }
+
+      return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+    });
+  };
+
+  const handleFiltersChange = (nextFilters: ProductFiltersState) => {
+    setFilters(nextFilters);
+
+    if (nextFilters.ordinamento !== filters.ordinamento) {
+      setSort(null);
+    }
+  };
 
   const filteredProdotti = prodotti
     .filter((prodotto) => {
@@ -109,23 +190,17 @@ export function ProductsTab({
       return matchSearch && matchStatus;
     })
     .sort((left, right) => {
-      switch (filters.ordinamento) {
-        case 'prezzo_crescente':
-          return left.prezzo - right.prezzo;
-        case 'prezzo_decrescente':
-          return right.prezzo - left.prezzo;
-        case 'data_inserimento_recente':
-          return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
-        case 'data_inserimento_vecchio':
-          return new Date(left.created_at).getTime() - new Date(right.created_at).getTime();
-        case 'alfabetico':
-        default:
-          return left.nome.localeCompare(right.nome, 'it');
+      if (sort) {
+        const result = compareProductsByKey(left, right, sort.key);
+        return sort.direction === 'asc' ? result : -result;
       }
+
+      return sortByProductFilter(left, right, filters.ordinamento);
     });
 
   const resetFilters = () => {
     setFilters(EMPTY_PRODUCT_FILTERS);
+    setSort(null);
   };
 
   return (
@@ -136,7 +211,7 @@ export function ProductsTab({
           filters={filters}
           activeFiltersCount={activeFiltersCount}
           onToggleOpen={() => setFiltersOpen(prev => !prev)}
-          onChange={setFilters}
+          onChange={handleFiltersChange}
           onReset={resetFilters}
         >
           <div className="relative">
@@ -156,10 +231,10 @@ export function ProductsTab({
         <table className="w-full">
           <thead>
             <tr className="border-b border-[#E5EAF2]">
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Nome Prodotto</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">SKU</th>
-              <th className="text-right py-3 px-4 text-sm font-medium text-[#6B7280]">Prezzo</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Agg. Prezzo</th>
+              <SortableHeader label="Nome Prodotto" sortKey="nome" sort={sort} onSort={handleSort} />
+              <SortableHeader label="SKU" sortKey="sku" sort={sort} onSort={handleSort} />
+              <SortableHeader label="Prezzo" sortKey="prezzo" sort={sort} onSort={handleSort} align="right" />
+              <SortableHeader label="Agg. Prezzo" sortKey="data_agg_prezzo" sort={sort} onSort={handleSort} />
               <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Azioni</th>
             </tr>
           </thead>
@@ -187,10 +262,8 @@ export function ProductsTab({
                     <ProductActions
                       item={p}
                       canWriteProdotti={canWriteProdotti}
-                      canDeleteProdotti={canDeleteProdotti}
                       onView={onView}
                       onEdit={onEdit}
-                      onDelete={onDelete}
                     />
                   </td>
                 </tr>
