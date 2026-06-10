@@ -544,7 +544,7 @@ export function WarehousePage() {
     <AlertDialogHeader>
       <AlertDialogTitle>Eliminare la categoria?</AlertDialogTitle>
       <AlertDialogDescription>
-        Stai per eliminare <strong>{categoryToDelete?.nome}</strong>. L'operazione è definitiva e non può essere annullata.
+        La categoria <strong>{categoryToDelete?.nome}</strong> verrà rimossa dall'elenco delle categorie attive.
       </AlertDialogDescription>
     </AlertDialogHeader>
     <AlertDialogFooter>

@@ -1,15 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Search, Plus, Download, Upload, Filter, MoreVertical,
-  Edit, Trash2, Eye, Mail, Phone, MapPin, Building2,
+  Search, Plus, Download, Upload, MoreVertical,
+  Edit, Trash2, Mail, Phone, MapPin, Building2,
   User, Truck, Globe, ExternalLink, Users, Calendar, AlertTriangle,
 } from 'lucide-react';
 import { PageTabBar } from '../../components/ui/PageTabBar';
+import { FilterButton, FilterPanel } from '../../components/ui/FilterPanel';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../../components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
 import { SupplierFormModal } from '../anagrafiche/components/SupplierFormModal';
 import { ClientFormModal } from '../anagrafiche/components/ClientFormModal';
 import { CourierFormModal } from '../anagrafiche/components/CourierFormModal';
 import { EmployeeFormModal } from '../anagrafiche/components/EmployeeFormModal';
+import { AnagraficaDetailDrawer } from '../anagrafiche/components/AnagraficaDetailDrawer';
 import { toast } from 'sonner';
 import { fornitoriApi } from '../../api/fornitoriApi';
 import { clientiApi } from '../../api/clientiApi';
@@ -24,6 +27,24 @@ import type {
 
 type TabType = 'fornitori' | 'clienti' | 'corrieri' | 'dipendenti';
 
+type Ordinamento = 'nessuno' | 'alfabetico';
+type StatoFilter = 'tutti' | 'attivo' | 'disattivo';
+
+interface AnagraficaFiltersState {
+  ordinamento: Ordinamento;
+  stato: StatoFilter;
+}
+
+const EMPTY_ANAGRAFICA_FILTERS: AnagraficaFiltersState = { ordinamento: 'nessuno', stato: 'tutti' };
+
+interface DipendentiFiltersState {
+  ordinamento: Ordinamento;
+  ruolo: string;
+  dataAssunzione: string;
+}
+
+const EMPTY_DIPENDENTI_FILTERS: DipendentiFiltersState = { ordinamento: 'nessuno', ruolo: 'tutti', dataAssunzione: '' };
+
 const formatDataBreve = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
 
@@ -33,6 +54,11 @@ export function AnagrafichePage() {
   const [activeTab, setActiveTab] = useState<TabType>('fornitori');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [fornitoriFilters, setFornitoriFilters] = useState<AnagraficaFiltersState>(EMPTY_ANAGRAFICA_FILTERS);
+  const [clientiFilters, setClientiFilters] = useState<AnagraficaFiltersState>(EMPTY_ANAGRAFICA_FILTERS);
+  const [dipendentiFilters, setDipendentiFilters] = useState<DipendentiFiltersState>(EMPTY_DIPENDENTI_FILTERS);
+
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const [courierModalOpen, setCourierModalOpen] = useState(false);
@@ -40,6 +66,12 @@ export function AnagrafichePage() {
 
   const [editMode, setEditMode] = useState<'create' | 'edit'>('create');
   const [selectedItem, setSelectedItem] = useState<any>(null);
+
+  const [itemToDelete, setItemToDelete] = useState<{ tab: TabType; item: any } | null>(null);
+
+  const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
+  const [detailEntityType, setDetailEntityType] = useState<'cliente' | 'fornitore' | 'corriere' | 'dipendente' | null>(null);
+  const [detailEntityId, setDetailEntityId] = useState<number | null>(null);
 
   const [fornitori, setFornitori] = useState<Fornitore[]>([]);
   const [loadingFornitori, setLoadingFornitori] = useState(false);
@@ -94,6 +126,10 @@ export function AnagrafichePage() {
   useEffect(() => { fetchForTab('fornitori'); }, []);
   useEffect(() => { fetchForTab(activeTab); }, [activeTab, fetchForTab]);
 
+  useEffect(() => {
+    setFiltersOpen(false);
+  }, [activeTab]);
+
   const tabs = [
     { id: 'fornitori' as TabType,  label: 'Fornitori',  icon: Building2, count: fornitori.length },
     { id: 'clienti' as TabType,    label: 'Clienti',    icon: User,      count: clienti.length },
@@ -137,36 +173,75 @@ export function AnagrafichePage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    const isDipendente = activeTab === 'dipendenti';
-    const msg = isDipendente
-      ? "Sei sicuro? L'eliminazione di un dipendente è PERMANENTE e non può essere annullata."
-      : 'Sei sicuro di voler eliminare questo elemento?';
-    if (!confirm(msg)) return;
+  const handleDelete = (item: any) => {
+    setItemToDelete({ tab: activeTab, item });
+  };
 
-    if (activeTab === 'fornitori') {
-      try { await fornitoriApi.remove(id); setFornitori(prev => prev.filter(f => f.id !== id)); toast.success('Fornitore eliminato'); }
-      catch (err: any) { toast.error('Eliminazione fallita', { description: err?.message }); }
-      return;
-    }
-    if (activeTab === 'clienti') {
-      try { await clientiApi.remove(id); setClienti(prev => prev.filter(c => c.id !== id)); toast.success('Cliente eliminato'); }
-      catch (err: any) { toast.error('Eliminazione fallita', { description: err?.message }); }
-      return;
-    }
-    if (activeTab === 'corrieri') {
-      try { await corrieriApi.remove(id); setCorrieri(prev => prev.filter(c => c.id !== id)); toast.success('Corriere eliminato'); }
-      catch (err: any) { toast.error('Eliminazione fallita', { description: err?.message }); }
-      return;
-    }
-    if (activeTab === 'dipendenti') {
-      try { await dipendentiApi.remove(id); setDipendenti(prev => prev.filter(d => d.id !== id)); toast.success('Dipendente eliminato'); }
-      catch (err: any) { toast.error('Eliminazione fallita', { description: err?.message }); }
-      return;
+  const getDeleteItemLabel = (tab: TabType, item: any) => {
+    switch (tab) {
+      case 'fornitori':
+      case 'clienti':   return item.ragione_sociale;
+      case 'corrieri':  return item.nome;
+      case 'dipendenti': return `${item.nome} ${item.cognome}`;
+      default: return '';
     }
   };
 
-  const handleView = (_item: any) => { toast.info('Funzionalità di dettaglio in arrivo'); };
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    const { tab, item } = itemToDelete;
+    try {
+      switch (tab) {
+        case 'fornitori':
+          await fornitoriApi.remove(item.id);
+          setFornitori(prev => prev.filter(f => f.id !== item.id));
+          toast.success('Fornitore eliminato');
+          break;
+        case 'clienti':
+          await clientiApi.remove(item.id);
+          setClienti(prev => prev.filter(c => c.id !== item.id));
+          toast.success('Cliente eliminato');
+          break;
+        case 'corrieri':
+          await corrieriApi.remove(item.id);
+          setCorrieri(prev => prev.filter(c => c.id !== item.id));
+          toast.success('Corriere eliminato');
+          break;
+        case 'dipendenti':
+          await dipendentiApi.remove(item.id);
+          setDipendenti(prev => prev.filter(d => d.id !== item.id));
+          toast.success('Dipendente eliminato');
+          break;
+      }
+    } catch (err: any) {
+      toast.error('Eliminazione fallita', { description: err?.message });
+    } finally {
+      setItemToDelete(null);
+    }
+  };
+
+  const TAB_TO_ENTITY_TYPE: Record<TabType, 'cliente' | 'fornitore' | 'corriere' | 'dipendente'> = {
+    clienti: 'cliente',
+    fornitori: 'fornitore',
+    corrieri: 'corriere',
+    dipendenti: 'dipendente',
+  };
+
+  const handleView = (item: any) => {
+    const entityType = TAB_TO_ENTITY_TYPE[activeTab];
+    if (detailDrawerOpen && detailEntityType === entityType && detailEntityId === item.id) {
+      setDetailDrawerOpen(false);
+      return;
+    }
+    setDetailEntityType(entityType);
+    setDetailEntityId(item.id);
+    setDetailDrawerOpen(true);
+  };
+
+  const handleEditFromDrawer = (item: any) => {
+    setDetailDrawerOpen(false);
+    handleEdit(item);
+  };
 
   const handleSaveSupplier = async (data: FornitoreCreateRequest | FornitoreUpdateRequest, id?: number) => {
     try {
@@ -239,32 +314,55 @@ export function AnagrafichePage() {
     }
   };
 
+  const ruoliOperativi = Array.from(
+    new Set(dipendenti.map(d => d.ruolo_operativo).filter((r): r is string => !!r))
+  ).sort((a, b) => a.localeCompare(b, 'it'));
+
   const getFilteredData = () => {
     const q = searchQuery.toLowerCase();
     switch (activeTab) {
-      case 'fornitori':
-        return fornitori.filter(f =>
+      case 'fornitori': {
+        let data = fornitori.filter(f =>
           f.ragione_sociale.toLowerCase().includes(q) ||
           (f.piva ?? '').toLowerCase().includes(q) ||
           (f.email ?? '').toLowerCase().includes(q)
         );
-      case 'clienti':
-        return clienti.filter(c =>
+        if (fornitoriFilters.stato !== 'tutti') data = data.filter(f => f.attivo === (fornitoriFilters.stato === 'attivo'));
+        if (fornitoriFilters.ordinamento === 'alfabetico') {
+          data = [...data].sort((a, b) => a.ragione_sociale.localeCompare(b.ragione_sociale, 'it'));
+        }
+        return data;
+      }
+      case 'clienti': {
+        let data = clienti.filter(c =>
           c.ragione_sociale.toLowerCase().includes(q) ||
           (c.piva_cf ?? '').toLowerCase().includes(q) ||
           (c.email ?? '').toLowerCase().includes(q)
         );
+        if (clientiFilters.stato !== 'tutti') data = data.filter(c => c.attivo === (clientiFilters.stato === 'attivo'));
+        if (clientiFilters.ordinamento === 'alfabetico') {
+          data = [...data].sort((a, b) => a.ragione_sociale.localeCompare(b.ragione_sociale, 'it'));
+        }
+        return data;
+      }
       case 'corrieri':
         return corrieri.filter(c =>
           c.nome.toLowerCase().includes(q) || c.codice.toLowerCase().includes(q)
         );
-      case 'dipendenti':
-        return dipendenti.filter(d =>
+      case 'dipendenti': {
+        let data = dipendenti.filter(d =>
           d.nome.toLowerCase().includes(q) ||
           d.cognome.toLowerCase().includes(q) ||
           d.codice_fiscale.toLowerCase().includes(q) ||
           (d.ruolo_operativo ?? '').toLowerCase().includes(q)
         );
+        if (dipendentiFilters.ruolo !== 'tutti') data = data.filter(d => (d.ruolo_operativo ?? '') === dipendentiFilters.ruolo);
+        if (dipendentiFilters.dataAssunzione) data = data.filter(d => (d.data_assunzione ?? '').slice(0, 4) === dipendentiFilters.dataAssunzione);
+        if (dipendentiFilters.ordinamento === 'alfabetico') {
+          data = [...data].sort((a, b) => `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`, 'it'));
+        }
+        return data;
+      }
       default: return [];
     }
   };
@@ -288,16 +386,13 @@ export function AnagrafichePage() {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40">
-        <DropdownMenuItem onClick={() => handleView(item)} className="cursor-pointer">
-          <Eye className="w-4 h-4 mr-2" />Visualizza
-        </DropdownMenuItem>
         {!hideEdit && canWrite(tabEntity) && (
           <DropdownMenuItem onClick={() => handleEdit(item)} className="cursor-pointer">
             <Edit className="w-4 h-4 mr-2" />Modifica
           </DropdownMenuItem>
         )}
         {canDelete(tabEntity) && (
-          <DropdownMenuItem onClick={() => handleDelete(item.id)} className="cursor-pointer text-red-600">
+          <DropdownMenuItem onClick={() => handleDelete(item)} className="cursor-pointer text-red-600">
             <Trash2 className="w-4 h-4 mr-2" />
             {activeTab === 'dipendenti' ? 'Elimina (definitivo)' : 'Elimina'}
           </DropdownMenuItem>
@@ -328,6 +423,22 @@ export function AnagrafichePage() {
     : activeTab === 'clienti' ? loadingClienti
     : activeTab === 'corrieri' ? loadingCorrieri
     : loadingDipendenti;
+
+  const activeFiltersCount = activeTab === 'fornitori'
+    ? (fornitoriFilters.ordinamento !== 'nessuno' ? 1 : 0) + (fornitoriFilters.stato !== 'tutti' ? 1 : 0)
+    : activeTab === 'clienti'
+    ? (clientiFilters.ordinamento !== 'nessuno' ? 1 : 0) + (clientiFilters.stato !== 'tutti' ? 1 : 0)
+    : activeTab === 'dipendenti'
+    ? (dipendentiFilters.ordinamento !== 'nessuno' ? 1 : 0) + (dipendentiFilters.ruolo !== 'tutti' ? 1 : 0) + (dipendentiFilters.dataAssunzione !== '' ? 1 : 0)
+    : 0;
+
+  const resetActiveFilters = () => {
+    switch (activeTab) {
+      case 'fornitori':  setFornitoriFilters(EMPTY_ANAGRAFICA_FILTERS); break;
+      case 'clienti':    setClientiFilters(EMPTY_ANAGRAFICA_FILTERS); break;
+      case 'dipendenti': setDipendentiFilters(EMPTY_DIPENDENTI_FILTERS); break;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -362,20 +473,116 @@ export function AnagrafichePage() {
         <PageTabBar tabs={tabs} activeTab={activeTab} onTabChange={(id) => setActiveTab(id as TabType)} />
 
         <div className="p-6">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 relative">
-              <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder={`Cerca ${activeTab}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-10 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all"
-              />
-            </div>
-            <button className="px-4 py-2 bg-[#F7F9FC] border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-white transition-all flex items-center gap-2">
-              <Filter className="w-4 h-4" /> Filtri
-            </button>
+          <div className="mb-6">
+            {activeTab === 'corrieri' ? (
+              <div className="relative">
+                <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder={`Cerca ${activeTab}...`}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-10 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all"
+                />
+              </div>
+            ) : (
+              <FilterPanel
+                open={filtersOpen}
+                activeFiltersCount={activeFiltersCount}
+                onToggleOpen={() => setFiltersOpen(o => !o)}
+                onReset={resetActiveFilters}
+                filterGroups={
+                  activeTab === 'fornitori' ? (
+                    <>
+                      <div>
+                        <p className="text-sm font-medium text-[#2D2D2D] mb-2">Ordinamento</p>
+                        <div className="flex flex-wrap gap-2">
+                          <FilterButton
+                            label="Ragione Sociale (A → Z)"
+                            active={fornitoriFilters.ordinamento === 'alfabetico'}
+                            onClick={() => setFornitoriFilters(f => ({ ...f, ordinamento: f.ordinamento === 'alfabetico' ? 'nessuno' : 'alfabetico' }))}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-[#2D2D2D] mb-2">Stato</p>
+                        <div className="flex flex-wrap gap-2">
+                          <FilterButton label="Tutti" active={fornitoriFilters.stato === 'tutti'} onClick={() => setFornitoriFilters(f => ({ ...f, stato: 'tutti' }))} />
+                          <FilterButton label="Attivo" active={fornitoriFilters.stato === 'attivo'} onClick={() => setFornitoriFilters(f => ({ ...f, stato: 'attivo' }))} />
+                          <FilterButton label="Disattivo" active={fornitoriFilters.stato === 'disattivo'} onClick={() => setFornitoriFilters(f => ({ ...f, stato: 'disattivo' }))} />
+                        </div>
+                      </div>
+                    </>
+                  ) : activeTab === 'clienti' ? (
+                    <>
+                      <div>
+                        <p className="text-sm font-medium text-[#2D2D2D] mb-2">Ordinamento</p>
+                        <div className="flex flex-wrap gap-2">
+                          <FilterButton
+                            label="Denominazione Cliente (A → Z)"
+                            active={clientiFilters.ordinamento === 'alfabetico'}
+                            onClick={() => setClientiFilters(f => ({ ...f, ordinamento: f.ordinamento === 'alfabetico' ? 'nessuno' : 'alfabetico' }))}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-[#2D2D2D] mb-2">Stato</p>
+                        <div className="flex flex-wrap gap-2">
+                          <FilterButton label="Tutti" active={clientiFilters.stato === 'tutti'} onClick={() => setClientiFilters(f => ({ ...f, stato: 'tutti' }))} />
+                          <FilterButton label="Attivo" active={clientiFilters.stato === 'attivo'} onClick={() => setClientiFilters(f => ({ ...f, stato: 'attivo' }))} />
+                          <FilterButton label="Disattivo" active={clientiFilters.stato === 'disattivo'} onClick={() => setClientiFilters(f => ({ ...f, stato: 'disattivo' }))} />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <p className="text-sm font-medium text-[#2D2D2D] mb-2">Ordinamento</p>
+                        <div className="flex flex-wrap gap-2">
+                          <FilterButton
+                            label="Nominativo (A → Z)"
+                            active={dipendentiFilters.ordinamento === 'alfabetico'}
+                            onClick={() => setDipendentiFilters(f => ({ ...f, ordinamento: f.ordinamento === 'alfabetico' ? 'nessuno' : 'alfabetico' }))}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-[#2D2D2D] mb-2">Ruolo Operativo</p>
+                        <select
+                          value={dipendentiFilters.ruolo}
+                          onChange={(e) => setDipendentiFilters(f => ({ ...f, ruolo: e.target.value }))}
+                          className="h-10 px-3 bg-white border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
+                        >
+                          <option value="tutti">Tutti</option>
+                          {ruoliOperativi.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-[#2D2D2D] mb-2">Anno Assunzione</p>
+                        <input
+                          type="number"
+                          placeholder="Filtra per anno"
+                          value={dipendentiFilters.dataAssunzione}
+                          onChange={(e) => setDipendentiFilters(f => ({ ...f, dataAssunzione: e.target.value }))}
+                          className="h-10 px-3 w-28 bg-white border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
+                        />
+                      </div>
+                    </>
+                  )
+                }
+              >
+                <div className="relative">
+                  <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder={`Cerca ${activeTab}...`}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full h-10 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all"
+                  />
+                </div>
+              </FilterPanel>
+            )}
           </div>
 
           {/* ── FORNITORI ── */}
@@ -395,9 +602,9 @@ export function AnagrafichePage() {
                 </thead>
                 <tbody>
                   {loadingFornitori ? <SkeletonRows cols={7} /> : filteredFornitori.length === 0
-                    ? <EmptyRow cols={7} msg={searchQuery ? 'Nessun fornitore corrisponde alla ricerca' : 'Nessun fornitore. Clicca "Nuovo Fornitore" per iniziare.'} />
+                    ? <EmptyRow cols={7} msg={searchQuery || activeFiltersCount > 0 ? 'Nessun fornitore corrisponde alla ricerca' : 'Nessun fornitore. Clicca "Nuovo Fornitore" per iniziare.'} />
                     : filteredFornitori.map((f, i) => (
-                      <tr key={f.id} className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
+                      <tr key={f.id} onClick={() => handleView(f)} className={`cursor-pointer border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
                         <td className="py-3 px-4">
                           <div className="font-medium text-[#2D2D2D]">{f.ragione_sociale}</div>
                           {f.sito_web && (
@@ -429,7 +636,7 @@ export function AnagrafichePage() {
                             {f.attivo ? 'Attivo' : 'Disattivo'}
                           </span>
                         </td>
-                        <td className="py-3 px-4"><KebabMenu item={f} hideEdit={f.source === 'ecosystem'} /></td>
+                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}><KebabMenu item={f} hideEdit={f.source === 'ecosystem'} /></td>
                       </tr>
                     ))}
                 </tbody>
@@ -443,7 +650,7 @@ export function AnagrafichePage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-[#E5EAF2]">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Ragione Sociale</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Denominazione Cliente</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">P. IVA / CF</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Contatti</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Sorgente</th>
@@ -453,9 +660,9 @@ export function AnagrafichePage() {
                 </thead>
                 <tbody>
                   {loadingClienti ? <SkeletonRows cols={6} /> : filteredClienti.length === 0
-                    ? <EmptyRow cols={6} msg={searchQuery ? 'Nessun cliente corrisponde alla ricerca' : 'Nessun cliente. Clicca "Nuovo Cliente" per iniziare.'} />
+                    ? <EmptyRow cols={6} msg={searchQuery || activeFiltersCount > 0 ? 'Nessun cliente corrisponde alla ricerca' : 'Nessun cliente. Clicca "Nuovo Cliente" per iniziare.'} />
                     : filteredClienti.map((c, i) => (
-                      <tr key={c.id} className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
+                      <tr key={c.id} onClick={() => handleView(c)} className={`cursor-pointer border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
                         <td className="py-3 px-4 font-medium text-[#2D2D2D]">{c.ragione_sociale}</td>
                         <td className="py-3 px-4 text-sm text-[#6B7280] font-mono">{c.piva_cf ?? <span className="italic text-[#9CA3AF]">—</span>}</td>
                         <td className="py-3 px-4">
@@ -475,7 +682,7 @@ export function AnagrafichePage() {
                             {c.attivo ? 'Attivo' : 'Disattivo'}
                           </span>
                         </td>
-                        <td className="py-3 px-4"><KebabMenu item={c} /></td>
+                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}><KebabMenu item={c} /></td>
                       </tr>
                     ))}
                 </tbody>
@@ -501,7 +708,7 @@ export function AnagrafichePage() {
                   {loadingCorrieri ? <SkeletonRows cols={6} /> : filteredCorrieri.length === 0
                     ? <EmptyRow cols={6} msg={searchQuery ? 'Nessun corriere corrisponde alla ricerca' : 'Nessun corriere. Clicca "Nuovo Corriere" per iniziare.'} />
                     : filteredCorrieri.map((c, i) => (
-                      <tr key={c.id} className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
+                      <tr key={c.id} onClick={() => handleView(c)} className={`cursor-pointer border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
                         <td className="py-3 px-4 text-sm font-mono font-semibold text-[#2D2D2D]">{c.codice}</td>
                         <td className="py-3 px-4 font-medium text-[#2D2D2D]">{c.nome}</td>
                         <td className="py-3 px-4">
@@ -517,7 +724,7 @@ export function AnagrafichePage() {
                             {c.attivo ? 'Attivo' : 'Disattivo'}
                           </span>
                         </td>
-                        <td className="py-3 px-4"><KebabMenu item={c} /></td>
+                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}><KebabMenu item={c} /></td>
                       </tr>
                     ))}
                 </tbody>
@@ -546,9 +753,9 @@ export function AnagrafichePage() {
                 </thead>
                 <tbody>
                   {loadingDipendenti ? <SkeletonRows cols={5} /> : filteredDipendenti.length === 0
-                    ? <EmptyRow cols={5} msg={searchQuery ? 'Nessun dipendente corrisponde alla ricerca' : 'Nessun dipendente. Clicca "Nuovo Dipendente" per iniziare.'} />
+                    ? <EmptyRow cols={5} msg={searchQuery || activeFiltersCount > 0 ? 'Nessun dipendente corrisponde alla ricerca' : 'Nessun dipendente. Clicca "Nuovo Dipendente" per iniziare.'} />
                     : filteredDipendenti.map((d, i) => (
-                      <tr key={d.id} className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
+                      <tr key={d.id} onClick={() => handleView(d)} className={`cursor-pointer border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-[#EEF2FF] flex items-center justify-center text-xs font-semibold text-[#6366F1]">
@@ -568,7 +775,7 @@ export function AnagrafichePage() {
                             ? <div className="flex items-center gap-2 text-sm text-[#6B7280]"><Calendar className="w-3 h-3 shrink-0" />{formatDataBreve(d.data_assunzione)}</div>
                             : <span className="text-sm italic text-[#9CA3AF]">—</span>}
                         </td>
-                        <td className="py-3 px-4"><KebabMenu item={d} /></td>
+                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}><KebabMenu item={d} /></td>
                       </tr>
                     ))}
                 </tbody>
@@ -593,6 +800,38 @@ export function AnagrafichePage() {
       <ClientFormModal  open={clientModalOpen}   onClose={() => setClientModalOpen(false)}   onSave={handleSaveClient}   initialData={selectedItem} mode={editMode} />
       <CourierFormModal open={courierModalOpen}   onClose={() => setCourierModalOpen(false)}   onSave={handleSaveCourier}  initialData={selectedItem} mode={editMode} />
       <EmployeeFormModal open={employeeModalOpen} onClose={() => setEmployeeModalOpen(false)} onSave={handleSaveEmployee} initialData={selectedItem} mode={editMode} />
+
+      <AlertDialog open={!!itemToDelete} onOpenChange={(v) => { if (!v) setItemToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {itemToDelete?.tab === 'dipendenti' ? 'Eliminare il dipendente?' : 'Eliminare l\'elemento?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Stai per eliminare <strong>{itemToDelete && getDeleteItemLabel(itemToDelete.tab, itemToDelete.item)}</strong>.{' '}
+              {itemToDelete?.tab === 'dipendenti'
+                ? "L'eliminazione è PERMANENTE e non può essere annullata. Le spedizioni associate manterranno lo storico senza autista assegnato."
+                : "L'operazione è definitiva e non può essere annullata."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-red-600 hover:bg-red-700 text-white">
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {detailEntityType && (
+        <AnagraficaDetailDrawer
+          entityType={detailEntityType}
+          entityId={detailEntityId}
+          isOpen={detailDrawerOpen}
+          onClose={() => setDetailDrawerOpen(false)}
+          onEdit={handleEditFromDrawer}
+        />
+      )}
     </div>
   );
 }

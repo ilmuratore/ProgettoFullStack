@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { Search, Filter, ArrowUpDown, Eye } from 'lucide-react';
 
 type OrderStatus = 'BOZZA' | 'INVIATO' | 'CONFERMATO' | 'IN_RICEZIONE' | 'COMPLETATO' | 'ANNULLATO';
@@ -49,6 +51,18 @@ interface PurchaseOrdersTableProps {
 }
 
 export function PurchaseOrdersTable({ onOrderClick }: PurchaseOrdersTableProps) {
+  const [search, setSearch] = useState('');
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const fornitore = searchParams.get('fornitore');
+    if (fornitore) setSearch(fornitore);
+  }, [searchParams]);
+
+  const filtered = orders.filter(o =>
+    o.id.toLowerCase().includes(search.toLowerCase()) || o.fornitore.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
       <div className="flex items-center justify-between mb-6">
@@ -58,7 +72,9 @@ export function PurchaseOrdersTable({ onOrderClick }: PurchaseOrdersTableProps) 
             <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Cerca ordine..."
+              placeholder="Cerca ordine o fornitore..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
               className="w-64 h-9 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
             />
           </div>
@@ -95,7 +111,7 @@ export function PurchaseOrdersTable({ onOrderClick }: PurchaseOrdersTableProps) 
             </tr>
           </thead>
           <tbody>
-            {orders.map((order, index) => {
+            {filtered.map((order, index) => {
               const badge = getStatusBadge(order.stato);
               return (
                 <tr
@@ -133,7 +149,7 @@ export function PurchaseOrdersTable({ onOrderClick }: PurchaseOrdersTableProps) 
 
       <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#E5EAF2]">
         <div className="text-sm text-[#6B7280]">
-          Mostrando <span className="font-medium text-[#2D2D2D]">{orders.length}</span> di{' '}
+          Mostrando <span className="font-medium text-[#2D2D2D]">{filtered.length}</span> di{' '}
           <span className="font-medium text-[#2D2D2D]">{orders.length}</span> ordini
         </div>
         <div className="flex items-center gap-2">

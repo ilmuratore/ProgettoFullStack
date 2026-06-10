@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { Search, Filter, ArrowUpDown, Eye, ChevronDown } from 'lucide-react';
 
 type OrderStatus = 'BOZZA' | 'CONFERMATO' | 'SPEDITO' | 'ANNULLATO';
@@ -54,6 +55,12 @@ interface SalesOrdersTableProps {
 export function SalesOrdersTable({ onOrderClick }: SalesOrdersTableProps) {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('tutti');
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const cliente = searchParams.get('cliente');
+    if (cliente) setSearch(cliente);
+  }, [searchParams]);
 
   const filtered = orders.filter(o => {
     const matchSearch = o.id.toLowerCase().includes(search.toLowerCase()) || o.cliente.toLowerCase().includes(search.toLowerCase());
