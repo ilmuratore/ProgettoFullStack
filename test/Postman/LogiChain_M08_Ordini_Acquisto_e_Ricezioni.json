@@ -434,8 +434,8 @@
 
   "variable": [
     { "key": "base_url", "value": "http://localhost:3000" },
-    { "key": "admin_email", "value": "" },
-    { "key": "admin_password", "value": "" },
+    { "key": "admin_email", "value": "admin@logichain.it" },
+    { "key": "admin_password", "value": "Admin123!" },
     { "key": "token_admin", "value": "" },
     { "key": "token_no_access", "value": "" },
     { "key": "fornitore_id", "value": "" },
