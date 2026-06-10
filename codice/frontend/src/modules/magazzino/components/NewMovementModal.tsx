@@ -66,17 +66,19 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
   const cfg = TIPI[tipo];
 
   // Ubicazioni con giacenza per il prodotto selezionato (SCARICO, SPOSTAMENTO da)
-  const ubicazioniConGiacenza = useMemo(() =>
-    giacenzePerProdotto
-      .filter((g) => g.quantita > 0)
-      .map((g) => ({ id: g.ubicazione_id, codice_composto: g.ubicazione })),
+  // giacenze API: ubicazione_id (number), ubicazione (codice corto)
+  // ubicazioni API: id (number), codice_composto (label completa)
+  // Usiamo tutteUbicazioni come source unica per le label, filtrate per ID dalle giacenze
+  const idConGiacenza = useMemo(() =>
+    new Set(giacenzePerProdotto.filter((g) => g.quantita > 0).map((g) => g.ubicazione_id)),
     [giacenzePerProdotto]
   );
 
-  // Per CARICO/RETTIFICA/RESO: tutte le ubicazioni attive
-  // Per SCARICO/SPOSTAMENTO origine: solo dove il prodotto ha giacenza
   const ubicazioniDestinazione = tutteUbicazioni;
-  const ubicazioniOrigine = ubicazioniConGiacenza;
+  const ubicazioniOrigine = useMemo(() =>
+    tutteUbicazioni.filter((u) => idConGiacenza.has(u.id)),
+    [tutteUbicazioni, idConGiacenza]
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -175,8 +177,8 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
         prodotto_id: parseInt(form.prodotto_id),
         quantita: parseInt(form.quantita),
         movimento_tipo: tipo,
-        riferimento: form.riferimento.trim() || null,
-        note: form.note.trim() || null,
+        riferimento: form.riferimento.trim() || undefined,
+        note: form.note.trim() || undefined,
       };
       const body = cfg.isSpostamento
         ? { ...base, ubicazione_da_id: parseInt(form.ubicazione_da_id), ubicazione_a_id: parseInt(form.ubicazione_a_id) }

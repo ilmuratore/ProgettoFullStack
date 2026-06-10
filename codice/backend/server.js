@@ -19,7 +19,7 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(rateLimit({
-    windowMs: 15 * 60 * 1000,
+    windowMs: 15 * 60 * 1000, 
     max: 10000,
     message: { status: 'error', code: 'RATE_LIMIT', message: 'Troppe richieste' }
 }));

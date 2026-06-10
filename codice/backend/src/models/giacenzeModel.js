@@ -194,17 +194,18 @@ const update = (id, { prodotto_id, ubicazione_id, quantita }) =>
 const incrementaQuantita = (prodotto_id, ubicazione_id, quantita, client) =>
     (client || pool).query(
         `INSERT INTO giacenze (prodotto_id, ubicazione_id, quantita)
-     SELECT $1, $2, $3
+     SELECT $1, $2, GREATEST($3, 0)
      WHERE $3 >= 0
-       AND NOT EXISTS (
-           SELECT 1 FROM giacenze
-           WHERE prodotto_id = $1
-             AND ubicazione_id = $2
-       )
+        OR EXISTS (
+            SELECT 1 FROM giacenze
+            WHERE prodotto_id  = $1
+              AND ubicazione_id = $2
+        )
      ON CONFLICT (prodotto_id, ubicazione_id)
      DO UPDATE SET quantita     = giacenze.quantita + $3,
                    updated_at   = CURRENT_TIMESTAMP
-     WHERE giacenze.quantita + $3 >= 0
+      WHERE ($3 >= 0)
+         OR (giacenze.quantita + $3 >= 0)
      RETURNING id, prodotto_id, ubicazione_id, quantita`,
         [prodotto_id, ubicazione_id, quantita]
     );
