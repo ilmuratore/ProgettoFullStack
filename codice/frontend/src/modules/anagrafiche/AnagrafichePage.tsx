@@ -339,12 +339,13 @@ export function AnagrafichePage() {
           <p className="text-sm text-[#6B7280] mt-1">Gestisci fornitori, clienti, corrieri e dipendenti</p>
         </div>
         <div className="flex items-center gap-3">
+          {/*
           <button className="px-4 py-2 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-[#F7F9FC] transition-all flex items-center gap-2">
             <Upload className="w-4 h-4" /> Importa
           </button>
           <button className="px-4 py-2 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-[#F7F9FC] transition-all flex items-center gap-2">
             <Download className="w-4 h-4" /> Esporta
-          </button>
+          </button> */}
           {canWrite(tabEntity) && (
             <button
               onClick={handleNewClick}

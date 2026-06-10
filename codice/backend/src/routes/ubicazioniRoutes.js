@@ -11,6 +11,12 @@ const updateUbicazioneBlueprint = {
 };
 
 router.get(
+    '/',
+    auth, requirePermesso('magazzino:read'),
+    ubicazioniController.getAll
+);
+
+router.get(
     '/:id',
     auth, requirePermesso('magazzino:read'),
     ubicazioniController.getById

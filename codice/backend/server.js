@@ -40,7 +40,7 @@ mountSwagger(app);
 
 // M01 — Auth & RBAC
 app.use('/api/v1/auth', require('./src/routes/authRoutes'));
-// app.use('/api/v1/utenti',     require('./src/routes/utentiRoutes'));
+app.use('/api/v1/utenti',     require('./src/routes/utentiRoutes'));
 
 // M02 — I nostri Prodotti (Listino) + Categorie
 app.use('/api/v1/prodotti',   require('./src/routes/prodottiRoutes'));
@@ -61,8 +61,8 @@ app.use('/api/v1/magazzini',  require('./src/routes/magazziniRoutes'));
 app.use('/api/v1/ubicazioni', require('./src/routes/ubicazioniRoutes'));
 
 // M07 — Giacenze & Movimenti Stock
-// app.use('/api/v1/giacenze',         require('./src/routes/giacenzeRoutes'));
-// app.use('/api/v1/movimenti-stock',  require('./src/routes/movimentiStockRoutes'));
+app.use('/api/v1/giacenze',        require('./src/routes/giacenzeRoutes'));
+app.use('/api/v1/movimenti-stock', require('./src/routes/movimenti_stockRoutes'));
 
 // M08 — Ordini in Entrata (Purchase Orders)
 // app.use('/api/v1/ordini-acquisto',  require('./src/routes/ordiniAcquistoRoutes'));

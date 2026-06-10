@@ -1,189 +1,144 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from 'react';
 import {
-  ArrowDownCircle,
-  ArrowUpCircle,
-  ArrowRightCircle,
-  Plus,
-  Minus,
-  RotateCcw,
-  Clock,
-} from "lucide-react";
-import { movimentiStockApi } from "../../../api/movimentiStockApi";
-import type { MovimentoStock } from "../../../types/magazzino";
+  ArrowDownCircle, ArrowUpCircle, ArrowRightCircle,
+  Plus, Minus, RotateCcw, Clock, RefreshCw,
+} from 'lucide-react';
+import { movimentiStockApi } from '../../../api/movimentiStockApi';
+import type { MovimentoStock } from '../../../types/magazzino';
 
-// Mappa ENUM backend → label UI
-const mapTipo: Record<string, string> = {
-  CARICO_ACQUISTO: "Carico Acquisto",
-  SCARICO_VENDITA: "Scarico Vendita",
-  SPOSTAMENTO: "Trasferimento",
-  RETTIFICA_POSITIVA: "Rettifica Positiva",
-  RETTIFICA_NEGATIVA: "Rettifica Negativa",
-  RESO: "Reso",
+const TIPO_LABEL: Record<string, string> = {
+  CARICO_ACQUISTO:    'Carico Acquisto',
+  SCARICO_VENDITA:    'Scarico Vendita',
+  SPOSTAMENTO:        'Spostamento',
+  RETTIFICA_POSITIVA: 'Rettifica +',
+  RETTIFICA_NEGATIVA: 'Rettifica −',
+  RESO:               'Reso',
 };
 
-// Icone e colori per ogni tipo
-const getMovementIcon = (label: string) => {
-  switch (label) {
-    case "Carico Acquisto":
-      return { icon: ArrowDownCircle, color: "text-[#22C55E]", bg: "bg-[#DCFCE7]" };
-    case "Scarico Vendita":
-      return { icon: ArrowUpCircle, color: "text-[#EF4444]", bg: "bg-[#FEE2E2]" };
-    case "Trasferimento":
-      return { icon: ArrowRightCircle, color: "text-[#3B82F6]", bg: "bg-[#DBEAFE]" };
-    case "Rettifica Positiva":
-      return { icon: Plus, color: "text-[#F59E0B]", bg: "bg-[#FEF3C7]" };
-    case "Rettifica Negativa":
-      return { icon: Minus, color: "text-[#F59E0B]", bg: "bg-[#FEF3C7]" };
-    case "Reso":
-      return { icon: RotateCcw, color: "text-[#8B5CF6]", bg: "bg-[#EDE9FE]" };
-    default:
-      return { icon: ArrowRightCircle, color: "text-[#6B7280]", bg: "bg-[#F3F4F6]" };
-  }
+const TIPO_STYLE: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
+  'Carico Acquisto': { icon: ArrowDownCircle,  color: 'text-[#16A34A]', bg: 'bg-[#DCFCE7]' },
+  'Scarico Vendita': { icon: ArrowUpCircle,    color: 'text-[#DC2626]', bg: 'bg-[#FEE2E2]' },
+  'Spostamento':     { icon: ArrowRightCircle, color: 'text-[#1D4ED8]', bg: 'bg-[#DBEAFE]' },
+  'Rettifica +':     { icon: Plus,             color: 'text-[#D97706]', bg: 'bg-[#FEF3C7]' },
+  'Rettifica −':     { icon: Minus,            color: 'text-[#D97706]', bg: 'bg-[#FEF3C7]' },
+  'Reso':            { icon: RotateCcw,        color: 'text-[#7C3AED]', bg: 'bg-[#EDE9FE]' },
 };
 
-// Quantità con segno
-const formatQuantita = (tipo: string, quantita: number) => {
-  if (tipo === "SCARICO_VENDITA" || tipo === "RETTIFICA_NEGATIVA") return `-${quantita}`;
-  return `+${quantita}`;
-};
+const isPositivo = (tipo: string) =>
+  ['CARICO_ACQUISTO', 'RETTIFICA_POSITIVA', 'RESO'].includes(tipo) ||
+  tipo === 'SPOSTAMENTO';
 
-// Ora formattata
-const formatOra = (iso: string) => {
-  const d = new Date(iso);
-  return d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
-};
+const formatOra = (iso: string) =>
+  new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+
+const formatData = (iso: string) =>
+  new Date(iso).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
 
 export function StockMovementsTimeline({ refreshTrigger }: { refreshTrigger?: number }) {
-  const [movements, setMovements] = useState<
-    {
-      id: number;
-      tipo: string;
-      prodotto: string;
-      sku: string;
-      quantita: string;
-      ora: string;
-      utente: string;
-      ubicazione?: string | null;
-    }[]
-  >([]);
+  const [movimenti, setMovimenti] = useState<MovimentoStock[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Funzione centralizzata per caricare i movimenti
-  const loadMovimenti = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
-
-    const data: MovimentoStock[] = await movimentiStockApi.list();
-
-    const mapped = data.map((m) => {
-      const tipoLabel = mapTipo[m.tipo] ?? m.tipo;
-
-      return {
-        id: m.id,
-        tipo: tipoLabel,
-        prodotto: m.prodotto,
-        sku: m.sku,
-        quantita: formatQuantita(m.tipo, m.quantita),
-        ora: formatOra(m.created_at),
-        utente: m.utente ?? "Sistema",
-        ubicazione: m.ubicazione,
-      };
-    });
-
-    setMovements(mapped);
-    setLoading(false);
-  };
-
-  // Caricamento iniziale
-  useEffect(() => {
-    loadMovimenti();
+    try {
+      const data = await movimentiStockApi.list();
+      setMovimenti(data);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Refresh automatico dopo creazione movimento
-  useEffect(() => {
-    if (refreshTrigger !== undefined) {
-      loadMovimenti();
-    }
-  }, [refreshTrigger]);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (refreshTrigger !== undefined) load(); }, [refreshTrigger, load]);
 
   return (
     <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
-      {/* HEADER */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <h3 className="font-semibold text-[#2D2D2D]">Movimenti Magazzino in Tempo Reale</h3>
-          <div className="flex items-center gap-2 px-3 py-1 bg-[#F0FDF7] border border-[#17E88F]/20 rounded-lg">
-            <div className="w-2 h-2 bg-[#17E88F] rounded-full animate-pulse" />
+          <h3 className="font-semibold text-[#2D2D2D]">Movimenti Stock</h3>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#F0FDF7] border border-[#17E88F]/20 rounded-lg">
+            <div className="w-1.5 h-1.5 bg-[#17E88F] rounded-full animate-pulse" />
             <span className="text-xs font-medium text-[#17E88F]">Live</span>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-xs text-[#6B7280]">
-          <Clock className="w-4 h-4" />
-          Aggiornato in tempo reale
-        </div>
+        <button
+          onClick={load}
+          disabled={loading}
+          className="flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-[#17E88F] transition-colors disabled:opacity-40"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          Aggiorna
+        </button>
       </div>
 
-      {/* LOADING */}
       {loading && (
-        <div className="py-10 text-center text-[#6B7280] text-sm">Caricamento movimenti…</div>
+        <div className="space-y-4">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="flex gap-4 p-4">
+              <div className="w-12 h-12 bg-[#E5EAF2] rounded-xl animate-pulse flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-[#E5EAF2] rounded animate-pulse w-1/3" />
+                <div className="h-3 bg-[#E5EAF2] rounded animate-pulse w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
-      {/* EMPTY */}
-      {!loading && movements.length === 0 && (
-        <div className="py-10 text-center text-[#6B7280] text-sm">Nessun movimento trovato.</div>
+      {!loading && movimenti.length === 0 && (
+        <div className="py-12 text-center text-sm text-[#9CA3AF]">
+          Nessun movimento registrato.
+        </div>
       )}
 
-      {/* TIMELINE */}
-      <div className="space-y-4">
-        {movements.map((movement, index) => {
-          const iconConfig = getMovementIcon(movement.tipo);
-          const Icon = iconConfig.icon;
+      <div className="space-y-1">
+        {movimenti.map((m, index) => {
+          const label = TIPO_LABEL[m.tipo] ?? m.tipo;
+          const style = TIPO_STYLE[label] ?? TIPO_STYLE['Spostamento'];
+          const Icon  = style.icon;
+          const positivo = isPositivo(m.tipo);
 
           return (
             <div
-              key={movement.id}
-              className="flex items-start gap-4 p-4 rounded-xl hover:bg-[#F7F9FC] transition-all group relative"
+              key={m.id}
+              className="relative flex items-start gap-4 p-4 rounded-xl hover:bg-[#F7F9FC] transition-all group"
             >
-              {index !== movements.length - 1 && (
-                <div className="absolute left-[30px] top-[60px] w-0.5 h-[calc(100%+16px)] bg-[#E5EAF2]" />
+              {index !== movimenti.length - 1 && (
+                <div className="absolute left-[30px] top-[60px] w-0.5 h-[calc(100%+4px)] bg-[#E5EAF2] z-0" />
               )}
 
-              <div
-                className={`w-12 h-12 ${iconConfig.bg} rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform z-10`}
-              >
-                <Icon className={`w-6 h-6 ${iconConfig.color}`} />
+              <div className={`w-12 h-12 ${style.bg} rounded-xl flex items-center justify-center flex-shrink-0 z-10 group-hover:scale-105 transition-transform`}>
+                <Icon className={`w-5 h-5 ${style.color}`} />
               </div>
 
-              <div className="flex-1">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-[#2D2D2D]">{movement.tipo}</span>
-                      <span
-                        className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          movement.quantita.startsWith("+")
-                            ? "bg-[#DCFCE7] text-[#22C55E]"
-                            : "bg-[#FEE2E2] text-[#EF4444]"
-                        }`}
-                      >
-                        {movement.quantita}
-                      </span>
-                    </div>
-
-                    <div className="text-sm text-[#2D2D2D] font-medium">{movement.prodotto}</div>
-                    <div className="text-xs text-[#6B7280] font-mono mt-0.5">{movement.sku}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium text-[#2D2D2D]">{label}</span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      positivo ? 'bg-[#DCFCE7] text-[#16A34A]' : 'bg-[#FEE2E2] text-[#DC2626]'
+                    }`}>
+                      {positivo ? '+' : '−'}{m.quantita}
+                    </span>
                   </div>
-
-                  <div className="text-right">
-                    <div className="text-sm font-medium text-[#6B7280]">{movement.ora}</div>
-                    <div className="text-xs text-[#6B7280] mt-1">{movement.utente}</div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-xs font-medium text-[#6B7280]">{formatOra(m.created_at)}</div>
+                    <div className="text-xs text-[#9CA3AF]">{formatData(m.created_at)}</div>
                   </div>
                 </div>
 
-                {movement.ubicazione && (
-                  <div className="flex items-center gap-2 mt-2 px-3 py-1.5 bg-[#F7F9FC] rounded-lg inline-flex">
-                    <span className="text-xs text-[#6B7280]">Ubicazione:</span>
-                    <span className="text-xs font-mono text-[#2D2D2D]">{movement.ubicazione}</span>
+                <div className="text-sm text-[#2D2D2D] font-medium truncate">{m.prodotto}</div>
+                <div className="text-xs text-[#9CA3AF] font-mono mt-0.5">{m.sku}</div>
+
+                {m.ubicazione && (
+                  <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-1 bg-[#F7F9FC] rounded-lg">
+                    <Clock className="w-3 h-3 text-[#9CA3AF]" />
+                    <span className="text-xs font-mono text-[#6B7280]">{m.ubicazione}</span>
                   </div>
+                )}
+
+                {m.riferimento && (
+                  <div className="mt-1 text-xs text-[#9CA3AF] truncate">{m.riferimento}</div>
                 )}
               </div>
             </div>
@@ -191,14 +146,14 @@ export function StockMovementsTimeline({ refreshTrigger }: { refreshTrigger?: nu
         })}
       </div>
 
-      {/* FOOTER */}
-      {!loading && (
-        <div className="flex items-center justify-center mt-6 pt-4 border-t border-[#E5EAF2]">
+      {!loading && movimenti.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-[#E5EAF2] flex items-center justify-between">
+          <span className="text-xs text-[#9CA3AF]">{movimenti.length} movimenti</span>
           <button
-            onClick={loadMovimenti}
-            className="px-4 py-2 text-sm text-[#17E88F] hover:bg-[#F0FDF7] rounded-lg transition-all font-medium"
+            onClick={load}
+            className="text-xs text-[#17E88F] hover:underline font-medium"
           >
-            Carica Altri Movimenti
+            Ricarica
           </button>
         </div>
       )}

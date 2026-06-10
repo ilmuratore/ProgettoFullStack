@@ -1,6 +1,5 @@
 const corrieriService = require('../services/corrieriService');
 
-// GET /api/v1/corrieri
 const getAll = async (req, res, next) => {
     try {
         const corrieri = await corrieriService.getAll();
@@ -10,7 +9,6 @@ const getAll = async (req, res, next) => {
     }
 };
 
-// GET /api/v1/corrieri/:id
 const getById = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -21,7 +19,6 @@ const getById = async (req, res, next) => {
     }
 };
 
-// POST /api/v1/corrieri
 const create = async (req, res, next) => {
     try {
         const { codice, nome, telefono, email } = req.body;
@@ -32,7 +29,6 @@ const create = async (req, res, next) => {
     }
 };
 
-// PATCH /api/v1/corrieri/:id
 const update = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -51,7 +47,6 @@ const update = async (req, res, next) => {
     }
 };
 
-// DELETE /api/v1/corrieri/:id
 const elimina = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);

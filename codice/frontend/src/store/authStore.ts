@@ -2,11 +2,16 @@ import { create } from 'zustand';
 import type { UtenteAPI } from '../types/auth';
 
 export const RUOLO_ID_TO_NOME: Record<number, string> = {
-  1: 'Admin',
-  2: 'Responsabile Acquisti',
-  3: 'Responsabile Magazzino',
-  4: 'Operatore',
-  5: 'Corriere',
+  1:  'Admin',
+  2:  'Dev',
+  3:  'Supporto',
+  4:  'Resp. Azienda',
+  5:  'Resp. HR',
+  6:  'Resp. Vendite',
+  7:  'Resp. Acquisti',
+  8:  'Resp. Magazzino',
+  9:  'Operatore',
+  10: 'Corriere',
 };
 
 const RUOLO_NOME_TO_ID: Record<string, number> = Object.fromEntries(
@@ -21,43 +26,103 @@ function normalizzaUtente(u: UtenteAPI): UtenteAPI {
   return {
     ...u,
     ruolo_id,
-    ruolo_nome: u.ruolo_nome ?? (ruolo_id ? RUOLO_ID_TO_NOME[ruolo_id] : undefined),
+    ruolo_nome: u.ruolo_nome ?? (u as any).ruolo ?? (ruolo_id ? RUOLO_ID_TO_NOME[ruolo_id] : undefined),
   };
 }
 
+const ALL_PERMISSIONS = [
+  'utenti:read', 'utenti:write', 'utenti:delete',
+  'prodotti:read', 'prodotti:write', 'prodotti:delete',
+  'fornitori:read', 'fornitori:write', 'fornitori:delete',
+  'clienti:read', 'clienti:write', 'clienti:delete',
+  'dipendenti:read', 'dipendenti:write', 'dipendenti:delete',
+  'magazzino:read', 'magazzino:write',
+  'giacenze:read', 'giacenze:write',
+  'acquisti:read', 'acquisti:write', 'acquisti:approve',
+  'ordini:read', 'ordini:write', 'ordini:approve',
+  'spedizioni:read', 'spedizioni:write',
+  'notifiche:read', 'dashboard:read', 'ecosystem:read',
+];
 
 const PERMESSI_PER_RUOLO: Record<number, string[]> = {
-  1: [
-    'utenti:write', 'utenti:read', 'utenti:delete',
+  1: ALL_PERMISSIONS,
+  2: ALL_PERMISSIONS,
+  3: [
+    'utenti:read',
+    'prodotti:read', 'fornitori:read', 'clienti:read',
+    'magazzino:read', 'giacenze:read',
+    'acquisti:read', 'ordini:read', 'spedizioni:read',
+    'notifiche:read', 'dashboard:read', 'ecosystem:read',
+  ],
+  4: [
+    'utenti:read',
     'prodotti:read', 'prodotti:write', 'prodotti:delete',
     'fornitori:read', 'fornitori:write', 'fornitori:delete',
     'clienti:read', 'clienti:write', 'clienti:delete',
-    'corrieri:read', 'corrieri:write', 'corrieri:delete',
     'dipendenti:read', 'dipendenti:write', 'dipendenti:delete',
     'magazzino:read', 'magazzino:write',
+    'giacenze:read', 'giacenze:write',
+    'acquisti:read', 'acquisti:write', 'acquisti:approve',
+    'ordini:read', 'ordini:write', 'ordini:approve',
+    'spedizioni:read', 'spedizioni:write',
+    'notifiche:read', 'dashboard:read', 'ecosystem:read',
   ],
-  2: [
+  5: [
+    'utenti:read',
+    'dipendenti:read', 'dipendenti:write', 'dipendenti:delete',
+    'notifiche:read', 'dashboard:read',
+  ],
+  6: [
     'prodotti:read',
-    'fornitori:read', 'fornitori:write', 'fornitori:delete',
+    'clienti:read', 'clienti:write', 'clienti:delete',
+    'giacenze:read', 'giacenze:write',
+    'ordini:read', 'ordini:write', 'ordini:approve',
+    'notifiche:read', 'dashboard:read',
+  ],
+  7: [
+    'prodotti:read', 'prodotti:write',
+    'fornitori:read', 'fornitori:write',
     'clienti:read',
-    'corrieri:read',
     'magazzino:read',
+    'giacenze:read',
+    'acquisti:read', 'acquisti:write', 'acquisti:approve',
+    'notifiche:read', 'dashboard:read', 'ecosystem:read',
   ],
-  3: [
-    'prodotti:read', 'clienti:read',
+  8: [
+    'prodotti:read', 'prodotti:write',
+    'fornitori:read', 'clienti:read',
     'magazzino:read', 'magazzino:write',
-    'corrieri:read', 'dipendenti:read',
+    'giacenze:read', 'giacenze:write',
+    'acquisti:approve',
+    'ordini:read', 'ordini:approve',
+    'spedizioni:read', 'spedizioni:write',
+    'notifiche:read', 'dashboard:read',
   ],
-  4: ['prodotti:read', 'clienti:read', 'magazzino:read', 'corrieri:read'],
-  5: [],
+  9: [
+    'prodotti:read', 'fornitori:read', 'clienti:read',
+    'magazzino:read',
+    'giacenze:read', 'giacenze:write',
+    'ordini:read', 'ordini:write', 'ordini:approve',
+    'spedizioni:read',
+    'notifiche:read', 'dashboard:read',
+  ],
+  10: [
+    'spedizioni:read', 'spedizioni:write',
+    'notifiche:read', 'dashboard:read',
+  ],
 };
 
 export const PAGINE_PER_RUOLO: Record<number, string[]> = {
-  1: ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione'],
-  2: ['dashboard', 'anagrafiche', 'acquisti'],
-  3: ['dashboard', 'magazzino', 'vendite', 'logistica'],
-  4: ['dashboard', 'anagrafiche', 'vendite', 'magazzino'],
-  5: ['dashboard', 'logistica'],
+  1:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione'],
+  2:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione'],
+  3:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica'],
+  4:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione'],
+  5:  ['dashboard', 'anagrafiche'],
+  6:  ['dashboard', 'anagrafiche', 'vendite', 'magazzino'],
+  7:  ['dashboard', 'anagrafiche', 'acquisti', 'magazzino'],
+  8:  ['dashboard', 'magazzino', 'acquisti', 'logistica'],
+  9:  ['dashboard', 'anagrafiche', 'vendite', 'magazzino', 'logistica'],
+  10: ['dashboard', 'logistica'],
 };
 
 interface AuthState {
@@ -80,7 +145,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const u = normalizzaUtente(utente);
     localStorage.setItem('lc_token', token);
     localStorage.setItem('lc_utente', JSON.stringify(u));
-    set({ token, utente:u  });
+    set({ token, utente: u });
   },
 
   logout: () => {

@@ -1,6 +1,5 @@
 const categorieService = require('../services/categorieService');
 
-// GET /api/v1/categorie
 const getAll = async (req, res, next) => {
     try {
         const categorie = await categorieService.getAll();
@@ -10,7 +9,6 @@ const getAll = async (req, res, next) => {
     }
 };
 
-// GET /api/v1/categorie/:id
 const getById = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -21,7 +19,6 @@ const getById = async (req, res, next) => {
     }
 };
 
-// POST /api/v1/categorie
 const create = async (req, res, next) => {
     try {
         const { nome, categoria_padre_id } = req.body;
@@ -32,7 +29,6 @@ const create = async (req, res, next) => {
     }
 };
 
-// PATCH /api/v1/categorie/:id
 const update = async (req, res, next) => {
     try {
         const id     = parseInt(req.params.id, 10);
@@ -40,7 +36,6 @@ const update = async (req, res, next) => {
 
         const fields = {};
         if (nome              !== undefined) fields.nome              = nome;
-        // Passa categoria_padre_id solo se presente nel body (incluso null esplicito)
         if ('categoria_padre_id' in req.body) fields.categoria_padre_id = categoria_padre_id;
 
         const categoria = await categorieService.update(id, fields);
@@ -50,7 +45,6 @@ const update = async (req, res, next) => {
     }
 };
 
-// DELETE /api/v1/categorie/:id
 const elimina = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);

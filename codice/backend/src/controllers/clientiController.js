@@ -1,6 +1,5 @@
 const clientiService = require('../services/clientiService');
 
-// GET /api/v1/clienti
 const getAll = async (req, res, next) => {
     try {
         const clienti = await clientiService.getAll();
@@ -15,7 +14,6 @@ const getAll = async (req, res, next) => {
 };
 
 
-// GET /api/v1/clienti/:id
 const getById = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -31,7 +29,6 @@ const getById = async (req, res, next) => {
 };
 
 
-// POST /api/v1/clienti
 const create = async (req, res, next) => {
     try {
         const { ragione_sociale, piva_cf, email, telefono } = req.body;
@@ -53,7 +50,6 @@ const create = async (req, res, next) => {
 };
 
 
-// PATCH /api/v1/clienti/:id
 const update = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -77,7 +73,6 @@ const update = async (req, res, next) => {
 };
 
 
-// DELETE /api/v1/clienti/:id
 const elimina = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);

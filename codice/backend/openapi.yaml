@@ -31,25 +31,111 @@ info:
     |---|---|---|
     | `VALIDATION_ERROR` | 400 | Campi mancanti o non validi |
     | `AUTH_REQUIRED` | 401 | Token mancante o scaduto |
+    | `CREDENZIALI_NON_VALIDE` | 401 | Email o password errata al login |
+    | `PASSWORD_NON_VALIDA` | 401 | La password attuale non è corretta (cambio password) |
     | `ACCESS_DENIED` | 403 | Permesso insufficiente |
     | `RESOURCE_NOT_FOUND` | 404 | Risorsa non trovata |
     | `DUPLICATE_ENTRY` | 409 | Violazione unicità (SKU, P.IVA, codice...) |
-    | `INSUFFICIENT_STOCK` | 422 | Giacenza insufficiente per il movimento richiesto |
     | `CATEGORIA_CON_PRODOTTI` | 409 | Impossibile eliminare la categoria: ha prodotti associati |
     | `CATEGORIA_CON_SOTTOCATEGORIE` | 409 | Impossibile eliminare la categoria: ha sottocategorie |
+    | `INSUFFICIENT_STOCK` | 422 | Giacenza insufficiente per il movimento richiesto |
     | `INTERNAL_SERVER_ERROR` | 500 | Errore generico server |
 
-    ## RBAC — Permessi per modulo
-    | Permesso | Modulo |
-    |---|---|
-    | `utenti:write` | Registrazione nuovi utenti |
-    | `prodotti:read` / `prodotti:write` / `prodotti:delete` | Prodotti |
-    | `fornitori:read` / `fornitori:write` / `fornitori:delete` | Fornitori |
-    | `clienti:read` / `clienti:write` / `clienti:delete` | Clienti |
-    | `corrieri:read` / `corrieri:write` / `corrieri:delete` | Corrieri |
-    | `dipendenti:read` / `dipendenti:write` / `dipendenti:delete` | Dipendenti |
-    | `magazzino:read` / `magazzino:write` | Magazzini e Ubicazioni |
-    | `giacenze:read` / `giacenze:write` | Giacenze e Movimenti Stock |
+    ## RBAC — Tutti i permessi (30)
+    Tutti i permessi sono presenti nel DB (seed). Le colonne `Rotte attive` indicano se esiste
+    già almeno un endpoint montato in `server.js` che richiede quel permesso.
+
+    | Permesso | Modulo | Rotte attive |
+    |---|---|---|
+    | `utenti:read` | Visualizza utenti | ⬜ (utentiRoutes non montata) |
+    | `utenti:write` | Registrazione nuovi utenti | ✅ M01 |
+    | `utenti:delete` | Elimina utenti | ⬜ (utentiRoutes non montata) |
+    | `prodotti:read` | Visualizza prodotti e categorie | ✅ M02 |
+    | `prodotti:write` | Crea/modifica prodotti e categorie | ✅ M02 |
+    | `prodotti:delete` | Elimina prodotti e categorie | ✅ M02 |
+    | `fornitori:read` | Visualizza fornitori e contatti | ✅ M03 |
+    | `fornitori:write` | Crea/modifica fornitori | ✅ M03 |
+    | `fornitori:delete` | Elimina fornitori | ✅ M03 |
+    | `clienti:read` | Visualizza clienti e destinazioni | ✅ M04 |
+    | `clienti:write` | Crea/modifica clienti | ✅ M04 |
+    | `clienti:delete` | Elimina clienti | ✅ M04 |
+    | `dipendenti:read` | Visualizza dipendenti | ✅ M05 |
+    | `dipendenti:write` | Crea/modifica dipendenti | ✅ M05 |
+    | `dipendenti:delete` | Elimina dipendenti | ✅ M05 |
+    | `magazzino:read` | Visualizza magazzini, ubicazioni e corrieri | ✅ M05–M06 |
+    | `magazzino:write` | Crea/modifica magazzini, ubicazioni e corrieri | ✅ M05–M06 |
+    | `giacenze:read` | Visualizza giacenze e movimenti stock | ✅ M07 |
+    | `giacenze:write` | Registra movimenti stock | ✅ M07 |
+    | `acquisti:read` | Visualizza ordini di acquisto e ricezioni | ⬜ M08 |
+    | `acquisti:write` | Crea/modifica ordini di acquisto | ⬜ M08 |
+    | `acquisti:approve` | Approva ordini di acquisto | ⬜ M08 |
+    | `ordini:read` | Visualizza ordini di vendita | ⬜ M09 |
+    | `ordini:write` | Crea/modifica ordini e gestisce picking | ⬜ M09 |
+    | `ordini:approve` | Approva ordini commerciali | ⬜ M09 |
+    | `spedizioni:read` | Visualizza spedizioni e DDT | ⬜ M10 |
+    | `spedizioni:write` | Gestisce spedizioni e DDT | ⬜ M10 |
+    | `notifiche:read` | Visualizza notifiche | ⬜ M11 |
+    | `dashboard:read` | Visualizza dashboard e KPI | ⬜ M12 |
+    | `ecosystem:read` | Ricerca nell'ecosistema globale | ⬜ M13–M16 |
+
+    ## RBAC — Matrice ruoli → permessi
+    Fonte: `seed_ruoli_permessi.js`. Legenda: ✅ ha il permesso · — non ce l'ha.
+
+    | Permesso | Admin | Resp.Az | Supporto | Resp.HR | Resp.Vend | Resp.Acq | Resp.Mag | Operatore | Corriere |
+    |---|---|---|---|---|---|---|---|---|---|
+    | `utenti:read` | ✅ | ✅ | ✅ | ✅ | — | — | — | — | — |
+    | `utenti:write` | ✅ | — | — | — | — | — | — | — | — |
+    | `utenti:delete` | ✅ | — | — | — | — | — | — | — | — |
+    | `prodotti:read` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — |
+    | `prodotti:write` | ✅ | ✅ | — | — | — | ✅ | ✅ | — | — |
+    | `prodotti:delete` | ✅ | ✅ | — | — | — | — | — | — | — |
+    | `fornitori:read` | ✅ | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | — |
+    | `fornitori:write` | ✅ | ✅ | — | — | — | ✅ | — | — | — |
+    | `fornitori:delete` | ✅ | ✅ | — | — | — | — | — | — | — |
+    | `clienti:read` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — |
+    | `clienti:write` | ✅ | ✅ | — | — | ✅ | ✅ | — | — | — |
+    | `clienti:delete` | ✅ | ✅ | — | — | ✅ | — | — | — | — |
+    | `dipendenti:read` | ✅ | ✅ | — | ✅ | — | — | — | — | — |
+    | `dipendenti:write` | ✅ | ✅ | — | ✅ | — | — | — | — | — |
+    | `dipendenti:delete` | ✅ | ✅ | — | ✅ | — | — | — | — | — |
+    | `magazzino:read` | ✅ | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | — |
+    | `magazzino:write` | ✅ | ✅ | — | — | — | — | ✅ | — | — |
+    | `giacenze:read` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — |
+    | `giacenze:write` | ✅ | ✅ | — | — | ✅ | — | ✅ | ✅ | — |
+    | `acquisti:read` | ✅ | ✅ | ✅ | — | — | ✅ | ✅ | — | — |
+    | `acquisti:write` | ✅ | ✅ | — | — | — | ✅ | — | — | — |
+    | `acquisti:approve` | ✅ | ✅ | — | — | — | ✅ | ✅ | — | — |
+    | `ordini:read` | ✅ | ✅ | ✅ | — | ✅ | — | ✅ | ✅ | — |
+    | `ordini:write` | ✅ | ✅ | — | — | ✅ | — | — | ✅ | — |
+    | `ordini:approve` | ✅ | ✅ | — | — | ✅ | — | ✅ | ✅ | — |
+    | `spedizioni:read` | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ |
+    | `spedizioni:write` | ✅ | ✅ | — | — | — | — | ✅ | — | ✅ |
+    | `notifiche:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+    | `dashboard:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+    | `ecosystem:read` | ✅ | ✅ | ✅ | — | — | ✅ | — | — | — |
+
+    > **Nota**: Dev ha gli stessi permessi di Admin (ALL). Resp. Azienda ha tutti tranne `utenti:write/delete`.
+
+    ## RBAC — Ruoli disponibili (ruolo_id)
+    Fonte: `seed_ruoli_permessi.js`. Il campo `ruolo_id` è richiesto da `POST /auth/register`
+    e restituito da `GET /auth/me` come `ruolo_id` + `ruolo_nome`.
+
+    | `ruolo_id` | `ruolo_nome` | Descrizione |
+    |---|---|---|
+    | `1` | Admin | Accesso completo al sistema |
+    | `2` | Dev | Accesso tecnico completo per sviluppo e manutenzione |
+    | `3` | Supporto | Accesso in sola lettura per assistenza clienti |
+    | `4` | Resp. Azienda | Responsabile aziendale con visibilità trasversale |
+    | `5` | Resp. HR | Gestione risorse umane e dipendenti |
+    | `6` | Resp. Vendite | Gestione ordini in uscita, clienti e giacenze commerciali |
+    | `7` | Resp. Acquisti | Gestione acquisti, fornitori e approvvigionamenti |
+    | `8` | Resp. Magazzino | Gestione magazzino, giacenze, spedizioni e corrieri |
+    | `9` | Operatore | Operatività su ordini, giacenze e spedizioni |
+    | `10` | Corriere | Visualizzazione e aggiornamento spedizioni assegnate |
+
+    > **Nota frontend**: `ruolo_id: 1` (Admin) è riservato — non assegnabile via UI.
+    > `ruolo_id: 2` (Dev) e `ruolo_id: 3` (Supporto) sono tecnici/interni.
+    > I ruoli operativi standard da esporre nel dropdown di registrazione sono `4`–`10`.
 
 servers:
   - url: http://localhost:3000/api/v1
@@ -60,14 +146,18 @@ servers:
 tags:
   - name: Auth
     description: Autenticazione e profilo utente
+  - name: Utenti
+    description: Gestione utenti — password reset admin (utenti:write). Modulo parziale — altre operazioni CRUD in roadmap.
   - name: Prodotti
     description: Anagrafica prodotti e listino prezzi (M02)
+  - name: Categorie
+    description: Categorie prodotti — dominio Prodotti, permessi prodotti:* (M02 ext)
   - name: Fornitori
     description: Anagrafica fornitori (M03)
   - name: Clienti
     description: Anagrafica clienti (M04)
   - name: Corrieri
-    description: Anagrafica aziende corriere (M05)
+    description: Anagrafica aziende corriere — permessi magazzino:read/write (M05)
   - name: Dipendenti
     description: Anagrafica personale operativo interno (M05)
   - name: Magazzini
@@ -182,6 +272,25 @@ components:
               field: { type: string }
               message: { type: string }
 
+    # ── AUTH — PASSWORD ───────────────────────────────
+
+    ChangePasswordRequest:
+      type: object
+      required: [password_attuale, password_nuova]
+      description: |
+        Cambio password dell'utente autenticato.
+        `password_nuova` deve essere diversa da `password_attuale`.
+      properties:
+        password_attuale: { type: string, minLength: 6, example: vecchiaPassword1! }
+        password_nuova:   { type: string, minLength: 6, example: NuovaPassword2! }
+
+    AdminResetPasswordRequest:
+      type: object
+      required: [password_nuova]
+      description: Reset forzato password da parte di un utente con `utenti:write`. Non richiede la password attuale.
+      properties:
+        password_nuova: { type: string, minLength: 6, example: ResetPassword3! }
+
     # ── AUTH ──────────────────────────────────
 
     Utente:
@@ -191,8 +300,8 @@ components:
         nome:        { type: string,  example: Marco }
         cognome:     { type: string,  example: Bianchi }
         email:       { type: string,  format: email, example: marco.bianchi@logichain.it }
-        ruolo_id:    { type: integer, example: 2 }
-        ruolo_nome:  { type: string,  example: Responsabile Acquisti }
+        ruolo_id:    { type: integer, example: 7, description: "Vedi tabella 'Ruoli disponibili' — valori 1–10" }
+        ruolo_nome:  { type: string,  example: "Resp. Acquisti", description: "Nome del ruolo corrispondente a ruolo_id" }
         created_at:  { type: string,  format: date-time }
         updated_at:  { type: string,  format: date-time }
 
@@ -212,12 +321,16 @@ components:
     RegisterRequest:
       type: object
       required: [nome, cognome, email, password, ruolo_id]
+      description: |
+        `ruolo_id` deve corrispondere a un ruolo esistente nel DB.
+        Vedi tabella "Ruoli disponibili" nell'info per i valori validi (1–10).
+        Per la UI di registrazione standard usare i ruoli operativi: 4–10.
       properties:
         nome:     { type: string,  example: Laura }
         cognome:  { type: string,  example: Ferretti }
         email:    { type: string,  format: email, example: laura.ferretti@logichain.it }
         password: { type: string,  minLength: 6, example: sicura456 }
-        ruolo_id: { type: integer, example: 3 }
+        ruolo_id: { type: integer, minimum: 1, maximum: 10, example: 7, description: "ID ruolo — vedi tabella Ruoli disponibili" }
 
     # ── PRODOTTI ──────────────────────────────
 
@@ -229,7 +342,7 @@ components:
         nome:            { type: string,  example: Valvola a sfera 1/2" }
         descrizione:     { type: string,  example: Valvola in ottone per impianti idraulici, nullable: true }
         categoria_id:    { type: integer, example: 3, nullable: true }
-        categoria_nome:  { type: string,  example: Valvolame, nullable: true }
+        categoria:       { type: string,  example: Valvolame, nullable: true, description: "Nome categoria — presente solo nelle GET con JOIN (findById). Assente in POST/PATCH response." }
         unita_misura:    { type: string,  example: pz, nullable: true }
         peso_kg:         { type: number,  format: float, example: 0.35, nullable: true }
         scorta_minima:   { type: integer, example: 50 }
@@ -248,22 +361,36 @@ components:
         nome:            { type: string,  example: "Valvola a sfera 1/2\"" }
         prezzo:          { type: number,  format: float, example: 12.50 }
         data_agg_prezzo: { type: string,  format: date-time, example: "2026-05-15T10:30:00.000Z" }
+        attivo:          { type: boolean, example: true }
+        created_at:      { type: string,  format: date-time }
 
     ProdottoCreateRequest:
       type: object
       required: [nome, sku, prezzo]
       properties:
-        nome:   { type: string, example: "Tubo in acciaio inox DN50" }
-        sku:    { type: string, example: TUB-INOX-050 }
-        prezzo: { type: number, minimum: 0.01, example: 48.00 }
+        nome:          { type: string,  example: "Tubo in acciaio inox DN50" }
+        sku:           { type: string,  example: TUB-INOX-050 }
+        prezzo:        { type: number,  minimum: 0.01, example: 48.00 }
+        descrizione:   { type: string,  example: "Tubo in acciaio inox AISI 316L, spessore 2mm" }
+        categoria_id:  { type: integer, minimum: 1, example: 3, description: "ID categoria esistente" }
+        unita_misura:  { type: string,  example: mt }
+        peso_kg:       { type: number,  minimum: 0, example: 1.20 }
+        scorta_minima: { type: integer, minimum: 0, example: 10, description: "Default 0 se omesso" }
+        attivo:        { type: boolean, example: true, description: "Default true se omesso" }
 
     ProdottoUpdateRequest:
       type: object
       description: Tutti i campi sono opzionali. Inviare solo quelli da modificare.
       properties:
-        nome:   { type: string, example: "Tubo in acciaio inox DN50 — rev." }
-        sku:    { type: string, example: TUB-INOX-050-R }
-        prezzo: { type: number, minimum: 0.01, example: 52.00 }
+        nome:          { type: string,  example: "Tubo in acciaio inox DN50 — rev." }
+        sku:           { type: string,  example: TUB-INOX-050-R }
+        prezzo:        { type: number,  minimum: 0.01, example: 52.00 }
+        descrizione:   { type: string,  example: "Revisione specifiche tecniche" }
+        categoria_id:  { type: integer, minimum: 1, example: 4 }
+        unita_misura:  { type: string,  example: pz }
+        peso_kg:       { type: number,  minimum: 0, example: 0.80 }
+        scorta_minima: { type: integer, minimum: 0, example: 20 }
+        attivo:        { type: boolean, example: true }
 
     # ── CATEGORIE ─────────────────────────────
 
@@ -506,6 +633,10 @@ components:
       properties:
         nome:      { type: string, example: "Magazzino secondario Monza — aggiornato" }
         indirizzo: { type: string, example: "Via Borgazzi 100" }
+        cap:       { type: string, example: "20900" }
+        citta:     { type: string, example: Monza }
+        provincia: { type: string, example: MB }
+        paese:     { type: string, example: Italia }
 
     UbicazioneCreateRequest:
       type: object
@@ -772,6 +903,70 @@ paths:
                   updated_at: "2026-02-01T08:00:00.000Z"
         "401": { $ref: '#/components/responses/Unauthorized' }
 
+  /auth/password:
+    patch:
+      tags: [Auth]
+      summary: Cambia la propria password
+      description: |
+        Permette all'utente autenticato di cambiare la propria password.
+        Richiede la password attuale per verifica. Nessun permesso RBAC aggiuntivo.
+        `password_nuova` deve essere diversa da `password_attuale`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangePasswordRequest' }
+            example:
+              password_attuale: vecchiaPassword1!
+              password_nuova: NuovaPassword2!
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401":
+          description: Token mancante o password attuale errata
+          content:
+            application/json:
+              examples:
+                token_mancante:
+                  summary: Token non fornito
+                  value: { status: error, code: AUTH_REQUIRED, message: Autenticazione richiesta, details: [] }
+                password_sbagliata:
+                  summary: Password attuale errata
+                  value: { status: error, code: PASSWORD_NON_VALIDA, message: "La password attuale non è corretta", details: [] }
+
+  # ══════════════════════════════════════════
+  # M01 (ext) — UTENTI (parziale)
+  # ══════════════════════════════════════════
+
+  /utenti/{id}/password:
+    patch:
+      tags: [Utenti]
+      summary: Reset password utente (admin)
+      description: |
+        Forza il cambio password di un utente specifico.
+        Non richiede la password attuale — è un reset amministrativo.
+        Richiede permesso `utenti:write` (Admin, Dev).
+      x-required-permission: utenti:write
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 5
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminResetPasswordRequest' }
+            example:
+              password_nuova: ResetPassword3!
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
   # ══════════════════════════════════════════
   # M02 — PRODOTTI
   # ══════════════════════════════════════════
@@ -779,10 +974,10 @@ paths:
   /prodotti:
     get:
       tags: [Prodotti]
-      summary: Lista prodotti attivi (listino)
-      description: |
-        Restituisce la lista dei prodotti attivi.
-        Vista ridotta: `id`, `sku`, `nome`, `prezzo`, `data_agg_prezzo`.
+      summary: Lista prodotti (listino)
+      description: |-
+        Restituisce la lista di tutti i prodotti (inclusi disattivi — filtrabile lato client).
+        Vista ridotta: `id`, `sku`, `nome`, `prezzo`, `data_agg_prezzo`, `attivo`, `created_at`.
         Richiede permesso `prodotti:read`.
       x-required-permission: prodotti:read
       responses:
@@ -800,9 +995,9 @@ paths:
               example:
                 status: success
                 data:
-                  - { id: 1, sku: VLV-001, nome: "Valvola a sfera 1/2\"", prezzo: 12.50, data_agg_prezzo: "2026-05-15T10:30:00.000Z" }
-                  - { id: 2, sku: TUB-INOX-050, nome: "Tubo in acciaio inox DN50", prezzo: 48.00, data_agg_prezzo: "2026-04-20T14:00:00.000Z" }
-                  - { id: 3, sku: GUA-NBR-32, nome: "Guarnizione NBR 32mm", prezzo: 2.80, data_agg_prezzo: "2026-03-01T09:00:00.000Z" }
+                  - { id: 1, sku: VLV-001, nome: "Valvola a sfera 1/2\"", prezzo: 12.50, data_agg_prezzo: "2026-05-15T10:30:00.000Z", attivo: true, created_at: "2026-01-20T09:00:00.000Z" }
+                  - { id: 2, sku: TUB-INOX-050, nome: "Tubo in acciaio inox DN50", prezzo: 48.00, data_agg_prezzo: "2026-04-20T14:00:00.000Z", attivo: true, created_at: "2026-02-10T10:00:00.000Z" }
+                  - { id: 3, sku: GUA-NBR-32, nome: "Guarnizione NBR 32mm", prezzo: 2.80, data_agg_prezzo: "2026-03-01T09:00:00.000Z", attivo: false, created_at: "2026-01-25T11:00:00.000Z" }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
 
@@ -812,6 +1007,7 @@ paths:
       description: |
         Richiede permesso `prodotti:write`.
         `sku` deve essere univoco tra i prodotti attivi.
+        `prezzo` deve essere > 0.
       x-required-permission: prodotti:write
       requestBody:
         required: true
@@ -822,6 +1018,11 @@ paths:
               nome: "Raccordo a T 3/4\""
               sku: RAC-T-034
               prezzo: 6.90
+              descrizione: "Raccordo a T in ottone filettato 3/4\""
+              categoria_id: 2
+              unita_misura: pz
+              peso_kg: 0.12
+              scorta_minima: 20
       responses:
         "201":
           description: Prodotto creato
@@ -831,15 +1032,24 @@ paths:
                 type: object
                 properties:
                   status: { type: string, example: success }
-                  data:   { $ref: '#/components/schemas/ProdottoListino' }
+                  data:   { $ref: '#/components/schemas/Prodotto' }
               example:
                 status: success
                 data:
                   id: 8
                   sku: RAC-T-034
                   nome: "Raccordo a T 3/4\""
+                  descrizione: "Raccordo a T in ottone filettato 3/4\""
+                  categoria_id: 2
+                  categoria: null
+                  unita_misura: pz
+                  peso_kg: 0.12
+                  scorta_minima: 20
                   prezzo: 6.90
                   data_agg_prezzo: "2026-06-07T11:00:00.000Z"
+                  attivo: true
+                  created_at: "2026-06-07T11:00:00.000Z"
+                  updated_at: "2026-06-07T11:00:00.000Z"
         "400": { $ref: '#/components/responses/ValidationError' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
@@ -878,7 +1088,7 @@ paths:
                   nome: "Valvola a sfera 1/2\""
                   descrizione: "Valvola in ottone per impianti idraulici. Temperatura max 120°C."
                   categoria_id: 3
-                  categoria_nome: Valvolame
+                  categoria: Valvolame
                   unita_misura: pz
                   peso_kg: 0.35
                   scorta_minima: 50
@@ -897,7 +1107,8 @@ paths:
       description: |
         Richiede permesso `prodotti:write`.
         Inviare solo i campi da modificare.
-        Se `prezzo` viene modificato, `data_agg_prezzo` viene aggiornata automaticamente dal trigger DB.
+        Se `prezzo` viene modificato, `data_agg_prezzo` viene aggiornata automaticamente dal trigger DB (`trg_data_agg_prezzo`).
+        Il campo `attivo` può essere aggiornato qui (re-attivazione o disattivazione senza DELETE).
       x-required-permission: prodotti:write
       requestBody:
         required: true
@@ -915,15 +1126,24 @@ paths:
                 type: object
                 properties:
                   status: { type: string, example: success }
-                  data:   { $ref: '#/components/schemas/ProdottoListino' }
+                  data:   { $ref: '#/components/schemas/Prodotto' }
               example:
                 status: success
                 data:
                   id: 1
                   sku: VLV-001
                   nome: "Valvola a sfera 1/2\""
+                  descrizione: "Valvola in ottone per impianti idraulici. Temperatura max 120°C."
+                  categoria_id: 3
+                  categoria: null
+                  unita_misura: pz
+                  peso_kg: 0.35
+                  scorta_minima: 50
                   prezzo: 14.00
                   data_agg_prezzo: "2026-06-07T12:00:00.000Z"
+                  attivo: true
+                  created_at: "2026-01-20T09:00:00.000Z"
+                  updated_at: "2026-06-07T12:00:00.000Z"
         "400": { $ref: '#/components/responses/ValidationError' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
@@ -956,7 +1176,7 @@ paths:
         Le categorie radice (senza padre) appaiono prima, ordinate per nome.
       x-required-permission: prodotti:read
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       responses:
         "200":
           description: Lista categorie
@@ -998,7 +1218,7 @@ paths:
         Massimo 2 livelli di profondità (radice → sottocategoria).
       x-required-permission: prodotti:write
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -1054,7 +1274,7 @@ paths:
       summary: Dettaglio categoria
       x-required-permission: prodotti:read
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       responses:
         "200":
           description: Dettaglio categoria
@@ -1087,7 +1307,7 @@ paths:
         Inviare `categoria_padre_id: null` per rimuovere il padre e promuovere a categoria radice.
       x-required-permission: prodotti:write
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -1137,7 +1357,7 @@ paths:
         Codici di errore specifici: `CATEGORIA_CON_PRODOTTI` (409), `CATEGORIA_CON_SOTTOCATEGORIE` (409).
       x-required-permission: prodotti:delete
       security:
-        - bearerAuth: []
+        - BearerAuth: []
       responses:
         "204": { $ref: '#/components/responses/NoContent' }
         "401": { $ref: '#/components/responses/Unauthorized' }
@@ -1529,7 +1749,7 @@ paths:
     get:
       tags: [Corrieri]
       summary: Lista corrieri
-      x-required-permission: corrieri:read
+      x-required-permission: magazzino:read
       responses:
         "200":
           description: Lista corrieri
@@ -1554,7 +1774,7 @@ paths:
     post:
       tags: [Corrieri]
       summary: Crea un nuovo corriere
-      x-required-permission: corrieri:write
+      x-required-permission: magazzino:write
       requestBody:
         required: true
         content:
@@ -1602,7 +1822,7 @@ paths:
     get:
       tags: [Corrieri]
       summary: Dettaglio corriere
-      x-required-permission: corrieri:read
+      x-required-permission: magazzino:read
       responses:
         "200":
           description: Dettaglio corriere
@@ -1631,7 +1851,7 @@ paths:
     patch:
       tags: [Corrieri]
       summary: Aggiorna corriere (parziale)
-      x-required-permission: corrieri:write
+      x-required-permission: magazzino:write
       requestBody:
         required: true
         content:
@@ -1658,7 +1878,7 @@ paths:
     delete:
       tags: [Corrieri]
       summary: Elimina corriere (soft delete)
-      x-required-permission: corrieri:delete
+      x-required-permission: magazzino:write
       responses:
         "204": { $ref: '#/components/responses/NoContent' }
         "401": { $ref: '#/components/responses/Unauthorized' }
@@ -1984,7 +2204,8 @@ paths:
       tags: [Magazzini]
       summary: Aggiorna magazzino
       description: |
-        Aggiorna `nome` e/o `indirizzo`. `codice` non è modificabile.
+        Aggiorna `nome` e/o i campi dell'indirizzo strutturato (`indirizzo`, `cap`, `citta`, `provincia`, `paese`).
+        `codice` non è modificabile.
       x-required-permission: magazzino:write
       requestBody:
         required: true
@@ -1993,6 +2214,8 @@ paths:
             schema: { $ref: '#/components/schemas/MagazzinoUpdateRequest' }
             example:
               nome: "Magazzino principale Sesto — ampliato"
+              citta: "Sesto San Giovanni"
+              provincia: MI
       responses:
         "200":
           description: Magazzino aggiornato

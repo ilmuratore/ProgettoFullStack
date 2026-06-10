@@ -1,7 +1,6 @@
 const prodottiService = require('../services/prodottiService');
 
 
-// GET /api/v1/prodotti
 const getAll = async (req, res, next) => {
     try {
         const prodotti = await prodottiService.getAll();
@@ -12,7 +11,6 @@ const getAll = async (req, res, next) => {
 };
 
 
-// GET /api/v1/prodotti/:id
 const getById = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -24,7 +22,6 @@ const getById = async (req, res, next) => {
 };
 
 
-// POST /api/v1/prodotti
 const create = async (req, res, next) => {
     try {
         const { nome, sku, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo, attivo } = req.body;
@@ -46,7 +43,6 @@ const create = async (req, res, next) => {
 };
 
 
-// PATCH /api/v1/prodotti/:id
 const update = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -71,7 +67,6 @@ const update = async (req, res, next) => {
 };
 
 
-// DELETE /api/v1/prodotti/:id
 const elimina = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);

@@ -5,6 +5,13 @@ const utentiModel = require('../models/utentiModel');
 const ruoliModel = require('../models/ruoliModel');
 
 
+const throwError = (code, message) => {
+    const err = new Error(message);
+    err.code = code;
+    throw err;
+};
+
+
 const login = async (email, password) => {
     const result = await utentiModel.findByEmail(email);
     const utente = result.rows[0];
@@ -40,7 +47,8 @@ const login = async (email, password) => {
             nome: utente.nome,
             cognome: utente.cognome,
             email: utente.email,
-            ruolo: utente.ruolo
+            ruolo_id: utente.ruolo_id,
+            ruolo_nome: utente.ruolo,
         }
     };
 };
@@ -78,7 +86,8 @@ const register = async ({ nome, cognome, email, password, ruolo_id, attivo = tru
         nome: utenteCreato.nome,
         cognome: utenteCreato.cognome,
         email: utenteCreato.email,
-        ruolo: utenteCompleto?.ruolo || ruolo.nome
+        ruolo_id: utenteCreato.ruolo_id,
+        ruolo_nome: utenteCompleto?.ruolo || ruolo.nome,
     };
 };
 
@@ -96,13 +105,35 @@ const getMe = async (utente_id) => {
         nome: utente.nome,
         cognome: utente.cognome,
         email: utente.email,
-        ruolo: utente.ruolo
+        ruolo_id: utente.ruolo_id,
+        ruolo_nome: utente.ruolo,
     };
+};
+
+
+const changePassword = async (utente_id, password_attuale, password_nuova) => {
+    const hashResult = await utentiModel.findPasswordHash(utente_id);
+    if (hashResult.rowCount === 0 || !hashResult.rows[0].attivo) {
+        throwError('RESOURCE_NOT_FOUND', 'Utente non trovato');
+    }
+
+    const valida = await bcrypt.compare(password_attuale, hashResult.rows[0].password_hash);
+    if (!valida) {
+        throwError('PASSWORD_NON_VALIDA', 'La password attuale non è corretta');
+    }
+
+    if (password_attuale === password_nuova) {
+        throwError('VALIDATION_ERROR', 'La nuova password deve essere diversa da quella attuale');
+    }
+
+    const nuovoHash = await bcrypt.hash(password_nuova, 12);
+    await utentiModel.updatePassword(utente_id, nuovoHash);
 };
 
 
 module.exports = {
     login,
     register,
-    getMe
+    getMe,
+    changePassword,
 };

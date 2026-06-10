@@ -11,7 +11,6 @@ import {
   ChevronsRight,
   UserCog,
   LogOut,
-  HelpCircle,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -21,17 +20,22 @@ interface SidebarProps {
   onNavigate?: (page: string) => void;
   activePage?: string;
   onCollapsedChange?: (collapsed: boolean) => void;
-  user?: User; 
+  user?: User;
   accessiblePages?: string[];
   onLogout?: () => void;
 }
 
 const ROLE_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  Admin:                    { bg: '#1E293B', text: '#17E88F',  dot: '#17E88F'  },
-  'Responsabile Acquisti':  { bg: '#1E3A5F', text: '#60A5FA',  dot: '#3B82F6'  },
-  'Responsabile Magazzino': { bg: '#0F3535', text: '#2DD4BF',  dot: '#0D9488'  },
-  Operatore:                { bg: '#0F2D1A', text: '#4ADE80',  dot: '#16A34A'  },
-  Corriere:                 { bg: '#2D1A0F', text: '#FB923C',  dot: '#EA580C'  },
+  'Admin':           { bg: '#1E293B', text: '#17E88F', dot: '#17E88F' },
+  'Dev':             { bg: '#1E1B4B', text: '#A78BFA', dot: '#7C3AED' },
+  'Supporto':        { bg: '#0C4A6E', text: '#7DD3FC', dot: '#0284C7' },
+  'Resp. Azienda':   { bg: '#064E3B', text: '#6EE7B7', dot: '#059669' },
+  'Resp. HR':        { bg: '#450A0A', text: '#FCA5A5', dot: '#DC2626' },
+  'Resp. Vendite':   { bg: '#2E1065', text: '#C4B5FD', dot: '#7C3AED' },
+  'Resp. Acquisti':  { bg: '#1E3A5F', text: '#60A5FA', dot: '#3B82F6' },
+  'Resp. Magazzino': { bg: '#0F3535', text: '#2DD4BF', dot: '#0D9488' },
+  'Operatore':       { bg: '#0F2D1A', text: '#4ADE80', dot: '#16A34A' },
+  'Corriere':        { bg: '#2D1A0F', text: '#FB923C', dot: '#EA580C' },
 };
 
 
@@ -71,12 +75,11 @@ export function Sidebar({
     onNavigate?.(id);
   };
 
-  // Filtra per accessiblePages — accetta sia Page[] che string[]
   const menuItems = accessiblePages
     ? ALL_MENU_ITEMS.filter(item => accessiblePages.includes(item.id))
     : ALL_MENU_ITEMS;
 
-    const displayName     = user ? `${user.nome} ${user.cognome}` : '—';
+  const displayName     = user ? `${user.nome} ${user.cognome}` : '—';
   const displayRole     = user?.ruolo ?? 'Admin';
   const displayAvatar   = user?.avatar ?? '??';
   const displayAvatarBg = user?.avatarBg ?? '#17E88F';
@@ -121,7 +124,6 @@ export function Sidebar({
                 {isActive && !isCollapsed && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#17E88F]" />}
               </button>
 
-              {/* Tooltip quando collassata */}
               {isCollapsed && (
                 <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1E293B] text-white text-xs font-medium rounded-lg opacity-0 group-hover/item:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
                   {item.label}
@@ -135,7 +137,6 @@ export function Sidebar({
 
       {/* ── Footer ── */}
       <div className={`border-t border-[#E5EAF2] space-y-1 flex-shrink-0 ${isCollapsed ? 'p-2' : 'p-3'}`}>
-       
 
         {/* Collapse toggle */}
         <div className="relative group/collapse">
@@ -155,36 +156,35 @@ export function Sidebar({
           )}
         </div>
 
-        {/* User block → naviga a /profilo */}
-<div className="relative group/user">
-  <button
-    onClick={() => navigate('profilo')}
-    className={`w-full flex items-center rounded-xl hover:bg-[#F7F9FC] transition-all ${isCollapsed ? 'justify-center p-2' : 'gap-3 p-2'}`}
-  >
-    <div
-      className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-      style={{ backgroundColor: displayAvatarBg }}
-    >
-      {displayAvatar}
-    </div>
-    {!isCollapsed && (
-      <>
-        <div className="flex-1 text-left min-w-0">
-          <p className="text-xs font-medium text-[#2D2D2D] truncate">{displayName}</p>
-          <p className="text-xs truncate" style={{ color: roleStyle.dot }}>{displayRole}</p>
+        {/* User block */}
+        <div className="relative group/user">
+          <button
+            onClick={() => navigate('profilo')}
+            className={`w-full flex items-center rounded-xl hover:bg-[#F7F9FC] transition-all ${isCollapsed ? 'justify-center p-2' : 'gap-3 p-2'}`}
+          >
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+              style={{ backgroundColor: displayAvatarBg }}
+            >
+              {displayAvatar}
+            </div>
+            {!isCollapsed && (
+              <>
+                <div className="flex-1 text-left min-w-0">
+                  <p className="text-xs font-medium text-[#2D2D2D] truncate">{displayName}</p>
+                  <p className="text-xs truncate" style={{ color: roleStyle.dot }}>{displayRole}</p>
+                </div>
+                <UserCog className="w-4 h-4 text-[#C4CDD6] opacity-0 group-hover/user:opacity-100 transition-opacity" />
+              </>
+            )}
+          </button>
+          {isCollapsed && (
+            <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1E293B] text-white text-xs font-medium rounded-lg opacity-0 group-hover/user:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
+              {displayName} — {displayRole}
+              <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#1E293B]" />
+            </div>
+          )}
         </div>
-        <UserCog className="w-4 h-4 text-[#C4CDD6] opacity-0 group-hover/user:opacity-100 transition-opacity" />
-      </>
-    )}
-  </button>
-  {isCollapsed && (
-    <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1E293B] text-white text-xs font-medium rounded-lg opacity-0 group-hover/user:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
-      {displayName} — {displayRole}
-      <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#1E293B]" />
-    </div>
-  )}
-</div>
-
 
         {/* Logout */}
         {onLogout && (

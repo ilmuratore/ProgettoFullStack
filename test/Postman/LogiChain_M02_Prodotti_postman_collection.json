@@ -864,7 +864,7 @@
           ]
         },
         {
-          "name": "14 - GET lista: eliminato non compare -> 200",
+          "name": "14 - GET lista: eliminato compare con attivo=false -> 200",
           "request": {
             "method": "GET",
             "header": [
@@ -893,10 +893,11 @@
                 "exec": [
                   "var b = pm.response.json();",
                   "pm.test('14 lista -> 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('prodotto eliminato NON presente in lista', function () {",
+                  "pm.test('prodotto eliminato compare in lista con attivo=false', function () {",
                   "  var pid = Number(pm.collectionVariables.get('prodotto_id'));",
-                  "  var ids = (b.data || []).map(function (p) { return p.id; });",
-                  "  pm.expect(ids).to.not.include(pid);",
+                  "  var prodotto = (b.data || []).find(function (p) { return p.id === pid; });",
+                  "  pm.expect(prodotto, 'prodotto deve essere presente nella lista').to.not.be.undefined;",
+                  "  pm.expect(prodotto.attivo, 'attivo deve essere false').to.be.false;",
                   "});"
                 ]
               }

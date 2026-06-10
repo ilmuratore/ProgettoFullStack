@@ -1,39 +1,51 @@
 import { useState } from 'react';
 import {
-  User, Mail, Camera, Save, Lock, Bell, Shield,
+  User, Camera, Save, Lock, Bell, Shield,
   Smartphone, Key, Eye, EyeOff, CheckCircle, AlertCircle, Monitor,
-  Clock, Activity, Download, Globe, Palette, Moon, Sun, LogOut,
+  Clock, Activity, Download, Globe, LogOut,
   Edit2, X, ChevronRight,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuthStore, RUOLO_ID_TO_NOME } from '../store/authStore';
+import { authApi } from '../api/authApi';
 
-type Tab = 'profilo' | 'sicurezza' | 'notifiche' | 'preferenze' | 'sessioni';
+type Tab = 'profilo' | 'sicurezza' | 'notifiche' ;
 
-const RECENT_SESSIONS = [
-  { device: 'Chrome — Windows', browser: 'Sessione corrente', location: 'Milano, IT', time: 'Adesso', current: true },
-  { device: 'Safari — iPhone',  browser: 'Mobile',            location: 'Milano, IT', time: 'Ieri 18:30', current: false },
-];
 
-const ACTIVITY_LOG = [
-  { action: 'Login effettuato',    detail: 'Sessione avviata',            time: 'Oggi',       type: 'login'    },
-  { action: 'Profilo visualizzato', detail: 'Pagina profilo',             time: 'Oggi',       type: 'edit'     },
-];
+
 
 const AVATAR_BGS: Record<number, string> = {
-  1: '#0F172A', 2: '#1D4ED8', 3: '#0D9488', 4: '#16A34A', 5: '#EA580C',
+  1:  '#0F172A',
+  2:  '#4F46E5',
+  3:  '#0891B2',
+  4:  '#059669',
+  5:  '#DC2626',
+  6:  '#7C3AED',
+  7:  '#1D4ED8',
+  8:  '#0D9488',
+  9:  '#16A34A',
+  10: '#EA580C',
 };
+
+const REQUISITI = [
+  { label: 'Almeno 6 caratteri',    check: (p: string) => p.length >= 6 },
+  { label: 'Una lettera maiuscola', check: (p: string) => /[A-Z]/.test(p) },
+  { label: 'Un numero',             check: (p: string) => /[0-9]/.test(p) },
+];
 
 export function UserProfilePage() {
   const { utente, logout } = useAuthStore();
 
   const [activeTab, setActiveTab] = useState<Tab>('profilo');
-  const [showOldPwd, setShowOldPwd] = useState(false);
-  const [showNewPwd, setShowNewPwd] = useState(false);
-  const [twoFa, setTwoFa] = useState(true);
   const [notifs, setNotifs] = useState({
     ordini: true, magazzino: true, fatture: true, sistema: false,
     email: true, push: false, sms: false,
   });
+
+  const [pwdForm, setPwdForm] = useState({ attuale: '', nuova: '', conferma: '' });
+  const [pwdShow, setPwdShow] = useState({ attuale: false, nuova: false, conferma: false });
+  const [pwdErrors, setPwdErrors] = useState<Partial<typeof pwdForm>>({});
+  const [pwdLoading, setPwdLoading] = useState(false);
 
   if (!utente) return null;
 
@@ -42,12 +54,46 @@ export function UserProfilePage() {
   const avatarBg  = AVATAR_BGS[utente.ruolo_id] ?? '#6B7280';
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'profilo',   label: 'Profilo' },
-    { id: 'sicurezza', label: 'Sicurezza' },
-    { id: 'notifiche', label: 'Notifiche' },
-    { id: 'preferenze',label: 'Preferenze' },
-    { id: 'sessioni',  label: 'Sessioni & Log' },
+    { id: 'profilo',    label: 'Profilo'         },
+    { id: 'sicurezza',  label: 'Sicurezza'        },
+    { id: 'notifiche',  label: 'Notifiche'        },
   ];
+
+  const setPwd = (field: keyof typeof pwdForm) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setPwdForm(prev => ({ ...prev, [field]: e.target.value }));
+      if (pwdErrors[field]) setPwdErrors(prev => ({ ...prev, [field]: undefined }));
+    };
+
+  const validatePwd = (): boolean => {
+    const errs: Partial<typeof pwdForm> = {};
+    if (!pwdForm.attuale) errs.attuale = 'Inserisci la password attuale';
+    if (pwdForm.nuova.length < 6) errs.nuova = 'Minimo 6 caratteri';
+    if (pwdForm.nuova === pwdForm.attuale) errs.nuova = 'La nuova password deve essere diversa';
+    if (pwdForm.conferma !== pwdForm.nuova) errs.conferma = 'Le password non coincidono';
+    setPwdErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handlePwdSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validatePwd()) return;
+    setPwdLoading(true);
+    try {
+      await authApi.changePassword(pwdForm.attuale, pwdForm.nuova);
+      toast.success('Password aggiornata');
+      setPwdForm({ attuale: '', nuova: '', conferma: '' });
+      setPwdErrors({});
+    } catch (err: any) {
+      if (err?.code === 'PASSWORD_NON_VALIDA') {
+        setPwdErrors({ attuale: 'La password attuale non è corretta' });
+      } else {
+        toast.error('Aggiornamento fallito', { description: err?.message });
+      }
+    } finally {
+      setPwdLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -58,7 +104,7 @@ export function UserProfilePage() {
         </div>
       </div>
 
-      {/* Hero card — dati reali */}
+      {/* Hero card */}
       <div className="bg-white rounded-2xl border border-[#E5EAF2] p-6">
         <div className="flex items-center gap-6">
           <div className="relative">
@@ -98,7 +144,7 @@ export function UserProfilePage() {
       </div>
 
       <div className="flex gap-6">
-        {/* Sidebar tab verticale */}
+        {/* Sidebar tab */}
         <div className="w-52 flex-shrink-0">
           <div className="bg-white rounded-2xl border border-[#E5EAF2] p-2 space-y-0.5">
             {tabs.map(t => (
@@ -127,72 +173,62 @@ export function UserProfilePage() {
         <div className="flex-1 space-y-5">
 
           {activeTab === 'profilo' && (
-            <>
-              <Section title="Dati Personali" icon={<User className="w-4 h-4 text-[#3B82F6]" />}>
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Nome" defaultValue={utente.nome} />
-                  <Field label="Cognome" defaultValue={utente.cognome} />
-                  <Field label="Email" type="email" defaultValue={utente.email} />
-                  <div className="col-span-2">
-                    <label className="text-xs text-[#9CA3AF] mb-2 block">Ruolo di sistema</label>
-                    <input disabled value={ruoloNome} className="w-full h-10 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm text-[#9CA3AF] cursor-not-allowed" />
-                    <p className="text-xs text-[#9CA3AF] mt-1">Il ruolo può essere modificato solo dall'amministratore.</p>
-                  </div>
+            <Section title="Dati Personali" icon={<User className="w-4 h-4 text-[#3B82F6]" />}>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Nome"    defaultValue={utente.nome} />
+                <Field label="Cognome" defaultValue={utente.cognome} />
+                <Field label="Email"   type="email" defaultValue={utente.email} />
+                <div className="col-span-2">
+                  <label className="text-xs text-[#9CA3AF] mb-2 block">Ruolo di sistema</label>
+                  <input disabled value={ruoloNome} className="w-full h-10 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm text-[#9CA3AF] cursor-not-allowed" />
+                  <p className="text-xs text-[#9CA3AF] mt-1">Il ruolo può essere modificato solo dall'amministratore.</p>
                 </div>
-              </Section>
-            </>
+              </div>
+            </Section>
           )}
 
           {activeTab === 'sicurezza' && (
             <>
               <Section title="Cambia Password" icon={<Lock className="w-4 h-4 text-[#3B82F6]" />}>
-                <div className="space-y-4">
-                  <PwdField label="Password Attuale" show={showOldPwd} toggle={() => setShowOldPwd(v => !v)} />
-                  <PwdField label="Nuova Password" show={showNewPwd} toggle={() => setShowNewPwd(v => !v)} />
-                  <div>
-                    <label className="text-xs text-[#9CA3AF] mb-2 block">Conferma Nuova Password</label>
-                    <input type="password" className="w-full h-10 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20" />
-                  </div>
-                  <div className="bg-[#F7F9FC] rounded-xl p-3 space-y-1.5">
-                    <p className="text-xs text-[#9CA3AF] mb-2">Requisiti password</p>
-                    {['Almeno 8 caratteri', 'Una lettera maiuscola', 'Un numero', 'Un carattere speciale'].map((r) => (
-                      <div key={r} className="flex items-center gap-2">
-                        <CheckCircle className="w-3.5 h-3.5 text-[#E5EAF2]" />
-                        <span className="text-xs text-[#6B7280]">{r}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <button className="w-full py-2.5 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl font-medium hover:shadow-lg transition-all text-sm">
-                    Aggiorna Password
-                  </button>
-                </div>
-              </Section>
+                <form onSubmit={handlePwdSubmit} className="space-y-4">
+                  <PwdField label="Password Attuale"       value={pwdForm.attuale}  show={pwdShow.attuale}  toggle={() => setPwdShow(s => ({ ...s, attuale: !s.attuale }))}  onChange={setPwd('attuale')}  error={pwdErrors.attuale} />
+                  <PwdField label="Nuova Password"         value={pwdForm.nuova}    show={pwdShow.nuova}    toggle={() => setPwdShow(s => ({ ...s, nuova: !s.nuova }))}      onChange={setPwd('nuova')}    error={pwdErrors.nuova} />
+                  <PwdField label="Conferma Nuova Password" value={pwdForm.conferma} show={pwdShow.conferma} toggle={() => setPwdShow(s => ({ ...s, conferma: !s.conferma }))} onChange={setPwd('conferma')} error={pwdErrors.conferma} />
 
-              <Section title="Autenticazione a Due Fattori (2FA)" icon={<Smartphone className="w-4 h-4 text-[#3B82F6]" />}>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-[#F7F9FC] rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-white rounded-xl border border-[#E5EAF2] flex items-center justify-center shadow-sm">
-                        <Key className="w-5 h-5 text-[#17E88F]" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-[#2D2D2D]">App Authenticator</p>
-                        <p className="text-xs text-[#9CA3AF]">Google Authenticator / Authy</p>
-                      </div>
-                    </div>
-                    <Toggle value={twoFa} onChange={setTwoFa} />
-                  </div>
-                  {twoFa && (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium text-emerald-800">2FA Attiva</p>
-                        <p className="text-xs text-emerald-700">Il tuo account è protetto con autenticazione a due fattori.</p>
-                      </div>
+                  {pwdForm.nuova && (
+                    <div className="bg-[#F7F9FC] rounded-xl p-3 space-y-1.5">
+                      <p className="text-xs text-[#9CA3AF] mb-2">Requisiti password</p>
+                      {REQUISITI.map(r => {
+                        const ok = r.check(pwdForm.nuova);
+                        return (
+                          <div key={r.label} className="flex items-center gap-2">
+                            {ok
+                              ? <CheckCircle className="w-3.5 h-3.5 text-[#17E88F]" />
+                              : <AlertCircle className="w-3.5 h-3.5 text-[#E5EAF2]" />
+                            }
+                            <span className={`text-xs ${ok ? 'text-[#2D2D2D]' : 'text-[#9CA3AF]'}`}>{r.label}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
-                </div>
+
+                  <button
+                    type="submit"
+                    disabled={pwdLoading}
+                    className="w-full py-2.5 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl font-medium hover:shadow-lg transition-all text-sm disabled:opacity-60 flex items-center justify-center gap-2"
+                  >
+                    {pwdLoading && (
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                    )}
+                    Aggiorna Password
+                  </button>
+                </form>
               </Section>
+
             </>
           )}
 
@@ -216,10 +252,10 @@ export function UserProfilePage() {
               <Section title="Tipi di Notifica" icon={<AlertCircle className="w-4 h-4 text-[#3B82F6]" />}>
                 <div className="space-y-3">
                   {([
-                    { key: 'ordini',    label: 'Ordini e spedizioni',       detail: 'Acquisti, vendite, stato spedizioni' },
-                    { key: 'magazzino', label: 'Avvisi magazzino',           detail: 'Sottoscorta, inventario' },
-                    { key: 'fatture',   label: 'Fatturazione & Pagamenti',   detail: 'Scadenze, pagamenti ricevuti/inviati' },
-                    { key: 'sistema',   label: 'Aggiornamenti sistema',      detail: 'Manutenzione, nuove funzionalità' },
+                    { key: 'ordini',    label: 'Ordini e spedizioni',     detail: 'Acquisti, vendite, stato spedizioni' },
+                    { key: 'magazzino', label: 'Avvisi magazzino',         detail: 'Sottoscorta, inventario' },
+                    { key: 'fatture',   label: 'Fatturazione',             detail: 'Scadenze, pagamenti ricevuti/inviati' },
+                    { key: 'sistema',   label: 'Aggiornamenti sistema',    detail: 'Manutenzione, nuove funzionalità' },
                   ] as { key: keyof typeof notifs; label: string; detail: string }[]).map(n => (
                     <div key={n.key} className="flex items-center justify-between p-3 border border-[#E5EAF2] rounded-xl hover:bg-[#F7F9FC] transition-colors">
                       <div>
@@ -234,84 +270,8 @@ export function UserProfilePage() {
             </>
           )}
 
-          {activeTab === 'preferenze' && (
-            <Section title="Lingua e Fuso Orario" icon={<Globe className="w-4 h-4 text-[#3B82F6]" />}>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs text-[#9CA3AF] mb-2 block">Lingua</label>
-                  <select className="w-full h-10 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm focus:outline-none">
-                    <option value="it">Italiano</option>
-                    <option value="en">English</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-[#9CA3AF] mb-2 block">Fuso Orario</label>
-                  <select className="w-full h-10 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm focus:outline-none">
-                    <option>Europe/Rome (UTC+2)</option>
-                    <option>Europe/London (UTC+1)</option>
-                  </select>
-                </div>
-                <div className="pt-2 border-t border-[#E5EAF2]">
-                  <button className="w-full flex items-center justify-between p-3 border border-red-200 rounded-xl hover:bg-red-50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <X className="w-4 h-4 text-red-500" />
-                      <span className="text-sm text-red-600">Elimina Account</span>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-red-400" />
-                  </button>
-                </div>
-              </div>
-            </Section>
-          )}
-
-          {activeTab === 'sessioni' && (
-            <>
-              <Section title="Sessioni Attive" icon={<Monitor className="w-4 h-4 text-[#3B82F6]" />}>
-                <div className="space-y-3">
-                  {RECENT_SESSIONS.map((s, i) => (
-                    <div key={i} className={`flex items-center justify-between p-4 rounded-xl border ${s.current ? 'border-[#17E88F] bg-[#F0FDF7]' : 'border-[#E5EAF2]'}`}>
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-white rounded-xl border border-[#E5EAF2] flex items-center justify-center shadow-sm">
-                          <Monitor className="w-5 h-5 text-[#6B7280]" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-[#2D2D2D]">{s.device}</p>
-                            {s.current && <span className="px-2 py-0.5 bg-[#17E88F]/10 text-[#17E88F] text-xs rounded-full font-medium">Corrente</span>}
-                          </div>
-                          <p className="text-xs text-[#9CA3AF]">{s.browser} · {s.location} · {s.time}</p>
-                        </div>
-                      </div>
-                      {!s.current && (
-                        <button className="text-xs text-red-500 px-3 py-1.5 border border-red-200 rounded-lg hover:bg-red-50">
-                          Revoca
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </Section>
-
-              <Section title="Log Attività" icon={<Activity className="w-4 h-4 text-[#3B82F6]" />}>
-                <div className="space-y-2">
-                  {ACTIVITY_LOG.map((ev, i) => (
-                    <div key={i} className="flex items-center gap-3 p-3 bg-[#F7F9FC] rounded-xl">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${ev.type === 'login' ? 'bg-emerald-100' : 'bg-blue-100'}`}>
-                        {ev.type === 'login'
-                          ? <CheckCircle className="w-4 h-4 text-emerald-600" />
-                          : <Edit2 className="w-4 h-4 text-blue-600" />}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-[#2D2D2D]">{ev.action}</p>
-                        <p className="text-xs text-[#9CA3AF]">{ev.detail}</p>
-                      </div>
-                      <span className="text-xs text-[#9CA3AF] whitespace-nowrap">{ev.time}</span>
-                    </div>
-                  ))}
-                </div>
-              </Section>
-            </>
-          )}
+          
+         
         </div>
       </div>
     </div>
@@ -339,16 +299,27 @@ function Field({ label, type = 'text', defaultValue }: { label: string; type?: s
   );
 }
 
-function PwdField({ label, show, toggle }: { label: string; show: boolean; toggle: () => void }) {
+function PwdField({
+  label, value, show, toggle, onChange, error,
+}: {
+  label: string; value: string; show: boolean;
+  toggle: () => void; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; error?: string;
+}) {
   return (
     <div>
       <label className="text-xs text-[#9CA3AF] mb-2 block">{label}</label>
       <div className="relative">
-        <input type={show ? 'text' : 'password'} className="w-full h-10 px-4 pr-10 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20" />
+        <input
+          type={show ? 'text' : 'password'} value={value} onChange={onChange}
+          className={`w-full h-10 px-4 pr-10 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all ${
+            error ? 'border-red-400 bg-red-50' : 'bg-[#F7F9FC] border-[#E5EAF2]'
+          }`}
+        />
         <button type="button" onClick={toggle} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#6B7280]">
           {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
         </button>
       </div>
+      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>
   );
 }

@@ -17,9 +17,12 @@ export interface RegisterData {
 }
 
 export const authApi = {
-  login:    (email: string, password: string) =>
-              api.post<LoginResponse>('/auth/login', { email, password }),
-  register: (data: RegisterData) =>
-              api.post<UtenteAPI>('/auth/register', data),
-  me:       () => api.get<UtenteAPI>('/auth/me'),
+  login:          (email: string, password: string) =>
+                    api.post<LoginResponse>('/auth/login', { email, password }),
+  register:       (data: RegisterData) =>
+                    api.post<UtenteAPI>('/auth/register', data),
+  me:             () =>
+                    api.get<UtenteAPI>('/auth/me'),
+  changePassword: (password_attuale: string, password_nuova: string) =>
+                    api.patch<void>('/auth/password', { password_attuale, password_nuova }),
 };

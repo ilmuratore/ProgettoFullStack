@@ -1,6 +1,5 @@
 const magazziniService = require('../services/magazziniService');
 
-// GET /api/v1/magazzini
 const getAll = async (_req, res, next) => {
     try {
         const magazzini = await magazziniService.getAll();
@@ -10,7 +9,6 @@ const getAll = async (_req, res, next) => {
     }
 };
 
-// GET /api/v1/magazzini/:id
 const getById = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -21,7 +19,6 @@ const getById = async (req, res, next) => {
     }
 };
 
-// POST /api/v1/magazzini
 const create = async (req, res, next) => {
     try {
         const magazzino = await magazziniService.create(req.body);
@@ -31,7 +28,6 @@ const create = async (req, res, next) => {
     }
 };
 
-// PATCH /api/v1/magazzini/:id
 const update = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -42,7 +38,6 @@ const update = async (req, res, next) => {
     }
 };
 
-// PATCH /api/v1/magazzini/:id/toggle
 const toggleAttivo = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);

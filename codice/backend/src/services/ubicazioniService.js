@@ -1,6 +1,6 @@
-const ubicazioniModel             = require('../models/ubicazioniModel');
-const magazziniModel              = require('../models/magazziniModel');
-const { buildCodiceComposto }     = require('./magazziniService');
+const ubicazioniModel         = require('../models/ubicazioniModel');
+const magazziniModel          = require('../models/magazziniModel');
+const { buildCodiceComposto } = require('./magazziniService');
 
 
 const throwError = (code, message) => {
@@ -17,6 +17,11 @@ const withCodice = (ubicazione) => ({
         ubicazione.scaffale
     )
 });
+
+const getAll = async () => {
+    const result = await ubicazioniModel.findAttive();
+    return result.rows.map(withCodice);
+};
 
 const getById = async (id) => {
     const result = await ubicazioniModel.findById(id);
@@ -74,8 +79,9 @@ const toggleAttivo = async (id) => {
 
 
 module.exports = {
+    getAll,
     getById,
     create,
     updateTemperatura,
-    toggleAttivo
+    toggleAttivo,
 };

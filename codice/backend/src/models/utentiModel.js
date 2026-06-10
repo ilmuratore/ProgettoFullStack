@@ -43,6 +43,12 @@ const findByEmail = (email) =>
         [email]
     );
 
+const findPasswordHash = (id) =>
+    pool.query(
+        `SELECT id, password_hash, attivo FROM utenti WHERE id = $1`,
+        [id]
+    );
+
 
 const create = ({ nome, cognome, email, password_hash, ruolo_id, attivo = true }) =>
     pool.query(
@@ -89,6 +95,6 @@ const remove = (id) =>
 
 
 module.exports = {
-    findAll, findById, findByEmail,
+    findAll, findById, findByEmail, findPasswordHash,
     create, update, updatePassword, remove
 };

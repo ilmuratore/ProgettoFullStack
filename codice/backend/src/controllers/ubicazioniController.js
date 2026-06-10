@@ -1,6 +1,14 @@
 const ubicazioniService = require('../services/ubicazioniService');
 
-// GET /api/v1/ubicazioni/:id
+const getAll = async (req, res, next) => {
+    try {
+        const ubicazioni = await ubicazioniService.getAll();
+        return res.status(200).json({ status: 'success', data: ubicazioni });
+    } catch (err) {
+        return next(err);
+    }
+};
+
 const getById = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -11,7 +19,6 @@ const getById = async (req, res, next) => {
     }
 };
 
-// POST /api/v1/magazzini/:magId/ubicazioni
 const create = async (req, res, next) => {
     try {
         const magazzino_id = parseInt(req.params.magId, 10);
@@ -22,7 +29,6 @@ const create = async (req, res, next) => {
     }
 };
 
-// PATCH /api/v1/ubicazioni/:id
 const updateTemperatura = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -35,7 +41,6 @@ const updateTemperatura = async (req, res, next) => {
     }
 };
 
-// PATCH /api/v1/ubicazioni/:id/toggle
 const toggleAttivo = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
@@ -46,4 +51,4 @@ const toggleAttivo = async (req, res, next) => {
     }
 };
 
-module.exports = { getById, create, updateTemperatura, toggleAttivo };
+module.exports = { getAll, getById, create, updateTemperatura, toggleAttivo };

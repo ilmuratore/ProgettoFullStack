@@ -1,22 +1,25 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, ChevronRight, LogOut, User, BellRing, HelpCircle, ChevronDown } from 'lucide-react';
+import { Search, ChevronRight, LogOut, User, BellRing, ChevronDown } from 'lucide-react';
 import { GlobalSearch } from './GlobalSearch';
 import { NotificationsPanel } from './NotificationsPanel';
 import type { UiUser as AuthUser } from '../../types/auth';
 
-// ─── Colori ruolo per il badge header ─────────────────────────────────────────
 const ROLE_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
-  Admin:                    { color: '#0F172A', bg: '#F1F5F9', label: 'Admin'           },
-  'Responsabile Acquisti':  { color: '#1D4ED8', bg: '#DBEAFE', label: 'Resp. Acquisti'  },
-  'Responsabile Magazzino': { color: '#0D9488', bg: '#CCFBF1', label: 'Resp. Magazzino' },
-  Operatore:                { color: '#16A34A', bg: '#DCFCE7', label: 'Operatore'        },
-  Corriere:                 { color: '#EA580C', bg: '#FEE2E2', label: 'Corriere'         },
+  'Admin':           { color: '#0F172A', bg: '#F1F5F9', label: 'Admin'           },
+  'Dev':             { color: '#5B21B6', bg: '#EDE9FE', label: 'Dev'             },
+  'Supporto':        { color: '#0369A1', bg: '#E0F2FE', label: 'Supporto'        },
+  'Resp. Azienda':   { color: '#047857', bg: '#D1FAE5', label: 'Resp. Azienda'   },
+  'Resp. HR':        { color: '#B91C1C', bg: '#FEE2E2', label: 'Resp. HR'        },
+  'Resp. Vendite':   { color: '#6D28D9', bg: '#EDE9FE', label: 'Resp. Vendite'   },
+  'Resp. Acquisti':  { color: '#1D4ED8', bg: '#DBEAFE', label: 'Resp. Acquisti'  },
+  'Resp. Magazzino': { color: '#0D9488', bg: '#CCFBF1', label: 'Resp. Magazzino' },
+  'Operatore':       { color: '#16A34A', bg: '#DCFCE7', label: 'Operatore'       },
+  'Corriere':        { color: '#EA580C', bg: '#FEF3C7', label: 'Corriere'        },
 };
 
 interface HeaderProps {
   onNavigate?: (page: string) => void;
   sidebarCollapsed?: boolean;
-  // Nuovi props per l'integrazione con il sistema auth
   user?: AuthUser;
   onLogout?: () => void;
 }
@@ -31,13 +34,12 @@ export function Header({ onNavigate, sidebarCollapsed = false, user, onLogout }:
   const [searchOpen, setSearchOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Dati utente: reali se disponibili, fallback ai valori mockup
-  const displayName = user ? `${user.nome} ${user.cognome}` : 'Mario Rossi';
-  const displayRole = user?.ruolo ?? 'Admin';
-  const displayEmail = user?.email ?? 'admin@logichain.it';
-  const displayAvatar = user?.avatar ?? 'MR';
+  const displayName     = user ? `${user.nome} ${user.cognome}` : 'Mario Rossi';
+  const displayRole     = user?.ruolo ?? 'Admin';
+  const displayEmail    = user?.email ?? 'admin@logichain.it';
+  const displayAvatar   = user?.avatar ?? 'MR';
   const displayAvatarBg = user?.avatarBg ?? '#17E88F';
-  const roleConf = ROLE_CONFIG[displayRole] ?? ROLE_CONFIG['Admin'];
+  const roleConf        = ROLE_CONFIG[displayRole] ?? ROLE_CONFIG['Admin'];
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -59,17 +61,14 @@ export function Header({ onNavigate, sidebarCollapsed = false, user, onLogout }:
       <header className={`h-16 bg-white/80 backdrop-blur-sm border-b border-[#E5EAF2] fixed top-0 right-0 z-10 transition-all duration-300 ${sidebarCollapsed ? 'left-[72px]' : 'left-[260px]'}`}>
         <div className="h-full px-6 flex items-center justify-between">
 
-          {/* Titolo pagina */}
           <div className="flex items-center gap-4">
             <div>
               <h2 className="font-semibold text-[#2D2D2D]">Dashboard</h2>
             </div>
           </div>
 
-          {/* Right side */}
           <div className="flex items-center gap-4">
 
-            {/* Search */}
             <button
               onClick={() => setSearchOpen(true)}
               className="relative w-64 h-10 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl hover:border-[#17E88F] transition-all text-left group"
@@ -83,7 +82,6 @@ export function Header({ onNavigate, sidebarCollapsed = false, user, onLogout }:
 
             <div className="h-8 w-px bg-[#E5EAF2]" />
 
-            {/* User dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(prev => !prev)}
@@ -93,7 +91,6 @@ export function Header({ onNavigate, sidebarCollapsed = false, user, onLogout }:
                   <div className="font-medium text-sm text-[#2D2D2D]">{displayName}</div>
                   <div className="text-xs" style={{ color: roleConf.color }}>{roleConf.label}</div>
                 </div>
-                {/* Avatar con colore ruolo */}
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white text-sm font-bold"
                   style={{ backgroundColor: displayAvatarBg }}
@@ -106,7 +103,6 @@ export function Header({ onNavigate, sidebarCollapsed = false, user, onLogout }:
               {dropdownOpen && (
                 <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-[#E5EAF2] overflow-hidden z-50">
 
-                  {/* Profile header */}
                   <div className="p-4 bg-gradient-to-br from-[#F0FDF7] to-[#F7F9FC] border-b border-[#E5EAF2]">
                     <div className="flex items-center gap-3">
                       <div
@@ -135,7 +131,6 @@ export function Header({ onNavigate, sidebarCollapsed = false, user, onLogout }:
                     </div>
                   </div>
 
-                  {/* Menu items */}
                   <div className="p-2">
                     {dropdownItems.map((item) => {
                       const Icon = item.icon;
@@ -158,7 +153,6 @@ export function Header({ onNavigate, sidebarCollapsed = false, user, onLogout }:
                     })}
                   </div>
 
-                  {/* Logout */}
                   <div className="p-2 border-t border-[#E5EAF2]">
                     <button
                       onClick={handleLogout}

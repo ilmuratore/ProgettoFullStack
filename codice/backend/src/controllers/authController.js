@@ -1,7 +1,6 @@
 const authService = require('../services/authService');
 
 
-// POST /api/v1/auth/login
 const login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
@@ -17,7 +16,6 @@ const login = async (req, res, next) => {
 };
 
 
-// POST /api/v1/auth/register
 const register = async (req, res, next) => {
     try {
         const utente = await authService.register(req.body);
@@ -32,7 +30,6 @@ const register = async (req, res, next) => {
 };
 
 
-// GET /api/v1/auth/me
 const getMe = async (req, res, next) => {
     try {
         const utente = await authService.getMe(req.user.id);
@@ -47,8 +44,20 @@ const getMe = async (req, res, next) => {
 };
 
 
+const changePassword = async (req, res, next) => {
+    try {
+        const { password_attuale, password_nuova } = req.body;
+        await authService.changePassword(req.user.id, password_attuale, password_nuova);
+        return res.status(204).send();
+    } catch (err) {
+        return next(err);
+    }
+};
+
+
 module.exports = {
     login,
     register,
-    getMe
+    getMe,
+    changePassword
 };

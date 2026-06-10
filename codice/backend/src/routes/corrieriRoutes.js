@@ -6,9 +6,6 @@ const validate             = require('../middleware/validate');
 
 const router = express.Router();
 
-// corrieri:read/write/delete rimossi dalla matrice RBAC V2.
-// Corrieri rientrano nel dominio magazzino → magazzino:read / magazzino:write.
-
 const createBlueprint = {
     codice:   { required: true,  type: 'string' },
     nome:     { required: true,  type: 'string' },

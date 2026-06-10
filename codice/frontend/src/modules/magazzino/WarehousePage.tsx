@@ -10,7 +10,6 @@ import { StockTable } from './components/StockTable';
 import { StockMovementsTimeline } from './components/StockMovementsTimeline';
 import { NewMovementModal } from './components/NewMovementModal';
 import { ProductFormModal } from './components/ProductFormModal';
-// da lasciare per il merge, componente dettaglio prodotto
 import { ProductDetailDrawer } from './components/ProductDetailDrawer';
 import { CategoryFormModal } from './components/CategoryFormModal';
 import { ProductsTab } from './components/ProductsTab';
@@ -30,7 +29,6 @@ import type {
   Ubicazione,
   UbicazioneCreateRequest,
 } from '../../types/magazzino';
-// aggiunto Prodotto nei type importati
 import type { Prodotto, ProdottoListino, ProdottoCreateRequest, ProdottoUpdateRequest } from '../../types/prodotti';
 import type { Categoria, CategoriaCreateRequest, CategoriaUpdateRequest } from '../../types/categorie';
 
@@ -59,7 +57,6 @@ export function WarehousePage() {
   const [activeTab, setActiveTab] = useState<WarehouseTab>('prodotti');
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
 
-  // ── Magazzini ──────────────────────────────────────────────────────────────
   const [magazzini, setMagazzini] = useState<MagazzinoConUbicazioni[]>([]);
   const [loading, setLoading] = useState(false);
   const [magModalOpen, setMagModalOpen] = useState(false);
@@ -81,19 +78,15 @@ export function WarehousePage() {
   const canWriteProdotti = hasPermesso('prodotti:write');
   const canDeleteProdotti = hasPermesso('prodotti:delete');
 
-  // ── Prodotti ───────────────────────────────────────────────────────────────
   const [prodotti, setProdotti] = useState<ProdottoListino[]>([]);
   const [loadingProdotti, setLoadingProdotti] = useState(false);
   const [searchProdotti, setSearchProdotti] = useState('');
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [productModalMode, setProductModalMode] = useState<'create' | 'edit'>('create');
-  // aggiunto prodotto selezionato
   const [selectedProduct, setSelectedProduct] = useState<Prodotto | null>(null);
-  // da lasciare per il merge useState per apertura dettaglio prodotto
   const [productDetailOpen, setProductDetailOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
 
-  // ── Categorie ──────────────────────────────────────────────────────────────
   const [categorie, setCategorie] = useState<Categoria[]>([]);
   const [loadingCategorie, setLoadingCategorie] = useState(false);
   const [searchCategorie, setSearchCategorie] = useState('');
@@ -103,10 +96,12 @@ export function WarehousePage() {
   const [initialParentCategoryId, setInitialParentCategoryId] = useState<number | undefined>(undefined);
   const [categoryToDelete, setCategoryToDelete] = useState<Categoria | null>(null);
 
-  // ── Fetch functions ────────────────────────────────────────────────────────
   const fetchMagazzini = useCallback(async () => {
     setLoading(true);
-    try { setMagazzini(await magazzinoApi.list()); }
+    try { 
+      const data = await magazzinoApi.list();
+      setMagazzini(
+        data.map((mag) => ({...mag, ubicazioni: Array.isArray(mag.ubicazioni) ? mag.ubicazioni : [],}))); }
     catch (err: any) { toast.error('Errore caricamento magazzini', { description: err?.message }); }
     finally { setLoading(false); }
   }, []);
@@ -125,20 +120,18 @@ export function WarehousePage() {
     finally { setLoadingCategorie(false); }
   }, []);
 
-  // Lazy loading: fetch solo al primo accesso del tab
   const fetchedTabs = useRef(new Set<WarehouseTab>());
   const fetchForTab = useCallback((tab: WarehouseTab) => {
     if (fetchedTabs.current.has(tab)) return;
     fetchedTabs.current.add(tab);
     if (tab === 'struttura') fetchMagazzini();
-    if (tab === 'prodotti') { fetchProdotti(); fetchCategorie(); } // categorie servono anche per il modal prodotti
+    if (tab === 'prodotti') { fetchProdotti(); fetchCategorie(); } 
     if (tab === 'categorie') fetchCategorie();
   }, [fetchMagazzini, fetchProdotti, fetchCategorie]);
 
   useEffect(() => { fetchForTab('struttura'); }, []);
   useEffect(() => { fetchForTab(activeTab); }, [activeTab, fetchForTab]);
 
-  // ── Action button ──────────────────────────────────────────────────────────
   const getActionButton = (): { label: string; action: () => void; show: boolean } => {
     switch (activeTab) {
       case 'struttura':
@@ -165,11 +158,22 @@ export function WarehousePage() {
 
   const action = getActionButton();
 
-  // ── Magazzini handlers ─────────────────────────────────────────────────────
   const handleToggleMagazzino = async (id: number) => {
     try {
       const updated = await magazzinoApi.toggle(id);
-      setMagazzini(prev => prev.map(m => m.id === id ? { ...m, ...updated } : m));
+      setMagazzini(prev => prev.map(m => {
+  if (m.id !== id) return m;
+
+  return {
+    ...m,
+    ...updated,
+    ubicazioni: Array.isArray((updated as any).ubicazioni)
+      ? (updated as any).ubicazioni
+      : Array.isArray(m.ubicazioni)
+        ? m.ubicazioni
+        : [],
+  };
+}));
       toast.success(`Magazzino ${updated.attivo ? 'attivato' : 'disattivato'}`);
     } catch (err: any) { toast.error('Operazione fallita', { description: err?.message }); }
   };
@@ -195,7 +199,13 @@ export function WarehousePage() {
     try {
       const updated = await magazzinoApi.toggleUbicazione(ubicId);
       setMagazzini(prev => prev.map(m => m.id === magId
-        ? { ...m, ubicazioni: m.ubicazioni.map(u => u.id === ubicId ? { ...u, ...updated } : u) } : m
+        ? {
+    ...m,
+    ubicazioni: (Array.isArray(m.ubicazioni) ? m.ubicazioni : []).map(u =>
+      u.id === ubicId ? { ...u, ...updated } : u
+    )
+  }
+: m
       ));
       toast.success(`Ubicazione ${updated.attivo ? 'attivata' : 'disattivata'}`);
     } catch (err: any) { toast.error('Operazione fallita', { description: err?.message }); }
@@ -243,7 +253,19 @@ export function WarehousePage() {
           ...(magForm.paese.trim() && { paese: magForm.paese.trim() }),
         };
         const updated = await magazzinoApi.update(selectedMag.id, payload);
-        setMagazzini(prev => prev.map(m => m.id === selectedMag.id ? { ...m, ...updated } : m));
+        setMagazzini(prev => prev.map(m => {
+  if (m.id !== selectedMag.id) return m;
+
+  return {
+    ...m,
+    ...updated,
+    ubicazioni: Array.isArray((updated as any).ubicazioni)
+      ? (updated as any).ubicazioni
+      : Array.isArray(m.ubicazioni)
+        ? m.ubicazioni
+        : [],
+  };
+}));
         toast.success('Magazzino aggiornato');
       }
       setMagModalOpen(false);
@@ -275,13 +297,23 @@ export function WarehousePage() {
         };
         const created = await magazzinoApi.createUbicazione(selectedMagId, payload);
         setMagazzini(prev => prev.map(m => m.id === selectedMagId
-          ? { ...m, ubicazioni: [...m.ubicazioni, created] } : m
+          ? {
+    ...m,
+    ubicazioni: [...(Array.isArray(m.ubicazioni) ? m.ubicazioni : []), created]
+  }
+: m
         ));
         toast.success('Ubicazione creata');
       } else if (ubicModalMode === 'edit' && selectedUbic) {
         const updated = await magazzinoApi.updateTemperatura(selectedUbic.id, { temperatura_controllata: ubicForm.temperatura_controllata });
         setMagazzini(prev => prev.map(m => m.id === selectedUbic.magazzino_id
-          ? { ...m, ubicazioni: m.ubicazioni.map(u => u.id === selectedUbic.id ? { ...u, ...updated } : u) } : m
+          ? {
+    ...m,
+    ubicazioni: (Array.isArray(m.ubicazioni) ? m.ubicazioni : []).map(u =>
+      u.id === selectedUbic.id ? { ...u, ...updated } : u
+    )
+  }
+: m
         ));
         toast.success('Ubicazione aggiornata');
       }
@@ -294,9 +326,7 @@ export function WarehousePage() {
     } finally { setUbicLoading(false); }
   };
 
-  // ── Prodotti handlers ──────────────────────────────────────────────────────
   const handleSaveProduct = async (data: ProdottoCreateRequest | ProdottoUpdateRequest, id?: number) => {
-    // serve a dire quali dati del prodotto mostrare
     const toListinoItem = (prodotto: Prodotto): ProdottoListino => ({
       id: prodotto.id,
       sku: prodotto.sku,
@@ -325,7 +355,6 @@ export function WarehousePage() {
     }
   };
 
-  // aggiunta di 1 nuovo handle per la modifica
   const handleEditProduct = async (productId: number) => {
     try {
       const product = await prodottiApi.getById(productId);
@@ -347,7 +376,6 @@ export function WarehousePage() {
     } catch (err: any) { toast.error('Eliminazione fallita', { description: err?.message }); }
   };
 
-  // ── Categorie handlers ─────────────────────────────────────────────────────
   const handleSaveCategory = async (data: CategoriaCreateRequest | CategoriaUpdateRequest, id?: number) => {
     try {
       if (categoryModalMode === 'create') {
@@ -390,7 +418,6 @@ export function WarehousePage() {
     setCategoryModalOpen(true);
   };
 
-  // ── Helpers UI ─────────────────────────────────────────────────────────────
   const setMag = (field: keyof MagazzinoFormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setMagForm(prev => ({ ...prev, [field]: e.target.value }));
     if (magErrors[field]) setMagErrors(prev => ({ ...prev, [field]: undefined }));
