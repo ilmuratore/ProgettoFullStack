@@ -1,5 +1,5 @@
 import { AlertTriangle, TrendingUp, Bell } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
 const lateOrders = [
   { numero: 'PO-2026-012', fornitore: 'Imballaggi Express', ritardo: 5 },

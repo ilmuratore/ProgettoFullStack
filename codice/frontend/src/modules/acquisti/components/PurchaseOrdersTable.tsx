@@ -1,35 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { Search, Filter, ArrowUpDown, Eye } from 'lucide-react';
+import { toast } from 'sonner';
+import { acquistiApi } from '../../../api/acquistiApi';
+import type { OrdineAcquistoLista, StatoOrdineAcquisto } from '../../../types/acquisti';
 
-type OrderStatus = 'BOZZA' | 'INVIATO' | 'CONFERMATO' | 'IN_RICEZIONE' | 'COMPLETATO' | 'ANNULLATO';
-
-interface PurchaseOrder {
-  id: string;
-  fornitore: string;
-  dataCreazione: string;
-  dataPrevista: string;
-  importoTotale: string;
-  stato: OrderStatus;
-  prodotti: number;
-  responsabile: string;
-  ultimoAggiornamento: string;
-}
-
-const orders: PurchaseOrder[] = [
-  { id: 'PO-2026-001', fornitore: 'Packaging Solutions Italia S.p.A.', dataCreazione: '28/05/2026', dataPrevista: '05/06/2026', importoTotale: '€ 18.450', stato: 'CONFERMATO', prodotti: 8, responsabile: 'Laura Verdi', ultimoAggiornamento: '03/06 14:22' },
-  { id: 'PO-2026-002', fornitore: 'Pallet Systems Europe S.p.A.', dataCreazione: '29/05/2026', dataPrevista: '06/06/2026', importoTotale: '€ 12.800', stato: 'IN_RICEZIONE', prodotti: 3, responsabile: 'Marco Ferrari', ultimoAggiornamento: '03/06 11:15' },
-  { id: 'PO-2026-003', fornitore: 'Film Protezione Italia S.p.A.', dataCreazione: '30/05/2026', dataPrevista: '02/06/2026', importoTotale: '€ 8.920', stato: 'COMPLETATO', prodotti: 12, responsabile: 'Sofia Romano', ultimoAggiornamento: '02/06 16:45' },
-  { id: 'PO-2026-004', fornitore: 'Etichette Professionali S.r.l.', dataCreazione: '25/05/2026', dataPrevista: '01/06/2026', importoTotale: '€ 5.670', stato: 'COMPLETATO', prodotti: 5, responsabile: 'Andrea Ricci', ultimoAggiornamento: '01/06 09:30' },
-  { id: 'PO-2026-005', fornitore: 'Nastri & Reggette S.r.l.', dataCreazione: '01/06/2026', dataPrevista: '08/06/2026', importoTotale: '€ 14.230', stato: 'INVIATO', prodotti: 7, responsabile: 'Chiara Colombo', ultimoAggiornamento: '03/06 08:50' },
-  { id: 'PO-2026-006', fornitore: 'Scatole Cartone Europa S.p.A.', dataCreazione: '02/06/2026', dataPrevista: '09/06/2026', importoTotale: '€ 21.500', stato: 'CONFERMATO', prodotti: 15, responsabile: 'Francesco Marino', ultimoAggiornamento: '03/06 13:10' },
-  { id: 'PO-2026-007', fornitore: 'Materiali Logistica Pro S.r.l.', dataCreazione: '03/06/2026', dataPrevista: '10/06/2026', importoTotale: '€ 9.875', stato: 'BOZZA', prodotti: 4, responsabile: 'Elena Greco', ultimoAggiornamento: '03/06 15:30' },
-  { id: 'PO-2026-008', fornitore: 'Protezione Merci S.r.l.', dataCreazione: '22/05/2026', dataPrevista: '30/05/2026', importoTotale: '€ 7.340', stato: 'ANNULLATO', prodotti: 6, responsabile: 'Luca Bruno', ultimoAggiornamento: '28/05 10:20' },
-  { id: 'PO-2026-009', fornitore: 'Pallet Systems Europe S.p.A.', dataCreazione: '27/05/2026', dataPrevista: '04/06/2026', importoTotale: '€ 16.920', stato: 'IN_RICEZIONE', prodotti: 9, responsabile: 'Giulia Gallo', ultimoAggiornamento: '03/06 12:05' },
-  { id: 'PO-2026-010', fornitore: 'Film Protezione Italia S.p.A.', dataCreazione: '26/05/2026', dataPrevista: '03/06/2026', importoTotale: '€ 11.450', stato: 'COMPLETATO', prodotti: 11, responsabile: 'Roberto Costa', ultimoAggiornamento: '03/06 10:15' },
-];
-
-const getStatusBadge = (status: OrderStatus) => {
+const getStatusBadge = (status: StatoOrdineAcquisto) => {
   switch (status) {
     case 'BOZZA':
       return { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', label: 'Bozza' };
@@ -43,24 +19,47 @@ const getStatusBadge = (status: OrderStatus) => {
       return { bg: 'bg-[#DCFCE7]', text: 'text-[#22C55E]', label: 'Completato' };
     case 'ANNULLATO':
       return { bg: 'bg-[#FEE2E2]', text: 'text-[#EF4444]', label: 'Annullato' };
+    default:
+      return { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', label: status };
   }
 };
 
+const fmtData = (iso: string | null): string =>
+  iso ? new Date(iso).toLocaleDateString('it-IT') : '—';
+
+const fmtEuro = (n: number): string =>
+  `€ ${Number(n ?? 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 interface PurchaseOrdersTableProps {
-  onOrderClick: (orderId: string) => void;
+  onOrderClick: (orderId: number) => void;
+  reloadKey?: number;
 }
 
-export function PurchaseOrdersTable({ onOrderClick }: PurchaseOrdersTableProps) {
+export function PurchaseOrdersTable({ onOrderClick, reloadKey }: PurchaseOrdersTableProps) {
   const [search, setSearch] = useState('');
   const [searchParams] = useSearchParams();
+  const [orders, setOrders] = useState<OrdineAcquistoLista[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fornitore = searchParams.get('fornitore');
     if (fornitore) setSearch(fornitore);
   }, [searchParams]);
 
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    acquistiApi
+      .list()
+      .then((data) => { if (alive) setOrders(data); })
+      .catch((err: any) => toast.error('Errore caricamento ordini', { description: err?.message }))
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [reloadKey]);
+
   const filtered = orders.filter(o =>
-    o.id.toLowerCase().includes(search.toLowerCase()) || o.fornitore.toLowerCase().includes(search.toLowerCase())
+    String(o.id).includes(search.toLowerCase()) ||
+    (o.fornitore ?? '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -111,7 +110,11 @@ export function PurchaseOrdersTable({ onOrderClick }: PurchaseOrdersTableProps) 
             </tr>
           </thead>
           <tbody>
-            {filtered.map((order, index) => {
+            {loading ? (
+              <tr><td colSpan={9} className="py-8 text-center text-sm text-[#6B7280]">Caricamento ordini...</td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={9} className="py-8 text-center text-sm text-[#6B7280]">Nessun ordine di acquisto.</td></tr>
+            ) : filtered.map((order, index) => {
               const badge = getStatusBadge(order.stato);
               return (
                 <tr
@@ -120,18 +123,18 @@ export function PurchaseOrdersTable({ onOrderClick }: PurchaseOrdersTableProps) 
                     index % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'
                   }`}
                 >
-                  <td className="py-3 px-4 text-sm font-mono text-[#2D2D2D] font-medium">{order.id}</td>
+                  <td className="py-3 px-4 text-sm font-mono text-[#2D2D2D] font-medium">OA-{String(order.id).padStart(4, '0')}</td>
                   <td className="py-3 px-4 text-sm text-[#2D2D2D]">{order.fornitore}</td>
-                  <td className="py-3 px-4 text-sm text-[#6B7280]">{order.dataCreazione}</td>
-                  <td className="py-3 px-4 text-sm text-[#6B7280]">{order.dataPrevista}</td>
-                  <td className="py-3 px-4 text-sm font-medium text-[#2D2D2D]">{order.importoTotale}</td>
+                  <td className="py-3 px-4 text-sm text-[#6B7280]">{fmtData(order.created_at)}</td>
+                  <td className="py-3 px-4 text-sm text-[#6B7280]">{fmtData(order.data_prevista)}</td>
+                  <td className="py-3 px-4 text-sm font-medium text-[#2D2D2D]">{fmtEuro(order.importo_totale)}</td>
                   <td className="py-3 px-4">
                     <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${badge.bg} ${badge.text}`}>
                       {badge.label}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-sm text-[#6B7280]">{order.prodotti} items</td>
-                  <td className="py-3 px-4 text-sm text-[#6B7280]">{order.responsabile}</td>
+                  <td className="py-3 px-4 text-sm text-[#6B7280]">{order.numero_righe} items</td>
+                  <td className="py-3 px-4 text-sm text-[#6B7280]">{order.utente ?? '—'}</td>
                   <td className="py-3 px-4">
                     <button
                       onClick={() => onOrderClick(order.id)}

@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Plus, ShoppingCart, PackageCheck, BarChart2, CheckCircle2, Clock } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Plus, ShoppingCart, PackageCheck, BarChart2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { PurchaseKPIs } from './components/PurchaseKPIs';
 import { PurchaseOrdersTable } from './components/PurchaseOrdersTable';
 import { PurchaseWidgets } from './components/PurchaseWidgets';
@@ -8,6 +9,8 @@ import { SuppliersPerformance } from './components/SuppliersPerformance';
 import { OrderDetailDrawer } from './components/OrderDetailDrawer';
 import { NewPurchaseOrderModal } from './components/NewPurchaseOrderModal';
 import { PageTabBar, type TabConfig } from '../../components/ui/PageTabBar';
+import { ricezioniApi } from '../../api/ricezioniApi';
+import type { Ricezione, StatoOrdineAcquisto } from '../../types/acquisti';
 
 type PurchaseTab = 'ordini' | 'ricezioni' | 'kpi';
 
@@ -17,16 +20,40 @@ const tabs: TabConfig[] = [
   { id: 'kpi', label: 'KPI Acquisti', icon: BarChart2 },
 ];
 
-const ricezioniData: {id:string;poId:string;fornitore:string;dataRicezione:string;righe:number;totaleRicevuto:number;totaleAtteso:number;ubicazione:string;stato:string}[] = [];
+const fmtDataOra = (iso: string | null): string =>
+  iso ? new Date(iso).toLocaleString('it-IT') : '—';
+
+const statoLabel: Record<StatoOrdineAcquisto, { bg: string; text: string; label: string }> = {
+  BOZZA: { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', label: 'Bozza' },
+  INVIATO: { bg: 'bg-[#DBEAFE]', text: 'text-[#3B82F6]', label: 'Inviato' },
+  CONFERMATO: { bg: 'bg-[#EDE9FE]', text: 'text-[#8B5CF6]', label: 'Confermato' },
+  IN_RICEZIONE: { bg: 'bg-[#FEF3C7]', text: 'text-[#F59E0B]', label: 'In Ricezione' },
+  COMPLETATO: { bg: 'bg-[#DCFCE7]', text: 'text-[#22C55E]', label: 'Completato' },
+  ANNULLATO: { bg: 'bg-[#FEE2E2]', text: 'text-[#EF4444]', label: 'Annullato' },
+};
 
 export function PurchasesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<PurchaseTab>('ordini');
+  const [reloadKey, setReloadKey] = useState(0);
+  const [ricezioni, setRicezioni] = useState<Ricezione[]>([]);
+  const [loadingRic, setLoadingRic] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== 'ricezioni') return;
+    let alive = true;
+    setLoadingRic(true);
+    ricezioniApi
+      .list()
+      .then((d) => { if (alive) setRicezioni(d); })
+      .catch((err: any) => toast.error('Errore caricamento ricezioni', { description: err?.message }))
+      .finally(() => { if (alive) setLoadingRic(false); });
+    return () => { alive = false; };
+  }, [activeTab, reloadKey]);
 
   const getActionLabel = () => {
     switch (activeTab) {
-      case 'ordini': return 'Nuovo Ordine Acquisto';
       case 'ricezioni': return 'Registra Ricezione';
       default: return 'Nuovo Ordine Acquisto';
     }
@@ -57,7 +84,7 @@ export function PurchasesPage() {
           {activeTab === 'ordini' && (
             <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
               <div className="lg:col-span-7">
-                <PurchaseOrdersTable onOrderClick={setSelectedOrderId} />
+                <PurchaseOrdersTable onOrderClick={setSelectedOrderId} reloadKey={reloadKey} />
               </div>
               <div className="lg:col-span-3">
                 <PurchaseWidgets />
@@ -74,43 +101,26 @@ export function PurchasesPage() {
                       <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Ricezione</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Ordine</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Fornitore</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Data</th>
-                      <th className="text-center px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Righe</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Ubicazione</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Avanzamento</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Stato</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Data Ricezione</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Stato Ordine</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E5EAF2]">
-                    {ricezioniData.map((r) => {
-                      const pct = Math.round((r.totaleRicevuto / r.totaleAtteso) * 100);
+                    {loadingRic ? (
+                      <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-[#6B7280]">Caricamento ricezioni...</td></tr>
+                    ) : ricezioni.length === 0 ? (
+                      <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-[#6B7280]">Nessuna ricezione registrata.</td></tr>
+                    ) : ricezioni.map((r) => {
+                      const badge = statoLabel[r.stato_ordine] ?? statoLabel.BOZZA;
                       return (
                         <tr key={r.id} className="hover:bg-[#F7F9FC] transition-colors">
-                          <td className="px-4 py-3 text-sm font-medium text-[#17E88F]">{r.id}</td>
-                          <td className="px-4 py-3 text-sm text-[#374151]">{r.poId}</td>
-                          <td className="px-4 py-3 text-sm text-[#374151] max-w-[180px] truncate">{r.fornitore}</td>
-                          <td className="px-4 py-3 text-sm text-[#6B7280]">{r.dataRicezione}</td>
-                          <td className="px-4 py-3 text-sm text-center text-[#374151]">{r.righe}</td>
-                          <td className="px-4 py-3 text-sm text-[#6B7280]">{r.ubicazione}</td>
+                          <td className="px-4 py-3 text-sm font-medium text-[#17E88F]">RIC-{String(r.id).padStart(4, '0')}</td>
+                          <td className="px-4 py-3 text-sm text-[#374151]">OA-{String(r.ordine_acquisto_id).padStart(4, '0')}</td>
+                          <td className="px-4 py-3 text-sm text-[#374151] max-w-[220px] truncate">{r.fornitore}</td>
+                          <td className="px-4 py-3 text-sm text-[#6B7280]">{fmtDataOra(r.data_ricezione)}</td>
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 bg-[#E5EAF2] rounded-full h-1.5 min-w-[60px]">
-                                <div
-                                  className={`h-1.5 rounded-full ${pct === 100 ? 'bg-[#16A34A]' : 'bg-[#D97706]'}`}
-                                  style={{ width: `${pct}%` }}
-                                />
-                              </div>
-                              <span className="text-xs text-[#6B7280] whitespace-nowrap">{r.totaleRicevuto}/{r.totaleAtteso}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
-                              r.stato === 'Completa'
-                                ? 'bg-[#DCFCE7] text-[#16A34A]'
-                                : 'bg-[#FEF3C7] text-[#D97706]'
-                            }`}>
-                              {r.stato === 'Completa' ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                              {r.stato}
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
+                              {badge.label}
                             </span>
                           </td>
                         </tr>
@@ -134,13 +144,14 @@ export function PurchasesPage() {
 
       <OrderDetailDrawer
         orderId={selectedOrderId}
-        isOpen={!!selectedOrderId}
+        isOpen={selectedOrderId !== null}
         onClose={() => setSelectedOrderId(null)}
       />
 
       <NewPurchaseOrderModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        onCreated={() => setReloadKey((k) => k + 1)}
       />
     </div>
   );
