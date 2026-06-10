@@ -1,71 +1,66 @@
+import { useEffect, useState } from 'react';
 import { X, FileText, Package, Clock, User, Building2, Calendar, MapPin } from 'lucide-react';
+import { toast } from 'sonner';
+import { acquistiApi } from '../../../api/acquistiApi';
+import type { OrdineAcquistoDettaglio } from '../../../types/acquisti';
 
 interface OrderDetailDrawerProps {
-  orderId: string | null;
+  orderId: number | null;
   isOpen: boolean;
   onClose: () => void;
 }
 
-const orderDetails = {
-  'PO-2026-001': {
-    numero: 'PO-2026-001',
-    stato: 'CONFERMATO',
-    fornitore: 'Packaging Solutions Italia S.p.A.',
-    dataPrevista: '05/06/2026',
-    responsabile: 'Laura Verdi',
-    dataCreazione: '28/05/2026',
-    note: 'Ordine urgente per rifornimento magazzino zona A',
-    prodotti: [
-      { sku: 'ANG-CRT-067', prodotto: 'Angolare Cartone Protezione 50x50', qtaOrdinata: 500, qtaRicevuta: 0, prezzoUnit: '€ 0,45', totale: '€ 225,00' },
-      { sku: 'BST-PLU-089', prodotto: 'Busta Pluriball 30x45cm', qtaOrdinata: 1000, qtaRicevuta: 0, prezzoUnit: '€ 0,38', totale: '€ 380,00' },
-      { sku: 'FLM-EST-012', prodotto: 'Film Estensibile Trasparente 50cm', qtaOrdinata: 80, qtaRicevuta: 0, prezzoUnit: '€ 18,90', totale: '€ 1.512,00' },
-    ],
-    ricezioni: [],
-  },
-  'PO-2026-002': {
-    numero: 'PO-2026-002',
-    stato: 'IN_RICEZIONE',
-    fornitore: 'Pallet Systems Europe S.p.A.',
-    dataPrevista: '06/06/2026',
-    responsabile: 'Marco Ferrari',
-    dataCreazione: '29/05/2026',
-    note: 'Ricezione parziale prevista',
-    prodotti: [
-      { sku: 'PLT-EUR-001', prodotto: 'Pallet Standard EUR 1200x800', qtaOrdinata: 200, qtaRicevuta: 150, prezzoUnit: '€ 12,50', totale: '€ 2.500,00' },
-      { sku: 'PLT-PLA-003', prodotto: 'Pallet in Plastica 1200x1000', qtaOrdinata: 100, qtaRicevuta: 0, prezzoUnit: '€ 28,00', totale: '€ 2.800,00' },
-    ],
-    ricezioni: [
-      { data: '03/06/2026 11:15', operatore: 'Giovanni Bianchi', qtaRicevuta: 150, ubicazione: 'A-01-05', note: 'Prima tranche consegna' },
-    ],
-  },
+const fmtData = (iso: string | null): string =>
+  iso ? new Date(iso).toLocaleDateString('it-IT') : '—';
+
+const fmtDataOra = (iso: string | null): string =>
+  iso ? new Date(iso).toLocaleString('it-IT') : '—';
+
+const fmtEuro = (n: number): string =>
+  `€ ${Number(n ?? 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const getStatusBadge = (status: string) => {
+  switch (status) {
+    case 'BOZZA':
+      return { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', label: 'Bozza' };
+    case 'INVIATO':
+      return { bg: 'bg-[#DBEAFE]', text: 'text-[#3B82F6]', label: 'Inviato' };
+    case 'CONFERMATO':
+      return { bg: 'bg-[#EDE9FE]', text: 'text-[#8B5CF6]', label: 'Confermato' };
+    case 'IN_RICEZIONE':
+      return { bg: 'bg-[#FEF3C7]', text: 'text-[#F59E0B]', label: 'In Ricezione' };
+    case 'COMPLETATO':
+      return { bg: 'bg-[#DCFCE7]', text: 'text-[#22C55E]', label: 'Completato' };
+    case 'ANNULLATO':
+      return { bg: 'bg-[#FEE2E2]', text: 'text-[#EF4444]', label: 'Annullato' };
+    default:
+      return { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', label: status };
+  }
 };
 
 export function OrderDetailDrawer({ orderId, isOpen, onClose }: OrderDetailDrawerProps) {
-  if (!isOpen || !orderId) return null;
+  const [data, setData] = useState<OrdineAcquistoDettaglio | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const order = orderDetails[orderId as keyof typeof orderDetails] || orderDetails['PO-2026-001'];
+  useEffect(() => {
+    if (!isOpen || orderId == null) { setData(null); return; }
+    let alive = true;
+    setLoading(true);
+    acquistiApi
+      .getById(orderId)
+      .then((d) => { if (alive) setData(d); })
+      .catch((err: any) => toast.error('Errore caricamento ordine', { description: err?.message }))
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [orderId, isOpen]);
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'BOZZA':
-        return { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', label: 'Bozza' };
-      case 'INVIATO':
-        return { bg: 'bg-[#DBEAFE]', text: 'text-[#3B82F6]', label: 'Inviato' };
-      case 'CONFERMATO':
-        return { bg: 'bg-[#EDE9FE]', text: 'text-[#8B5CF6]', label: 'Confermato' };
-      case 'IN_RICEZIONE':
-        return { bg: 'bg-[#FEF3C7]', text: 'text-[#F59E0B]', label: 'In Ricezione' };
-      case 'COMPLETATO':
-        return { bg: 'bg-[#DCFCE7]', text: 'text-[#22C55E]', label: 'Completato' };
-      case 'ANNULLATO':
-        return { bg: 'bg-[#FEE2E2]', text: 'text-[#EF4444]', label: 'Annullato' };
-      default:
-        return { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', label: status };
-    }
-  };
+  if (!isOpen || orderId == null) return null;
 
-  const badge = getStatusBadge(order.stato);
-  const totaleOrdine = order.prodotti.reduce((sum, p) => sum + parseFloat(p.totale.replace(/[€\s.]/g, '').replace(',', '.')), 0);
+  const ordine = data?.ordine;
+  const righe = data?.righe ?? [];
+  const ricezioni = data?.ricezioni ?? [];
+  const badge = getStatusBadge(ordine?.stato ?? '');
+  const totaleOrdine = righe.reduce((sum, r) => sum + Number(r.quantita_ordinata) * Number(r.prezzo_unitario), 0);
 
   return (
     <>
@@ -75,7 +70,7 @@ export function OrderDetailDrawer({ orderId, isOpen, onClose }: OrderDetailDrawe
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <h2 className="text-xl font-semibold text-[#2D2D2D] font-mono">{order.numero}</h2>
+                <h2 className="text-xl font-semibold text-[#2D2D2D] font-mono">OA-{String(orderId).padStart(4, '0')}</h2>
                 <span className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium ${badge.bg} ${badge.text}`}>
                   {badge.label}
                 </span>
@@ -91,6 +86,9 @@ export function OrderDetailDrawer({ orderId, isOpen, onClose }: OrderDetailDrawe
           </div>
         </div>
 
+        {loading || !ordine ? (
+          <div className="p-12 text-center text-sm text-[#6B7280]">Caricamento dettaglio...</div>
+        ) : (
         <div className="p-6 space-y-6">
           {/* Informazioni Generali */}
           <div className="bg-[#F7F9FC] rounded-2xl p-6">
@@ -104,34 +102,34 @@ export function OrderDetailDrawer({ orderId, isOpen, onClose }: OrderDetailDrawe
                   <Building2 className="w-3 h-3" />
                   Fornitore
                 </div>
-                <div className="text-sm font-medium text-[#2D2D2D]">{order.fornitore}</div>
+                <div className="text-sm font-medium text-[#2D2D2D]">{ordine.fornitore}</div>
               </div>
               <div>
                 <div className="flex items-center gap-2 text-xs text-[#6B7280] mb-1">
                   <User className="w-3 h-3" />
                   Responsabile
                 </div>
-                <div className="text-sm font-medium text-[#2D2D2D]">{order.responsabile}</div>
+                <div className="text-sm font-medium text-[#2D2D2D]">{ordine.utente ?? '—'}</div>
               </div>
               <div>
                 <div className="flex items-center gap-2 text-xs text-[#6B7280] mb-1">
                   <Calendar className="w-3 h-3" />
                   Data Creazione
                 </div>
-                <div className="text-sm font-medium text-[#2D2D2D]">{order.dataCreazione}</div>
+                <div className="text-sm font-medium text-[#2D2D2D]">{fmtData(ordine.created_at)}</div>
               </div>
               <div>
                 <div className="flex items-center gap-2 text-xs text-[#6B7280] mb-1">
                   <Clock className="w-3 h-3" />
                   Data Prevista
                 </div>
-                <div className="text-sm font-medium text-[#2D2D2D]">{order.dataPrevista}</div>
+                <div className="text-sm font-medium text-[#2D2D2D]">{fmtData(ordine.data_prevista)}</div>
               </div>
             </div>
-            {order.note && (
+            {ordine.note && (
               <div className="mt-4 pt-4 border-t border-[#E5EAF2]">
                 <div className="text-xs text-[#6B7280] mb-1">Note</div>
-                <div className="text-sm text-[#2D2D2D]">{order.note}</div>
+                <div className="text-sm text-[#2D2D2D]">{ordine.note}</div>
               </div>
             )}
           </div>
@@ -146,7 +144,6 @@ export function OrderDetailDrawer({ orderId, isOpen, onClose }: OrderDetailDrawe
               <table className="w-full">
                 <thead className="bg-[#F7F9FC]">
                   <tr className="border-b border-[#E5EAF2]">
-                    <th className="text-left py-3 px-4 text-xs font-medium text-[#6B7280]">SKU</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-[#6B7280]">Prodotto</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-[#6B7280]">Qta Ord.</th>
                     <th className="text-left py-3 px-4 text-xs font-medium text-[#6B7280]">Qta Ric.</th>
@@ -155,56 +152,53 @@ export function OrderDetailDrawer({ orderId, isOpen, onClose }: OrderDetailDrawe
                   </tr>
                 </thead>
                 <tbody>
-                  {order.prodotti.map((prodotto, index) => (
-                    <tr key={index} className="border-b border-[#E5EAF2] last:border-0">
-                      <td className="py-3 px-4 text-xs font-mono text-[#6B7280]">{prodotto.sku}</td>
-                      <td className="py-3 px-4 text-sm text-[#2D2D2D]">{prodotto.prodotto}</td>
-                      <td className="py-3 px-4 text-sm font-medium text-[#2D2D2D]">{prodotto.qtaOrdinata}</td>
+                  {righe.map((r) => (
+                    <tr key={r.id} className="border-b border-[#E5EAF2] last:border-0">
+                      <td className="py-3 px-4 text-sm text-[#2D2D2D]">{r.prodotto ?? `#${r.prodotto_id}`}</td>
+                      <td className="py-3 px-4 text-sm font-medium text-[#2D2D2D]">{r.quantita_ordinata}</td>
                       <td className="py-3 px-4">
-                        <span className={`text-sm font-medium ${prodotto.qtaRicevuta > 0 ? 'text-[#22C55E]' : 'text-[#6B7280]'}`}>
-                          {prodotto.qtaRicevuta}
+                        <span className={`text-sm font-medium ${Number(r.quantita_ricevuta) > 0 ? 'text-[#22C55E]' : 'text-[#6B7280]'}`}>
+                          {r.quantita_ricevuta}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-sm text-[#6B7280]">{prodotto.prezzoUnit}</td>
-                      <td className="py-3 px-4 text-sm font-medium text-[#2D2D2D]">{prodotto.totale}</td>
+                      <td className="py-3 px-4 text-sm text-[#6B7280]">{fmtEuro(r.prezzo_unitario)}</td>
+                      <td className="py-3 px-4 text-sm font-medium text-[#2D2D2D]">{fmtEuro(Number(r.quantita_ordinata) * Number(r.prezzo_unitario))}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               <div className="bg-[#F7F9FC] px-4 py-3 flex items-center justify-between border-t border-[#E5EAF2]">
                 <span className="font-medium text-[#2D2D2D]">Totale Ordine</span>
-                <span className="text-xl font-semibold text-[#17E88F]">€ {totaleOrdine.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</span>
+                <span className="text-xl font-semibold text-[#17E88F]">{fmtEuro(totaleOrdine)}</span>
               </div>
             </div>
           </div>
 
           {/* Storico Ricezioni */}
-          {order.ricezioni && order.ricezioni.length > 0 && (
+          {ricezioni.length > 0 && (
             <div>
               <h3 className="font-semibold text-[#2D2D2D] mb-4 flex items-center gap-2">
                 <Clock className="w-5 h-5 text-[#17E88F]" />
                 Storico Ricezioni
               </h3>
               <div className="space-y-3">
-                {order.ricezioni.map((ricezione, index) => (
-                  <div key={index} className="bg-[#F7F9FC] rounded-xl p-4">
+                {ricezioni.map((ricezione) => (
+                  <div key={ricezione.id} className="bg-[#F7F9FC] rounded-xl p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 bg-[#17E88F] rounded-lg flex items-center justify-center">
                           <Package className="w-4 h-4 text-white" />
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-[#2D2D2D]">{ricezione.data}</div>
-                          <div className="text-xs text-[#6B7280]">{ricezione.operatore}</div>
+                          <div className="text-sm font-medium text-[#2D2D2D]">{fmtDataOra(ricezione.data_ricezione)}</div>
+                          <div className="text-xs text-[#6B7280]">{ricezione.utente ?? '—'}</div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-medium text-[#22C55E]">+{ricezione.qtaRicevuta} unità</div>
+                        <div className="text-xs text-[#6B7280] flex items-center gap-1">
+                          <MapPin className="w-3 h-3" /> Ricezione #{ricezione.id}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-[#6B7280]">
-                      <MapPin className="w-3 h-3" />
-                      Ubicazione: <span className="font-mono text-[#2D2D2D]">{ricezione.ubicazione}</span>
                     </div>
                     {ricezione.note && (
                       <div className="mt-2 text-xs text-[#6B7280]">{ricezione.note}</div>
@@ -215,6 +209,7 @@ export function OrderDetailDrawer({ orderId, isOpen, onClose }: OrderDetailDrawe
             </div>
           )}
         </div>
+        )}
       </div>
     </>
   );

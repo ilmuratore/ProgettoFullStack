@@ -18,6 +18,24 @@ const getById = async (req, res, next) => {
     }
 };
 
+
+const getPdf = async (req, res, next) => {
+    try {
+        const { buffer, filename } = await ordiniAcquistoService.generaPdfOrdineAcquisto(
+            req.params.id
+        );
+
+        const disposition = req.query.download === '1' ? 'attachment' : 'inline';
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `${disposition}; filename="${filename}"`);
+        res.setHeader('Content-Length', buffer.length);
+        res.end(buffer);
+    } catch (err) {
+        next(err);
+    }
+};
+
 const create = async (req, res, next) => {
     try {
         const result = await ordiniAcquistoService.createOrdineAcquisto(req.body);
@@ -83,9 +101,11 @@ const listRicezioni = async (req, res, next) => {
     }
 };
 
+
 module.exports = {
     getAll,
     getById,
+    getPdf,
     create,
     update,
     updateStato,

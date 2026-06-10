@@ -41,12 +41,30 @@ const createRicezioneBlueprint = {
     utente_id: { required: false, type: 'number', integer: true, min: 1 },
 };
 
+
+// GET /api/v1/ordini-acquisto/:id/pdf
+router.get(
+    '/:id/pdf',
+    auth,
+    requirePermesso('acquisti:read'),
+    ordiniAcquistoController.getPdf
+);
+
 // GET /api/v1/ordini-acquisto
 router.get(
     '/',
     auth,
     requirePermesso('acquisti:read'),
     ordiniAcquistoController.getAll
+);
+
+
+// GET /api/v1/ordini-acquisto/:id/pdf
+router.get(
+    '/:id/pdf',
+    auth,
+    requirePermesso('acquisti:read'),
+    ordiniAcquistoController.getPdf
 );
 
 // GET /api/v1/ordini-acquisto/:id

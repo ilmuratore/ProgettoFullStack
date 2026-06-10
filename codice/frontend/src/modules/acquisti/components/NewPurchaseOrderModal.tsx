@@ -3,37 +3,45 @@ import { X, Building2, Package, FileText, CheckCircle, ChevronRight, Plus, Trash
 import { toast } from 'sonner';
 import { SupplierFormModal } from '../../anagrafiche/components/SupplierFormModal';
 import { fornitoriApi } from '../../../api/fornitoriApi';
-import type { Fornitore, FornitoreCreateRequest } from '../../../types/fornitori';
+import { prodottiApi } from '../../../api/prodottiApi';
+import { acquistiApi } from '../../../api/acquistiApi';
+import type { Fornitore, FornitoreCreateRequest, FornitoreUpdateRequest } from '../../../types/fornitori';
+import type { ProdottoListino } from '../../../types/prodotti';
 
 interface NewPurchaseOrderModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreated?: () => void;
 }
 
 type Step = 1 | 2 | 3 | 4;
 
 interface OrderLine {
   id: number;
+  prodotto_id: number;
   sku: string;
   prodotto: string;
   quantita: number;
   prezzoUnitario: number;
 }
 
-export function NewPurchaseOrderModal({ isOpen, onClose }: NewPurchaseOrderModalProps) {
+export function NewPurchaseOrderModal({ isOpen, onClose, onCreated }: NewPurchaseOrderModalProps) {
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [fornitori, setFornitori] = useState<Fornitore[]>([]);
   const [loadingFornitori, setLoadingFornitori] = useState(false);
+  const [products, setProducts] = useState<ProdottoListino[]>([]);
   const [isSupplierFormOpen, setIsSupplierFormOpen] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<Fornitore | null>(null);
   const [supplierSearch, setSupplierSearch] = useState('');
   const [orderLines, setOrderLines] = useState<OrderLine[]>([]);
   const [dataPrevista, setDataPrevista] = useState('');
   const [note, setNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
     loadFornitori();
+    loadProducts();
   }, [isOpen]);
 
   const loadFornitori = async () => {
@@ -44,6 +52,14 @@ export function NewPurchaseOrderModal({ isOpen, onClose }: NewPurchaseOrderModal
       toast.error('Errore caricamento fornitori', { description: err?.message });
     } finally {
       setLoadingFornitori(false);
+    }
+  };
+
+  const loadProducts = async () => {
+    try {
+      setProducts(await prodottiApi.list());
+    } catch (err: any) {
+      toast.error('Errore caricamento prodotti', { description: err?.message });
     }
   };
 
@@ -62,17 +78,10 @@ export function NewPurchaseOrderModal({ isOpen, onClose }: NewPurchaseOrderModal
     (f.indirizzo ?? '').toLowerCase().includes(supplierSearch.toLowerCase())
   );
 
-  const products = [
-    { sku: 'PLT-EUR-001', nome: 'Pallet Standard EUR 1200x800', prezzo: 12.50 },
-    { sku: 'SCT-OND-045', nome: 'Scatola Cartone Ondulato 40x30', prezzo: 0.85 },
-    { sku: 'FLM-EST-012', nome: 'Film Estensibile Trasparente 50cm', prezzo: 18.90 },
-    { sku: 'ETI-ADE-098', nome: 'Etichette Adesive A4 Bianche', prezzo: 24.50 },
-    { sku: 'REG-PP-034', nome: 'Reggetta PP Automatica 12mm', prezzo: 32.00 },
-  ];
-
   const addOrderLine = () => {
     const newLine: OrderLine = {
       id: Date.now(),
+      prodotto_id: 0,
       sku: '',
       prodotto: '',
       quantita: 1,
@@ -88,10 +97,10 @@ export function NewPurchaseOrderModal({ isOpen, onClose }: NewPurchaseOrderModal
   const updateOrderLine = (id: number, field: keyof OrderLine, value: string | number) => {
     setOrderLines(orderLines.map(line => {
       if (line.id === id) {
-        if (field === 'sku') {
-          const product = products.find(p => p.sku === value);
+        if (field === 'prodotto_id') {
+          const product = products.find(p => p.id === Number(value));
           if (product) {
-            return { ...line, sku: product.sku, prodotto: product.nome, prezzoUnitario: product.prezzo };
+            return { ...line, prodotto_id: product.id, sku: product.sku, prodotto: product.nome, prezzoUnitario: product.prezzo };
           }
         }
         return { ...line, [field]: value };
@@ -114,12 +123,42 @@ export function NewPurchaseOrderModal({ isOpen, onClose }: NewPurchaseOrderModal
     }
   };
 
-  const handleConfirm = () => {
-    handleClose();
+  const handleConfirm = async () => {
+    if (!selectedSupplier) {
+      toast.error('Seleziona un fornitore');
+      return;
+    }
+    const righe = orderLines
+      .filter((l) => l.prodotto_id > 0 && l.quantita > 0)
+      .map((l) => ({
+        prodotto_id: l.prodotto_id,
+        quantita_ordinata: l.quantita,
+        prezzo_unitario: l.prezzoUnitario,
+      }));
+    if (righe.length === 0) {
+      toast.error('Aggiungi almeno una riga valida');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await acquistiApi.create({
+        fornitore_id: selectedSupplier.id,
+        data_prevista: dataPrevista || undefined,
+        note: note || undefined,
+        righe,
+      });
+      toast.success('Ordine di acquisto creato');
+      onCreated?.();
+      handleClose();
+    } catch (err: any) {
+      toast.error('Errore creazione ordine', { description: err?.message });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleSaveSupplier = async (data: FornitoreCreateRequest) => {
-    const created = await fornitoriApi.create(data);
+  const handleSaveSupplier = async (data: FornitoreCreateRequest | FornitoreUpdateRequest) => {
+    const created = await fornitoriApi.create(data as FornitoreCreateRequest);
     setFornitori(prev => [...prev, created]);
     setSelectedSupplier(created);
     setIsSupplierFormOpen(false);
@@ -136,6 +175,8 @@ export function NewPurchaseOrderModal({ isOpen, onClose }: NewPurchaseOrderModal
     setOrderLines([]);
     setDataPrevista('');
     setNote('');
+    setProducts([]);
+    setSubmitting(false);
     onClose();
   };
 
@@ -255,7 +296,7 @@ export function NewPurchaseOrderModal({ isOpen, onClose }: NewPurchaseOrderModal
                           )}
                         </div>
                         {selectedSupplier?.id === fornitore.id && (
-                          <div className="w-5 h-5 rounded-full bg-[#17E88F] flex items-center justify-center text-white text-[10px]">✓</div>
+                          <div className="w-5 h-5 rounded-full bg-[#17E88F] flex items-center justify-center text-white text-[10px]">OK</div>
                         )}
                       </div>
                     </button>
@@ -290,15 +331,15 @@ export function NewPurchaseOrderModal({ isOpen, onClose }: NewPurchaseOrderModal
                     <div key={line.id} className="p-4 bg-[#F7F9FC] rounded-xl">
                       <div className="grid grid-cols-12 gap-3 items-start">
                         <div className="col-span-4">
-                          <label className="text-xs text-[#6B7280] mb-1 block">SKU</label>
+                          <label className="text-xs text-[#6B7280] mb-1 block">Prodotto</label>
                           <select
-                            value={line.sku}
-                            onChange={(e) => updateOrderLine(line.id, 'sku', e.target.value)}
+                            value={line.prodotto_id || ''}
+                            onChange={(e) => updateOrderLine(line.id, 'prodotto_id', e.target.value)}
                             className="w-full h-9 px-3 bg-white border border-[#E5EAF2] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20"
                           >
                             <option value="">Seleziona...</option>
                             {products.map((product) => (
-                              <option key={product.sku} value={product.sku}>
+                              <option key={product.id} value={product.id}>
                                 {product.sku} - {product.nome}
                               </option>
                             ))}
@@ -444,11 +485,12 @@ export function NewPurchaseOrderModal({ isOpen, onClose }: NewPurchaseOrderModal
             onClick={currentStep === 4 ? handleConfirm : handleNext}
             disabled={
               (currentStep === 1 && !selectedSupplier) ||
-              (currentStep === 2 && orderLines.length === 0)
+              (currentStep === 2 && orderLines.length === 0) ||
+              (currentStep === 4 && submitting)
             }
             className="px-6 py-2.5 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {currentStep === 4 ? 'Conferma Ordine' : 'Avanti'}
+            {currentStep === 4 ? (submitting ? 'Creazione...' : 'Conferma Ordine') : 'Avanti'}
           </button>
         </div>
       </div>
