@@ -561,7 +561,7 @@ export function AnagrafichePage() {
                         <p className="text-sm font-medium text-[#2D2D2D] mb-2">Anno Assunzione</p>
                         <input
                           type="number"
-                          placeholder="Es. 1999"
+                          placeholder="Filtra per anno"
                           value={dipendentiFilters.dataAssunzione}
                           onChange={(e) => setDipendentiFilters(f => ({ ...f, dataAssunzione: e.target.value }))}
                           className="h-10 px-3 w-28 bg-white border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
