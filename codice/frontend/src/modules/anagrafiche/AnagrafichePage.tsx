@@ -5,6 +5,7 @@ import {
   User, Truck, Globe, ExternalLink, Users, Calendar, AlertTriangle,
 } from 'lucide-react';
 import { PageTabBar } from '../../components/ui/PageTabBar';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../../components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
 import { SupplierFormModal } from '../anagrafiche/components/SupplierFormModal';
 import { ClientFormModal } from '../anagrafiche/components/ClientFormModal';
@@ -41,6 +42,8 @@ export function AnagrafichePage() {
 
   const [editMode, setEditMode] = useState<'create' | 'edit'>('create');
   const [selectedItem, setSelectedItem] = useState<any>(null);
+
+  const [itemToDelete, setItemToDelete] = useState<{ tab: TabType; item: any } | null>(null);
 
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [detailEntityType, setDetailEntityType] = useState<'cliente' | 'fornitore' | 'corriere' | 'dipendente' | null>(null);
@@ -142,32 +145,50 @@ export function AnagrafichePage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    const isDipendente = activeTab === 'dipendenti';
-    const msg = isDipendente
-      ? "Sei sicuro? L'eliminazione di un dipendente è PERMANENTE e non può essere annullata."
-      : 'Sei sicuro di voler eliminare questo elemento?';
-    if (!confirm(msg)) return;
+  const handleDelete = (item: any) => {
+    setItemToDelete({ tab: activeTab, item });
+  };
 
-    if (activeTab === 'fornitori') {
-      try { await fornitoriApi.remove(id); setFornitori(prev => prev.filter(f => f.id !== id)); toast.success('Fornitore eliminato'); }
-      catch (err: any) { toast.error('Eliminazione fallita', { description: err?.message }); }
-      return;
+  const getDeleteItemLabel = (tab: TabType, item: any) => {
+    switch (tab) {
+      case 'fornitori':
+      case 'clienti':   return item.ragione_sociale;
+      case 'corrieri':  return item.nome;
+      case 'dipendenti': return `${item.nome} ${item.cognome}`;
+      default: return '';
     }
-    if (activeTab === 'clienti') {
-      try { await clientiApi.remove(id); setClienti(prev => prev.filter(c => c.id !== id)); toast.success('Cliente eliminato'); }
-      catch (err: any) { toast.error('Eliminazione fallita', { description: err?.message }); }
-      return;
-    }
-    if (activeTab === 'corrieri') {
-      try { await corrieriApi.remove(id); setCorrieri(prev => prev.filter(c => c.id !== id)); toast.success('Corriere eliminato'); }
-      catch (err: any) { toast.error('Eliminazione fallita', { description: err?.message }); }
-      return;
-    }
-    if (activeTab === 'dipendenti') {
-      try { await dipendentiApi.remove(id); setDipendenti(prev => prev.filter(d => d.id !== id)); toast.success('Dipendente eliminato'); }
-      catch (err: any) { toast.error('Eliminazione fallita', { description: err?.message }); }
-      return;
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    const { tab, item } = itemToDelete;
+    try {
+      switch (tab) {
+        case 'fornitori':
+          await fornitoriApi.remove(item.id);
+          setFornitori(prev => prev.filter(f => f.id !== item.id));
+          toast.success('Fornitore eliminato');
+          break;
+        case 'clienti':
+          await clientiApi.remove(item.id);
+          setClienti(prev => prev.filter(c => c.id !== item.id));
+          toast.success('Cliente eliminato');
+          break;
+        case 'corrieri':
+          await corrieriApi.remove(item.id);
+          setCorrieri(prev => prev.filter(c => c.id !== item.id));
+          toast.success('Corriere eliminato');
+          break;
+        case 'dipendenti':
+          await dipendentiApi.remove(item.id);
+          setDipendenti(prev => prev.filter(d => d.id !== item.id));
+          toast.success('Dipendente eliminato');
+          break;
+      }
+    } catch (err: any) {
+      toast.error('Eliminazione fallita', { description: err?.message });
+    } finally {
+      setItemToDelete(null);
     }
   };
 
@@ -320,7 +341,7 @@ export function AnagrafichePage() {
           </DropdownMenuItem>
         )}
         {canDelete(tabEntity) && (
-          <DropdownMenuItem onClick={() => handleDelete(item.id)} className="cursor-pointer text-red-600">
+          <DropdownMenuItem onClick={() => handleDelete(item)} className="cursor-pointer text-red-600">
             <Trash2 className="w-4 h-4 mr-2" />
             {activeTab === 'dipendenti' ? 'Elimina (definitivo)' : 'Elimina'}
           </DropdownMenuItem>
@@ -616,6 +637,28 @@ export function AnagrafichePage() {
       <ClientFormModal  open={clientModalOpen}   onClose={() => setClientModalOpen(false)}   onSave={handleSaveClient}   initialData={selectedItem} mode={editMode} />
       <CourierFormModal open={courierModalOpen}   onClose={() => setCourierModalOpen(false)}   onSave={handleSaveCourier}  initialData={selectedItem} mode={editMode} />
       <EmployeeFormModal open={employeeModalOpen} onClose={() => setEmployeeModalOpen(false)} onSave={handleSaveEmployee} initialData={selectedItem} mode={editMode} />
+
+      <AlertDialog open={!!itemToDelete} onOpenChange={(v) => { if (!v) setItemToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {itemToDelete?.tab === 'dipendenti' ? 'Eliminare il dipendente?' : 'Eliminare l\'elemento?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Stai per eliminare <strong>{itemToDelete && getDeleteItemLabel(itemToDelete.tab, itemToDelete.item)}</strong>.{' '}
+              {itemToDelete?.tab === 'dipendenti'
+                ? "L'eliminazione è PERMANENTE e non può essere annullata. Le spedizioni associate manterranno lo storico senza autista assegnato."
+                : "L'operazione è definitiva e non può essere annullata."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-red-600 hover:bg-red-700 text-white">
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {detailEntityType && (
         <AnagraficaDetailDrawer
