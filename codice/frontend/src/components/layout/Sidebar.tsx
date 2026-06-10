@@ -102,6 +102,22 @@ export function Sidebar({
         )}
       </div>
 
+       {/* Supporto */}
+        <div className="relative group/supporto">
+          <button
+            onClick={() => navigate('supporto')}
+            className={`w-full flex items-center rounded-xl hover:bg-[#F7F9FC] transition-all ${isCollapsed ? 'justify-center p-3' : 'gap-3 px-4 py-2.5'}`}
+          >
+            <HelpCircle className="w-4 h-4 text-[#9CA3AF] flex-shrink-0" />
+            {!isCollapsed && <span className="text-sm text-[#6B7280]">Supporto</span>}
+          </button>
+          {isCollapsed && (
+            <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1E293B] text-white text-xs font-medium rounded-lg opacity-0 group-hover/supporto:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
+              Supporto<div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#1E293B]" />
+            </div>
+          )}
+        </div>
+
       {/* ── Nav ── */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-0.5">
         {menuItems.map((item) => {
@@ -186,23 +202,6 @@ export function Sidebar({
           )}
         </div>
 
-        {/* Logout */}
-        {onLogout && (
-          <div className="relative group/logout">
-            <button
-              onClick={onLogout}
-              className={`w-full flex items-center rounded-xl hover:bg-[#FEF2F2] transition-all ${isCollapsed ? 'justify-center p-3' : 'gap-3 px-4 py-2.5'}`}
-            >
-              <LogOut className="w-4 h-4 text-[#EF4444] flex-shrink-0" />
-              {!isCollapsed && <span className="text-sm text-[#EF4444] font-medium">Logout</span>}
-            </button>
-            {isCollapsed && (
-              <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1E293B] text-white text-xs font-medium rounded-lg opacity-0 group-hover/logout:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
-                Esci<div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#1E293B]" />
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </aside>
   );

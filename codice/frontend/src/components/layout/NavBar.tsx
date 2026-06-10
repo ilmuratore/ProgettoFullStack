@@ -8,10 +8,6 @@ const ROLE_CONFIG: Record<string, { color: string; bg: string; label: string }> 
   'Corriere':                 { color: '#EA580C', bg: '#FEE2E2', label: 'Corriere'         },
 };
 
-/**
- * NavBar minimale per uso nelle rotte — già integrata nella Header del Figma.
- * Esposizione store auth: nome utente, ruolo, logout.
- */
 export function NavBar() {
   const { utente, logout } = useAuthStore();
   if (!utente) return null;
@@ -41,6 +37,7 @@ export function NavBar() {
         </span>
       </div>
 
+      
       {/* Logout */}
       <button
         onClick={logout}
