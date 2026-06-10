@@ -254,7 +254,7 @@ const createRicezione = async (payload) => {
                 throw err;
             }
 
-            await righePoModel.updateQuantitaRicevutaIncrementale(target.id, r.quantita_ricevuta);
+            await righePoModel.updateQuantitaRicevuta(target.id, r.quantita_ricevuta);
 
             await movimentiStockService.create({
                 prodotto_id: r.prodotto_id,

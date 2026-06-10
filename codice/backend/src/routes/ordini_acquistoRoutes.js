@@ -5,7 +5,41 @@ const { auth } = require('../middleware/auth');
 const { requirePermesso } = require('../middleware/rbac');
 const { validate } = require('../middleware/validate');
 
-const ordiniAcquistoController = require('../controllers/ordiniAcquistoController');
+const ordiniAcquistoController = require('../controllers/ordiniAcquistoController.js');
+
+const STATI = ['BOZZA', 'INVIATO', 'CONFERMATO', 'IN_RICEZIONE', 'COMPLETATO', 'ANNULLATO'];
+
+const createBlueprint = {
+    fornitore_id: { required: true, type: 'number', integer: true, min: 1 },
+    data_prevista: { required: false, type: 'string' },
+    note: { required: false, type: 'string' },
+    utente_id: { required: false, type: 'number', integer: true, min: 1 },
+};
+
+const updateBlueprint = {
+    fornitore_id: { required: false, type: 'number', integer: true, min: 1 },
+    data_prevista: { required: false, type: 'string' },
+    importo_totale: { required: false, type: 'number', min: 0 },
+    note: { required: false, type: 'string' },
+    utente_id: { required: false, type: 'number', integer: true, min: 1 },
+};
+
+const updateStatoBlueprint = {
+    stato: { required: true, type: 'string', enum: STATI },
+};
+
+const addRigaBlueprint = {
+    prodotto_id: { required: true, type: 'number', integer: true, min: 1 },
+    quantita_ordinata: { required: true, type: 'number', min: 0.01 },
+    prezzo_unitario: { required: true, type: 'number', min: 0 },
+};
+
+const createRicezioneBlueprint = {
+    ordine_acquisto_id: { required: true, type: 'number', integer: true, min: 1 },
+    data_ricezione: { required: false, type: 'string' },
+    note: { required: false, type: 'string' },
+    utente_id: { required: false, type: 'number', integer: true, min: 1 },
+};
 
 // GET /api/v1/ordini-acquisto
 router.get(
@@ -28,6 +62,7 @@ router.post(
     '/',
     auth,
     requirePermesso('acquisti:write'),
+    validate(createBlueprint),
     ordiniAcquistoController.create
 );
 
@@ -36,6 +71,7 @@ router.patch(
     '/:id',
     auth,
     requirePermesso('acquisti:write'),
+    validate(updateBlueprint),
     ordiniAcquistoController.update
 );
 
@@ -44,6 +80,7 @@ router.patch(
     '/:id/stato',
     auth,
     requirePermesso('acquisti:approve'),
+    validate(updateStatoBlueprint),
     ordiniAcquistoController.updateStato
 );
 
@@ -52,6 +89,7 @@ router.post(
     '/:id/righe',
     auth,
     requirePermesso('acquisti:write'),
+    validate(addRigaBlueprint),
     ordiniAcquistoController.addRiga
 );
 
@@ -60,6 +98,7 @@ router.post(
     '/ricezioni',
     auth,
     requirePermesso('acquisti:approve'),
+    validate(createRicezioneBlueprint),
     ordiniAcquistoController.createRicezione
 );
 

@@ -168,6 +168,10 @@ tags:
     description: Livelli di stock per prodotto/ubicazione (M07)
   - name: MovimentiStock
     description: Registro append-only di tutti i movimenti di magazzino (M07)
+  - name: OrdiniAcquisto
+    description: Ordini in entrata / Purchase Orders — ciclo BOZZA→COMPLETATO, permessi acquisti:* (M08)
+  - name: Ricezioni
+    description: Ricezioni merce su ordini di acquisto e relative righe — permessi acquisti:* (M08)
 
 # ─────────────────────────────────────────────
 # COMPONENTI RIUTILIZZABILI
@@ -751,6 +755,199 @@ components:
       properties:
         scarico: { $ref: '#/components/schemas/MovimentoStock' }
         carico:  { $ref: '#/components/schemas/MovimentoStock' }
+
+    # ─── M08 — Ordini di Acquisto & Ricezioni ───
+    StatoOrdineAcquisto:
+      type: string
+      enum: [BOZZA, INVIATO, CONFERMATO, IN_RICEZIONE, COMPLETATO, ANNULLATO]
+      example: BOZZA
+      description: |
+        Ciclo di vita ordine. Transizioni consentite:
+        BOZZA→INVIATO→CONFERMATO→IN_RICEZIONE→COMPLETATO. Da ogni stato non finale è possibile passare ad ANNULLATO.
+
+    RigaPo:
+      description: Riga di un ordine di acquisto (tabella `righe_po`).
+      type: object
+      properties:
+        id:                { type: integer, example: 10 }
+        prodotto_id:       { type: integer, example: 7 }
+        prodotto:          { type: string,  example: "Valvola a sfera 1/2\"", description: "Nome prodotto (solo nelle GET con JOIN)" }
+        quantita_ordinata: { type: number,  example: 100 }
+        quantita_ricevuta: { type: number,  example: 0, description: "Cumulativa, aggiornata dalle ricezioni" }
+        prezzo_unitario:   { type: number,  example: 12.50 }
+        created_at:        { type: string,  format: date-time, example: "2026-06-09T09:00:00.000Z" }
+        updated_at:        { type: string,  format: date-time, example: "2026-06-09T09:00:00.000Z" }
+
+    OrdineAcquistoLista:
+      description: Vista lista ordini (GET /ordini-acquisto) con aggregati calcolati.
+      type: object
+      properties:
+        id:               { type: integer, example: 15 }
+        fornitore_id:     { type: integer, example: 3 }
+        fornitore:        { type: string,  example: "Acciaierie Lombarde S.p.A." }
+        stato:            { $ref: '#/components/schemas/StatoOrdineAcquisto' }
+        data_prevista:    { type: string, format: date, example: "2026-06-20", nullable: true }
+        importo_totale:   { type: number, example: 1250.00 }
+        note:             { type: string, example: "Consegna su bancali", nullable: true }
+        utente_id:        { type: integer, example: 2, nullable: true }
+        utente:           { type: string, example: "Mario Rossi", nullable: true }
+        created_at:       { type: string, format: date-time, example: "2026-06-09T09:00:00.000Z" }
+        updated_at:       { type: string, format: date-time, example: "2026-06-09T09:00:00.000Z" }
+        totale_calcolato: { type: number, example: 1250.00, description: "SUM(quantita_ordinata * prezzo_unitario)" }
+        numero_righe:     { type: integer, example: 2 }
+        totale_ricevuto:  { type: number, example: 0, description: "SUM(quantita_ricevuta)" }
+
+    OrdineAcquistoDettaglio:
+      description: Dettaglio completo (GET /ordini-acquisto/:id) — ordine + righe + ricezioni.
+      type: object
+      properties:
+        ordine:
+          type: object
+          properties:
+            id:             { type: integer, example: 15 }
+            fornitore_id:   { type: integer, example: 3 }
+            fornitore:      { type: string,  example: "Acciaierie Lombarde S.p.A." }
+            stato:          { $ref: '#/components/schemas/StatoOrdineAcquisto' }
+            data_prevista:  { type: string, format: date, example: "2026-06-20", nullable: true }
+            importo_totale: { type: number, example: 1250.00 }
+            note:           { type: string, example: "Consegna su bancali", nullable: true }
+            utente_id:      { type: integer, example: 2, nullable: true }
+            utente:         { type: string, example: "Mario Rossi", nullable: true }
+            created_at:     { type: string, format: date-time, example: "2026-06-09T09:00:00.000Z" }
+            updated_at:     { type: string, format: date-time, example: "2026-06-09T09:00:00.000Z" }
+        righe:
+          type: array
+          items: { $ref: '#/components/schemas/RigaPo' }
+        ricezioni:
+          type: array
+          items:
+            type: object
+            properties:
+              id:             { type: integer, example: 5 }
+              data_ricezione: { type: string, format: date-time, example: "2026-06-18T11:00:00.000Z" }
+              note:           { type: string, example: null, nullable: true }
+              utente_id:      { type: integer, example: 2, nullable: true }
+              utente:         { type: string, example: "Mario Rossi", nullable: true }
+              created_at:     { type: string, format: date-time, example: "2026-06-18T11:00:00.000Z" }
+              updated_at:     { type: string, format: date-time, example: "2026-06-18T11:00:00.000Z" }
+
+    OrdineAcquistoCreateRequest:
+      type: object
+      required: [fornitore_id, righe]
+      description: Crea un ordine in stato BOZZA. `importo_totale` è calcolato dal server dalle righe.
+      properties:
+        fornitore_id:  { type: integer, minimum: 1, example: 3 }
+        data_prevista: { type: string, format: date, example: "2026-06-20", description: "Opzionale" }
+        note:          { type: string, example: "Consegna su bancali" }
+        utente_id:     { type: integer, minimum: 1, example: 2, description: "Utente che emette l'ordine" }
+        righe:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [prodotto_id, quantita_ordinata, prezzo_unitario]
+            properties:
+              prodotto_id:       { type: integer, minimum: 1, example: 7 }
+              quantita_ordinata: { type: number, minimum: 0.01, example: 100 }
+              prezzo_unitario:   { type: number, minimum: 0, example: 12.50 }
+
+    OrdineAcquistoUpdateRequest:
+      type: object
+      description: Tutti i campi opzionali. Non consentito su ordini COMPLETATO o ANNULLATO.
+      properties:
+        fornitore_id:   { type: integer, minimum: 1, example: 3 }
+        data_prevista:  { type: string, format: date, example: "2026-06-22" }
+        importo_totale: { type: number, minimum: 0, example: 1300.00 }
+        note:           { type: string, example: "Aggiornata data consegna" }
+        utente_id:      { type: integer, minimum: 1, example: 2 }
+
+    OrdineAcquistoStatoRequest:
+      type: object
+      required: [stato]
+      properties:
+        stato: { $ref: '#/components/schemas/StatoOrdineAcquisto' }
+
+    RigaPoCreateRequest:
+      type: object
+      required: [prodotto_id, quantita_ordinata, prezzo_unitario]
+      description: Aggiunge una riga. Consentito solo su ordini in stato BOZZA, INVIATO o CONFERMATO.
+      properties:
+        prodotto_id:       { type: integer, minimum: 1, example: 8 }
+        quantita_ordinata: { type: number, minimum: 0.01, example: 50 }
+        prezzo_unitario:   { type: number, minimum: 0, example: 9.90 }
+
+    RigaRicezione:
+      description: Riga di una ricezione (tabella `righe_ricezione`).
+      type: object
+      properties:
+        id:                { type: integer, example: 30 }
+        ricezione_id:      { type: integer, example: 5 }
+        prodotto_id:       { type: integer, example: 7 }
+        sku:               { type: string,  example: "ACQ-SKU-001" }
+        prodotto:          { type: string,  example: "Valvola a sfera 1/2\"" }
+        quantita_ricevuta: { type: number,  example: 40 }
+        ubicazione_id:     { type: integer, example: 12 }
+        ubicazione:        { type: string,  example: "1-02-05" }
+        magazzino:         { type: string,  example: "Magazzino Centrale" }
+        created_at:        { type: string,  format: date-time, example: "2026-06-18T11:00:00.000Z" }
+        updated_at:        { type: string,  format: date-time, example: "2026-06-18T11:00:00.000Z" }
+
+    Ricezione:
+      description: Testata ricezione (tabella `ricezioni`).
+      type: object
+      properties:
+        id:               { type: integer, example: 5 }
+        ordine_acquisto_id: { type: integer, example: 15 }
+        stato_ordine:     { $ref: '#/components/schemas/StatoOrdineAcquisto' }
+        fornitore_id:     { type: integer, example: 3 }
+        fornitore:        { type: string,  example: "Acciaierie Lombarde S.p.A." }
+        data_ricezione:   { type: string, format: date-time, example: "2026-06-18T11:00:00.000Z" }
+        note:             { type: string, example: null, nullable: true }
+        utente_id:        { type: integer, example: 2, nullable: true }
+        utente:           { type: string, example: "Mario Rossi", nullable: true }
+        created_at:       { type: string, format: date-time, example: "2026-06-18T11:00:00.000Z" }
+        updated_at:       { type: string, format: date-time, example: "2026-06-18T11:00:00.000Z" }
+
+    RicezioneOrdineCreateRequest:
+      type: object
+      required: [ordine_acquisto_id, righe]
+      description: |
+        Registra una ricezione su un ordine (POST /ordini-acquisto/ricezioni).
+        Genera per ogni riga un movimento stock `CARICO_ACQUISTO`, incrementa `quantita_ricevuta`
+        e porta l'ordine in IN_RICEZIONE o COMPLETATO. Consentito solo su ordini CONFERMATO o IN_RICEZIONE.
+      properties:
+        ordine_acquisto_id: { type: integer, minimum: 1, example: 15 }
+        data_ricezione:     { type: string, format: date-time, example: "2026-06-18T11:00:00.000Z", description: "Default NOW() se omesso" }
+        note:               { type: string, example: "Ricevuto con DDT 2026-0031" }
+        utente_id:          { type: integer, minimum: 1, example: 2 }
+        righe:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [prodotto_id, quantita_ricevuta, ubicazione_id]
+            properties:
+              prodotto_id:       { type: integer, minimum: 1, example: 7 }
+              quantita_ricevuta: { type: number, minimum: 0.01, example: 40 }
+              ubicazione_id:     { type: integer, minimum: 1, example: 12 }
+
+    RicezioneCreateRequest:
+      type: object
+      required: [ordine_acquisto_id, data_ricezione]
+      description: Crea la sola testata ricezione (POST /ricezioni). Le righe si aggiungono con POST /ricezioni/:id/righe.
+      properties:
+        ordine_acquisto_id: { type: integer, minimum: 1, example: 15 }
+        data_ricezione:     { type: string, format: date-time, example: "2026-06-18T11:00:00.000Z" }
+        note:               { type: string, example: "Ricevuto con DDT 2026-0031" }
+
+    RigaRicezioneCreateRequest:
+      type: object
+      required: [prodotto_id, quantita, ubicazione_id]
+      description: Aggiunge una riga a una ricezione (POST /ricezioni/:id/righe) e genera il relativo movimento CARICO_ACQUISTO.
+      properties:
+        prodotto_id:   { type: integer, minimum: 1, example: 7 }
+        quantita:      { type: number, minimum: 0.01, example: 40 }
+        ubicazione_id: { type: integer, minimum: 1, example: 12 }
 
 # ─────────────────────────────────────────────
 # SECURITY DEFAULT
@@ -2978,3 +3175,457 @@ paths:
                     created_at: "2026-06-08T10:35:00.000Z"
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
+
+  # ══════════════════════════════════════════
+  # M08 — ORDINI DI ACQUISTO & RICEZIONI
+  # ══════════════════════════════════════════
+
+  /ordini-acquisto:
+    get:
+      tags: [OrdiniAcquisto]
+      summary: Lista ordini di acquisto
+      description: |
+        Restituisce gli ordini in ordine `created_at DESC` con aggregati (totale calcolato, numero righe, totale ricevuto).
+        Filtri opzionali via query: `stato` e `fornitore_id`. Richiede permesso `acquisti:read`.
+      x-required-permission: acquisti:read
+      parameters:
+        - name: stato
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/StatoOrdineAcquisto' }
+        - name: fornitore_id
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+          example: 3
+      responses:
+        "200":
+          description: Lista ordini di acquisto
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/OrdineAcquistoLista' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+    post:
+      tags: [OrdiniAcquisto]
+      summary: Crea ordine di acquisto
+      description: |
+        Crea un ordine in stato `BOZZA` con le sue righe in una transazione.
+        `importo_totale` è calcolato dal server. Richiede permesso `acquisti:write`.
+      x-required-permission: acquisti:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrdineAcquistoCreateRequest' }
+            example:
+              fornitore_id: 3
+              data_prevista: "2026-06-20"
+              note: "Consegna su bancali"
+              utente_id: 2
+              righe:
+                - { prodotto_id: 7, quantita_ordinata: 100, prezzo_unitario: 12.50 }
+                - { prodotto_id: 8, quantita_ordinata: 50, prezzo_unitario: 9.90 }
+      responses:
+        "201":
+          description: Ordine creato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: object
+                    properties:
+                      ordine: { $ref: '#/components/schemas/OrdineAcquistoLista' }
+                      righe:
+                        type: array
+                        items: { $ref: '#/components/schemas/RigaPo' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  /ordini-acquisto/ricezioni:
+    post:
+      tags: [Ricezioni]
+      summary: Registra ricezione su ordine
+      description: |
+        Registra una ricezione multi-riga su un ordine `CONFERMATO` o `IN_RICEZIONE`.
+        Per ogni riga genera un movimento `CARICO_ACQUISTO`, incrementa `quantita_ricevuta` e
+        aggiorna lo stato ordine a `IN_RICEZIONE` o `COMPLETATO`. Richiede permesso `acquisti:approve`.
+      x-required-permission: acquisti:approve
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RicezioneOrdineCreateRequest' }
+            example:
+              ordine_acquisto_id: 15
+              data_ricezione: "2026-06-18T11:00:00.000Z"
+              note: "Ricevuto con DDT 2026-0031"
+              utente_id: 2
+              righe:
+                - { prodotto_id: 7, quantita_ricevuta: 40, ubicazione_id: 12 }
+      responses:
+        "201":
+          description: Ricezione registrata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: object
+                    properties:
+                      ricezione: { $ref: '#/components/schemas/Ricezione' }
+                      righe:
+                        type: array
+                        items: { $ref: '#/components/schemas/RigaRicezione' }
+                      nuovoStatoOrdine: { $ref: '#/components/schemas/StatoOrdineAcquisto' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409":
+          description: Stato ordine incompatibile o quantità ricevuta superiore all'ordinata
+          content:
+            application/json:
+              example:
+                status: error
+                code: STATE_TRANSITION_INVALID
+                message: Ricezione non consentita nello stato corrente
+                details: []
+
+  /ordini-acquisto/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 15
+    get:
+      tags: [OrdiniAcquisto]
+      summary: Dettaglio ordine di acquisto
+      description: Restituisce ordine + righe + ricezioni. Richiede permesso `acquisti:read`.
+      x-required-permission: acquisti:read
+      responses:
+        "200":
+          description: Dettaglio ordine
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/OrdineAcquistoDettaglio' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+    patch:
+      tags: [OrdiniAcquisto]
+      summary: Modifica testata ordine
+      description: |
+        Aggiorna i campi di testata. Bloccato su ordini `COMPLETATO` o `ANNULLATO`.
+        Richiede permesso `acquisti:write`.
+      x-required-permission: acquisti:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrdineAcquistoUpdateRequest' }
+            example:
+              data_prevista: "2026-06-22"
+              note: "Aggiornata data consegna"
+      responses:
+        "200":
+          description: Ordine aggiornato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/OrdineAcquistoLista' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409":
+          description: Ordine non modificabile nello stato corrente
+          content:
+            application/json:
+              example:
+                status: error
+                code: STATE_TRANSITION_INVALID
+                message: Ordine non modificabile nello stato corrente
+                details: []
+
+  /ordini-acquisto/{id}/stato:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 15
+    patch:
+      tags: [OrdiniAcquisto]
+      summary: Cambia stato ordine
+      description: |
+        Transizione di stato validata (vedi `StatoOrdineAcquisto`). Richiede permesso `acquisti:approve`.
+      x-required-permission: acquisti:approve
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrdineAcquistoStatoRequest' }
+            example:
+              stato: INVIATO
+      responses:
+        "200":
+          description: Stato aggiornato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/OrdineAcquistoLista' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409":
+          description: Transizione di stato non valida
+          content:
+            application/json:
+              example:
+                status: error
+                code: STATE_TRANSITION_INVALID
+                message: Transizione di stato non valida
+                details: []
+
+  /ordini-acquisto/{id}/righe:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 15
+    post:
+      tags: [OrdiniAcquisto]
+      summary: Aggiungi riga all'ordine
+      description: |
+        Aggiunge una riga e ricalcola `importo_totale`. Consentito solo su stati BOZZA, INVIATO, CONFERMATO.
+        Richiede permesso `acquisti:write`.
+      x-required-permission: acquisti:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RigaPoCreateRequest' }
+            example:
+              prodotto_id: 8
+              quantita_ordinata: 50
+              prezzo_unitario: 9.90
+      responses:
+        "201":
+          description: Riga aggiunta
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/RigaPo' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409":
+          description: Non è possibile aggiungere righe nello stato corrente
+          content:
+            application/json:
+              example:
+                status: error
+                code: STATE_TRANSITION_INVALID
+                message: Non è possibile aggiungere righe nello stato corrente
+                details: []
+
+  /ordini-acquisto/{id}/ricezioni:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 15
+    get:
+      tags: [Ricezioni]
+      summary: Ricezioni di un ordine
+      description: Elenca le ricezioni (con righe) collegate all'ordine. Richiede permesso `acquisti:read`.
+      x-required-permission: acquisti:read
+      responses:
+        "200":
+          description: Lista ricezioni dell'ordine
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/Ricezione'
+                        - type: object
+                          properties:
+                            righe:
+                              type: array
+                              items: { $ref: '#/components/schemas/RigaRicezione' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  /ricezioni:
+    get:
+      tags: [Ricezioni]
+      summary: Lista ricezioni
+      description: Restituisce tutte le ricezioni (`id DESC`) con dati ordine e fornitore. Richiede permesso `acquisti:read`.
+      x-required-permission: acquisti:read
+      responses:
+        "200":
+          description: Lista ricezioni
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Ricezione' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+    post:
+      tags: [Ricezioni]
+      summary: Crea testata ricezione
+      description: |
+        Crea la sola testata ricezione. Le righe si aggiungono con `POST /ricezioni/:id/righe`.
+        Richiede permesso `acquisti:approve`.
+      x-required-permission: acquisti:approve
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RicezioneCreateRequest' }
+            example:
+              ordine_acquisto_id: 15
+              data_ricezione: "2026-06-18T11:00:00.000Z"
+              note: "Ricevuto con DDT 2026-0031"
+      responses:
+        "201":
+          description: Testata ricezione creata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/Ricezione' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  /ricezioni/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 5
+    get:
+      tags: [Ricezioni]
+      summary: Dettaglio ricezione
+      description: Richiede permesso `acquisti:read`.
+      x-required-permission: acquisti:read
+      responses:
+        "200":
+          description: Dettaglio ricezione
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/Ricezione' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /ricezioni/{id}/righe:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 5
+    get:
+      tags: [Ricezioni]
+      summary: Righe di una ricezione
+      description: Richiede permesso `acquisti:read`.
+      x-required-permission: acquisti:read
+      responses:
+        "200":
+          description: Lista righe ricezione
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/RigaRicezione' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Ricezioni]
+      summary: Aggiungi riga a ricezione
+      description: |
+        Aggiunge una riga alla ricezione e genera un movimento `CARICO_ACQUISTO`.
+        Richiede permesso `acquisti:approve`.
+      x-required-permission: acquisti:approve
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RigaRicezioneCreateRequest' }
+            example:
+              prodotto_id: 7
+              quantita: 40
+              ubicazione_id: 12
+      responses:
+        "201":
+          description: Riga ricezione aggiunta
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/RigaRicezione' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
