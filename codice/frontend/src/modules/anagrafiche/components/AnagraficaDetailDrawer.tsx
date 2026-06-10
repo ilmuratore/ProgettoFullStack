@@ -64,7 +64,6 @@ export function AnagraficaDetailDrawer({ entityType, entityId, isOpen, onClose, 
 
   useEffect(() => {
     if (!isOpen || entityId === null) {
-      setItem(null);
       return;
     }
     setLoading(true);
@@ -79,7 +78,7 @@ export function AnagraficaDetailDrawer({ entityType, entityId, isOpen, onClose, 
       .finally(() => setLoading(false));
   }, [isOpen, entityId, entityType]);
 
-  if (!isOpen || entityId === null) return null;
+  if (entityId === null) return null;
 
   const canWrite = hasPermesso(`${PERM_ENTITY[entityType]}:write`);
   const titolo = TITOLI[entityType];
@@ -92,13 +91,15 @@ export function AnagraficaDetailDrawer({ entityType, entityId, isOpen, onClose, 
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity"
-        onClick={onClose}
-      />
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+          onClick={onClose}
+        />
+      )}
 
       {/* Drawer */}
-      <div className="fixed right-0 top-0 bottom-0 w-full max-w-2xl bg-white shadow-2xl z-50 overflow-y-auto">
+      <div className={`fixed right-0 top-0 bottom-0 w-full max-w-2xl bg-white shadow-2xl z-50 overflow-y-auto transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-[#E5EAF2] p-6 flex items-center justify-between">
           <div>
