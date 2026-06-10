@@ -1,8 +1,5 @@
 const pool = require('../config/db');
 
-/* ============================================================================
- *  LISTA ORDINI (con totale calcolato, numero righe, totale ricevuto)
- * ==========================================================================*/
 const findAll = () =>
     pool.query(
         `
@@ -40,9 +37,6 @@ const findAll = () =>
     `
     );
 
-/* ============================================================================
- *  DETTAGLIO ORDINE (solo tabella principale)
- * ==========================================================================*/
 const findById = (id) =>
     pool.query(
         `
@@ -66,27 +60,27 @@ const findById = (id) =>
         [id]
     );
 
-/* ============================================================================
- *  DETTAGLIO COMPLETO (ordine + righe + ricezioni)
- * ==========================================================================*/
 const findDettaglioCompleto = async (id) => {
     const ordine = await findById(id);
 
     const righe = await pool.query(
         `
     SELECT 
-      rp.id,
-      rp.prodotto_id,
-      p.nome AS prodotto,
-      rp.quantita_ordinata,
-      rp.quantita_ricevuta,
-      rp.prezzo_unitario,
-      rp.created_at,
-      rp.updated_at
-    FROM righe_po rp
-    JOIN prodotti p ON p.id = rp.prodotto_id
-    WHERE rp.ordine_acquisto_id = $1
-    ORDER BY rp.id
+  rp.id,
+  rp.prodotto_id,
+  p.sku,
+  p.nome AS prodotto,
+  p.unita_misura,
+  rp.quantita_ordinata,
+  rp.quantita_ricevuta,
+  rp.prezzo_unitario,
+  (rp.quantita_ordinata * rp.prezzo_unitario) AS totale_riga,
+  rp.created_at,
+  rp.updated_at
+FROM righe_po rp
+JOIN prodotti p ON p.id = rp.prodotto_id
+WHERE rp.ordine_acquisto_id = $1
+ORDER BY rp.id
     `,
         [id]
     );
@@ -116,9 +110,6 @@ const findDettaglioCompleto = async (id) => {
     };
 };
 
-/* ============================================================================
- *  FILTRI
- * ==========================================================================*/
 const findByFornitoreId = (fornitore_id) =>
     pool.query(
         `
@@ -141,9 +132,6 @@ const findByStato = (stato) =>
         [stato]
     );
 
-/* ============================================================================
- *  ORDINI IN RITARDO (per notifiche PO_IN_RITARDO)
- * ==========================================================================*/
 const findInRitardo = () =>
     pool.query(
         `
@@ -155,9 +143,6 @@ const findInRitardo = () =>
     `
     );
 
-/* ============================================================================
- *  CREATE / UPDATE
- * ==========================================================================*/
 const create = ({ fornitore_id, data_prevista, importo_totale, note, utente_id }) =>
     pool.query(
         `
@@ -169,11 +154,6 @@ const create = ({ fornitore_id, data_prevista, importo_totale, note, utente_id }
         [fornitore_id, data_prevista, importo_totale, note, utente_id]
     );
 
-/* 
- * 
- * update() NON modifica lo stato.
- * 
- */
 const update = (id, { fornitore_id, data_prevista, importo_totale, note, utente_id }) =>
     pool.query(
         `
@@ -191,9 +171,6 @@ const update = (id, { fornitore_id, data_prevista, importo_totale, note, utente_
         [fornitore_id, data_prevista, importo_totale, note, utente_id, id]
     );
 
-/* ============================================================================
- *  CAMBIO STATO (state machine gestita dal service)
- * ==========================================================================*/
 const updateStato = (id, stato) =>
     pool.query(
         `
@@ -206,9 +183,6 @@ const updateStato = (id, stato) =>
         [stato, id]
     );
 
-/* ============================================================================
- *  ANNULLAMENTO ORDINE
- * ==========================================================================*/
 const remove = (id) =>
     pool.query(
         `

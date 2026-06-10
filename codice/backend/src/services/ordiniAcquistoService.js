@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { buildOrdineAcquistoPdf } = require('../pdf/ordiniAcquistoPdf');
 const ordiniAcquistoModel = require('../models/ordini_acquistoModel');
 const righePoModel = require('../models/righe_poModel');
 const ricezioniModel = require('../models/ricezioniModel');
@@ -291,6 +292,12 @@ const createRicezione = async (payload) => {
     }
 };
 
+
+const generaPdfOrdineAcquisto = async (id) => {
+    const dettaglio = await getOrdineAcquistoById(id);
+    return buildOrdineAcquistoPdf(dettaglio);
+};
+
 const listRicezioniByOrdine = async (ordine_acquisto_id) => {
     const ricezioniRes = await ricezioniModel.findByOrdineAcquistoId(ordine_acquisto_id);
     const ricezioni = await Promise.all(
@@ -302,6 +309,7 @@ const listRicezioniByOrdine = async (ordine_acquisto_id) => {
     return ricezioni;
 };
 
+
 module.exports = {
     getAll,
     getOrdineAcquistoById,
@@ -310,5 +318,6 @@ module.exports = {
     updateStatoOrdineAcquisto,
     addRigaOrdineAcquisto,
     createRicezione,
+    generaPdfOrdineAcquisto,
     listRicezioniByOrdine,
 };
