@@ -71,4 +71,4 @@ router.get(
     ordiniAcquistoController.listRicezioni
 );
 
-module.exports = { router };
+module.exports = router;

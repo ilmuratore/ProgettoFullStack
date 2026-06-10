@@ -1,6 +1,6 @@
 const pool = require('../config/db');
 const ricezioniModel = require('../models/ricezioniModel');
-const righeRicezioneModel = require('../models/righeRicezioneModel');
+const righeRicezioneModel = require('../models/righe_ricezioneModel');
 const movimentiStockService = require('./movimenti_stockService');
 
 const getAll = () => ricezioniModel.getAll();
