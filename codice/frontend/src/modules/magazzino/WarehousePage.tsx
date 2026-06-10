@@ -46,8 +46,9 @@ const tabs: TabConfig[] = [
 interface MagazzinoFormState {
   codice: string; nome: string; indirizzo: string;
   cap: string; citta: string; provincia: string; paese: string;
+  attivo: boolean;
 }
-const EMPTY_MAG: MagazzinoFormState = { codice: '', nome: '', indirizzo: '', cap: '', citta: '', provincia: '', paese: 'Italia' };
+const EMPTY_MAG: MagazzinoFormState = { codice: '', nome: '', indirizzo: '', cap: '', citta: '', provincia: '', paese: 'Italia', attivo: true };
 
 interface UbicazioneFormState { corsia: string; scaffale: string; temperatura_controllata: boolean; }
 const EMPTY_UBIC: UbicazioneFormState = { corsia: '', scaffale: '', temperatura_controllata: false };
@@ -76,7 +77,6 @@ export function WarehousePage() {
 
   const canWrite = hasPermesso('magazzino:write');
   const canWriteProdotti = hasPermesso('prodotti:write');
-  const canDeleteProdotti = hasPermesso('prodotti:delete');
 
   const [prodotti, setProdotti] = useState<ProdottoListino[]>([]);
   const [loadingProdotti, setLoadingProdotti] = useState(false);
@@ -159,32 +159,13 @@ export function WarehousePage() {
 
   const action = getActionButton();
 
-  const handleToggleMagazzino = async (id: number) => {
-    try {
-      const updated = await magazzinoApi.toggle(id);
-      setMagazzini(prev => prev.map(m => {
-  if (m.id !== id) return m;
-
-  return {
-    ...m,
-    ...updated,
-    ubicazioni: Array.isArray((updated as any).ubicazioni)
-      ? (updated as any).ubicazioni
-      : Array.isArray(m.ubicazioni)
-        ? m.ubicazioni
-        : [],
-  };
-}));
-      toast.success(`Magazzino ${updated.attivo ? 'attivato' : 'disattivato'}`);
-    } catch (err: any) { toast.error('Operazione fallita', { description: err?.message }); }
-  };
-
   const handleEditMagazzino = (mag: MagazzinoConUbicazioni) => {
     setMagModalMode('edit');
     setSelectedMag(mag);
     setMagForm({
       codice: mag.codice, nome: mag.nome, indirizzo: mag.indirizzo ?? '',
-      cap: mag.cap ?? '', citta: mag.citta ?? '', provincia: mag.provincia ?? '', paese: mag.paese ?? 'Italia'
+      cap: mag.cap ?? '', citta: mag.citta ?? '', provincia: mag.provincia ?? '', paese: mag.paese ?? 'Italia',
+      attivo: mag.attivo,
     });
     setMagErrors({});
     setMagModalOpen(true);
@@ -254,19 +235,25 @@ export function WarehousePage() {
           ...(magForm.paese.trim() && { paese: magForm.paese.trim() }),
         };
         const updated = await magazzinoApi.update(selectedMag.id, payload);
+        // Se attivo è cambiato rispetto allo stato attuale, chiama il toggle
+        let finalAttivo = updated.attivo;
+        if (magForm.attivo !== selectedMag.attivo) {
+          const toggled = await magazzinoApi.toggle(selectedMag.id);
+          finalAttivo = toggled.attivo;
+        }
         setMagazzini(prev => prev.map(m => {
-  if (m.id !== selectedMag.id) return m;
-
-  return {
-    ...m,
-    ...updated,
-    ubicazioni: Array.isArray((updated as any).ubicazioni)
-      ? (updated as any).ubicazioni
-      : Array.isArray(m.ubicazioni)
-        ? m.ubicazioni
-        : [],
-  };
-}));
+          if (m.id !== selectedMag.id) return m;
+          return {
+            ...m,
+            ...updated,
+            attivo: finalAttivo,
+            ubicazioni: Array.isArray((updated as any).ubicazioni)
+              ? (updated as any).ubicazioni
+              : Array.isArray(m.ubicazioni)
+                ? m.ubicazioni
+                : [],
+          };
+        }));
         toast.success('Magazzino aggiornato');
       }
       setMagModalOpen(false);
@@ -365,16 +352,6 @@ export function WarehousePage() {
     } catch (err: any) {
       toast.error('Errore caricamento prodotto', { description: err?.message });
     }
-  };
-
-  const handleDeleteProduct = async (id: number) => {
-    if (!confirm('Eliminare questo prodotto? L\'operazione è reversibile (soft delete).')) return;
-    try {
-      await prodottiApi.remove(id);
-      setProdotti(prev => prev.filter(p => p.id !== id));
-      await fetchCategorie();
-      toast.success('Prodotto eliminato');
-    } catch (err: any) { toast.error('Eliminazione fallita', { description: err?.message }); }
   };
 
   const handleSaveCategory = async (data: CategoriaCreateRequest | CategoriaUpdateRequest, id?: number) => {
@@ -480,7 +457,6 @@ export function WarehousePage() {
                   ) : (
                     <WarehouseTreeView
                       magazzini={magazzini}
-                      onToggleMagazzino={handleToggleMagazzino}
                       onEditMagazzino={handleEditMagazzino}
                       onAddUbicazione={handleAddUbicazione}
                       onToggleUbicazione={handleToggleUbicazione}
@@ -502,13 +478,9 @@ export function WarehousePage() {
               loading={loadingProdotti}
               search={searchProdotti}
               canWriteProdotti={canWriteProdotti}
-              canDeleteProdotti={canDeleteProdotti}
               onSearchChange={setSearchProdotti}
-              // richiamo il componente dettaglio prodotto
               onView={(item) => { setSelectedProductId(item.id); setProductDetailOpen(true); }}
-              //aggiunta del nuovo handle per la modifica
               onEdit={(item) => { void handleEditProduct(item.id); }}
-              onDelete={handleDeleteProduct}
             />
           )}
 
@@ -520,7 +492,7 @@ export function WarehousePage() {
               loading={loadingCategorie}
               search={searchCategorie}
               canWriteProdotti={canWriteProdotti}
-              canDeleteProdotti={canDeleteProdotti}
+              canDeleteProdotti={hasPermesso('prodotti:delete')}
               onSearchChange={setSearchCategorie}
               onAddSubcategory={handleAddSubcategory}
               onEdit={(item) => { setCategoryModalMode('edit'); setSelectedCategory(item); setInitialParentCategoryId(undefined); setCategoryModalOpen(true); }}
@@ -628,6 +600,26 @@ export function WarehousePage() {
                 <input type="text" value={magForm.paese} onChange={setMag('paese')} placeholder="Italia" className={inputClass()} />
               </div>
             </div>
+            {magModalMode === 'edit' && (
+              <div className="flex items-center justify-between p-4 bg-[#F7F9FC] rounded-xl border border-[#E5EAF2]">
+                <div>
+                  <div className="text-sm font-medium text-[#2D2D2D]">Stato magazzino</div>
+                  <div className="text-xs text-[#6B7280] mt-0.5">
+                    {magForm.attivo ? 'Il magazzino è attivo e operativo' : 'Il magazzino è disattivato'}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMagForm(prev => ({ ...prev, attivo: !prev.attivo }))}
+                  className="flex items-center gap-2 text-sm font-medium transition-colors"
+                >
+                  {magForm.attivo
+                    ? <><span className="text-[#17E88F]">Attivo</span><span className="w-11 h-6 bg-[#17E88F] rounded-full flex items-center px-1 ml-2"><span className="w-4 h-4 bg-white rounded-full shadow translate-x-5 transition-transform inline-block" /></span></>
+                    : <><span className="text-[#6B7280]">Disattivo</span><span className="w-11 h-6 bg-[#D1D5DB] rounded-full flex items-center px-1 ml-2"><span className="w-4 h-4 bg-white rounded-full shadow transition-transform inline-block" /></span></>
+                  }
+                </button>
+              </div>
+            )}
             <div className="flex justify-end gap-3 pt-4 border-t border-[#E5EAF2]">
               <button type="button" onClick={() => setMagModalOpen(false)} disabled={magLoading} className="px-4 py-2 border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-[#F7F9FC] transition-all disabled:opacity-50">Annulla</button>
               <button type="submit" disabled={magLoading} className="px-4 py-2 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-60 flex items-center gap-2">

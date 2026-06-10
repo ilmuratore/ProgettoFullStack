@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MoreVertical, Edit, Trash2, Eye, Search } from 'lucide-react';
+import { MoreVertical, Edit, Eye, Search } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../../components/ui/dropdown-menu';
 import type { ProdottoListino } from '../../../types/prodotti';
 import { EMPTY_PRODUCT_FILTERS, ProductsFilter, type ProductFiltersState } from './ProductsFilter';
@@ -9,11 +9,9 @@ interface ProductsTabProps {
   loading: boolean;
   search: string;
   canWriteProdotti: boolean;
-  canDeleteProdotti: boolean;
   onSearchChange: (value: string) => void;
   onView: (item: ProdottoListino) => void;
   onEdit: (item: ProdottoListino) => void;
-  onDelete: (id: number) => void;
 }
 
 const formatPrezzo = (n: number) =>
@@ -39,17 +37,13 @@ const SkeletonRows = ({ cols }: { cols: number }) => (
 function ProductActions({
   item,
   canWriteProdotti,
-  canDeleteProdotti,
   onView,
   onEdit,
-  onDelete,
 }: {
   item: ProdottoListino;
   canWriteProdotti: boolean;
-  canDeleteProdotti: boolean;
   onView: (item: ProdottoListino) => void;
   onEdit: (item: ProdottoListino) => void;
-  onDelete: (id: number) => void;
 }) {
   return (
     <DropdownMenu>
@@ -67,11 +61,6 @@ function ProductActions({
             <Edit className="w-4 h-4 mr-2" />Modifica
           </DropdownMenuItem>
         )}
-        {canDeleteProdotti && (
-          <DropdownMenuItem onClick={() => onDelete(item.id)} className="cursor-pointer text-red-600">
-            <Trash2 className="w-4 h-4 mr-2" />Elimina
-          </DropdownMenuItem>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -82,11 +71,9 @@ export function ProductsTab({
   loading,
   search,
   canWriteProdotti,
-  canDeleteProdotti,
   onSearchChange,
   onView,
   onEdit,
-  onDelete,
 }: ProductsTabProps) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<ProductFiltersState>(EMPTY_PRODUCT_FILTERS);
@@ -187,10 +174,8 @@ export function ProductsTab({
                     <ProductActions
                       item={p}
                       canWriteProdotti={canWriteProdotti}
-                      canDeleteProdotti={canDeleteProdotti}
                       onView={onView}
                       onEdit={onEdit}
-                      onDelete={onDelete}
                     />
                   </td>
                 </tr>
