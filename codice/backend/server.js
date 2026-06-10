@@ -6,7 +6,7 @@ const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 
 const { initDB } = require('./src/config/initDB');
-const errorHandler = require('./src/middleware/errorHandler');
+const { errorHandler } = require('./src/middleware/errorHandler');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -14,7 +14,7 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(helmet());
 app.use(cors({
-    origin: [ process.env.CORS_ORIGIN || 'http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: [process.env.CORS_ORIGIN || 'http://localhost:5173', 'http://127.0.0.1:5173'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -40,33 +40,33 @@ mountSwagger(app);
 
 // M01 — Auth & RBAC
 app.use('/api/v1/auth', require('./src/routes/authRoutes'));
-app.use('/api/v1/utenti',     require('./src/routes/utentiRoutes'));
+app.use('/api/v1/utenti', require('./src/routes/utentiRoutes'));
 
 // M02 — I nostri Prodotti (Listino) + Categorie
-app.use('/api/v1/prodotti',   require('./src/routes/prodottiRoutes'));
-app.use('/api/v1/categorie',  require('./src/routes/categorieRoutes'));
+app.use('/api/v1/prodotti', require('./src/routes/prodottiRoutes'));
+app.use('/api/v1/categorie', require('./src/routes/categorieRoutes'));
 
 // M03 — I nostri Fornitori
-app.use('/api/v1/fornitori',  require('./src/routes/fornitoriRoutes'));
+app.use('/api/v1/fornitori', require('./src/routes/fornitoriRoutes'));
 
 // M04 — I nostri Clienti
-app.use('/api/v1/clienti',    require('./src/routes/clientiRoutes'));
+app.use('/api/v1/clienti', require('./src/routes/clientiRoutes'));
 
 // M05 — Corrieri & Dipendenti
 app.use('/api/v1/dipendenti', require('./src/routes/dipendentiRoutes'));
 app.use('/api/v1/corrieri', require('./src/routes/corrieriRoutes'));
 
 // M06 — Magazzino
-app.use('/api/v1/magazzini',  require('./src/routes/magazziniRoutes'));
+app.use('/api/v1/magazzini', require('./src/routes/magazziniRoutes'));
 app.use('/api/v1/ubicazioni', require('./src/routes/ubicazioniRoutes'));
 
 // M07 — Giacenze & Movimenti Stock
-app.use('/api/v1/giacenze',        require('./src/routes/giacenzeRoutes'));
+app.use('/api/v1/giacenze', require('./src/routes/giacenzeRoutes'));
 app.use('/api/v1/movimenti-stock', require('./src/routes/movimenti_stockRoutes'));
 
 // M08 — Ordini in Entrata (Purchase Orders)
-// app.use('/api/v1/ordini-acquisto',  require('./src/routes/ordiniAcquistoRoutes'));
-// app.use('/api/v1/ricezioni',        require('./src/routes/ricezioniRoutes'));
+app.use('/api/v1/ordini-acquisto', require('./src/routes/ordini_acquistoRoutes'));
+app.use('/api/v1/ricezioni', require('./src/routes/ricezioniRoutes'));
 
 // M09 — Ordini in Uscita (Sales Orders)
 // app.use('/api/v1/ordini',           require('./src/routes/ordiniRoutes'));
