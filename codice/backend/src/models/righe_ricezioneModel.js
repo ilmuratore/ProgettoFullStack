@@ -1,107 +1,184 @@
 const pool = require('../config/db');
 
-
 const findAll = () =>
     pool.query(
-        `SELECT righe_ricezione.id,
-                righe_ricezione.ricezione_id,
-                righe_ricezione.prodotto_id,
-                prodotti.sku,
-                prodotti.nome AS prodotto,
-                righe_ricezione.quantita_ricevuta,
-                righe_ricezione.ubicazione_id,
-                ubicazioni.codice AS ubicazione,
-                magazzini.nome AS magazzino,
-                righe_ricezione.created_at,
-                righe_ricezione.updated_at
-     FROM righe_ricezione
-     JOIN prodotti ON righe_ricezione.prodotto_id = prodotti.id
-     JOIN ubicazioni ON righe_ricezione.ubicazione_id = ubicazioni.id
-     JOIN magazzini ON ubicazioni.magazzino_id = magazzini.id
-     ORDER BY righe_ricezione.id`
+        `
+    SELECT 
+      rr.id,
+      rr.ricezione_id,
+      rr.prodotto_id,
+      p.sku,
+      p.nome AS prodotto,
+      rr.quantita_ricevuta,
+      rr.ubicazione_id,
+      u.codice AS ubicazione,
+      m.nome AS magazzino,
+      rr.created_at,
+      rr.updated_at
+    FROM righe_ricezione rr
+    JOIN prodotti p ON p.id = rr.prodotto_id
+    JOIN ubicazioni u ON u.id = rr.ubicazione_id
+    JOIN magazzini m ON m.id = u.magazzino_id
+    ORDER BY rr.id
+    `
     );
-
 
 const findById = (id) =>
     pool.query(
-        `SELECT righe_ricezione.id,
-                righe_ricezione.ricezione_id,
-                righe_ricezione.prodotto_id,
-                prodotti.sku,
-                prodotti.nome AS prodotto,
-                righe_ricezione.quantita_ricevuta,
-                righe_ricezione.ubicazione_id,
-                ubicazioni.codice AS ubicazione,
-                magazzini.nome AS magazzino,
-                righe_ricezione.created_at,
-                righe_ricezione.updated_at
-     FROM righe_ricezione
-     JOIN prodotti ON righe_ricezione.prodotto_id = prodotti.id
-     JOIN ubicazioni ON righe_ricezione.ubicazione_id = ubicazioni.id
-     JOIN magazzini ON ubicazioni.magazzino_id = magazzini.id
-     WHERE righe_ricezione.id = $1`,
+        `
+    SELECT 
+      rr.id,
+      rr.ricezione_id,
+      rr.prodotto_id,
+      p.sku,
+      p.nome AS prodotto,
+      rr.quantita_ricevuta,
+      rr.ubicazione_id,
+      u.codice AS ubicazione,
+      m.nome AS magazzino,
+      rr.created_at,
+      rr.updated_at
+    FROM righe_ricezione rr
+    JOIN prodotti p ON p.id = rr.prodotto_id
+    JOIN ubicazioni u ON u.id = rr.ubicazione_id
+    JOIN magazzini m ON m.id = u.magazzino_id
+    WHERE rr.id = $1
+    `,
         [id]
     );
 
 const findByRicezioneId = (ricezione_id) =>
     pool.query(
-        `SELECT righe_ricezione.id,
-                righe_ricezione.ricezione_id,
-                righe_ricezione.prodotto_id,
-                prodotti.sku,
-                prodotti.nome AS prodotto,
-                righe_ricezione.quantita_ricevuta,
-                righe_ricezione.ubicazione_id,
-                ubicazioni.codice AS ubicazione,
-                magazzini.nome AS magazzino,
-                righe_ricezione.created_at,
-                righe_ricezione.updated_at
-     FROM righe_ricezione
-     JOIN prodotti ON righe_ricezione.prodotto_id = prodotti.id
-     JOIN ubicazioni ON righe_ricezione.ubicazione_id = ubicazioni.id
-     JOIN magazzini ON ubicazioni.magazzino_id = magazzini.id
-     WHERE righe_ricezione.ricezione_id = $1
-     ORDER BY righe_ricezione.id`,
+        `
+    SELECT 
+      rr.id,
+      rr.ricezione_id,
+      rr.prodotto_id,
+      p.sku,
+      p.nome AS prodotto,
+      rr.quantita_ricevuta,
+      rr.ubicazione_id,
+      u.codice AS ubicazione,
+      m.nome AS magazzino,
+      rr.created_at,
+      rr.updated_at
+    FROM righe_ricezione rr
+    JOIN prodotti p ON p.id = rr.prodotto_id
+    JOIN ubicazioni u ON u.id = rr.ubicazione_id
+    JOIN magazzini m ON m.id = u.magazzino_id
+    WHERE rr.ricezione_id = $1
+    ORDER BY rr.id
+    `,
         [ricezione_id]
     );
 
 const findByProdottoId = (prodotto_id) =>
     pool.query(
-        `SELECT id, ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id, created_at, updated_at
-     FROM righe_ricezione
-     WHERE prodotto_id = $1
-     ORDER BY id`,
+        `
+    SELECT 
+      rr.id,
+      rr.ricezione_id,
+      rr.prodotto_id,
+      rr.quantita_ricevuta,
+      rr.ubicazione_id,
+      u.codice AS ubicazione,
+      m.nome AS magazzino,
+      rr.created_at,
+      rr.updated_at
+    FROM righe_ricezione rr
+    JOIN ubicazioni u ON u.id = rr.ubicazione_id
+    JOIN magazzini m ON m.id = u.magazzino_id
+    WHERE rr.prodotto_id = $1
+    ORDER BY rr.id
+    `,
         [prodotto_id]
     );
 
-
 const create = ({ ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id }) =>
     pool.query(
-        `INSERT INTO righe_ricezione (ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id)
-     VALUES ($1, $2, $3, $4)
-     RETURNING id, ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id, created_at, updated_at`,
+        `
+    INSERT INTO righe_ricezione 
+      (ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id)
+    VALUES ($1, $2, $3, $4)
+    RETURNING *
+    `,
         [ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id]
     );
 
-const update = (id, { ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id }) =>
+/* 
+ * UPDATE limitato: non si può cambiare ricezione, prodotto, ubicazione.
+ * Solo quantita_ricevuta può essere modificata (rollback).
+ */
+const update = (id, { quantita_ricevuta }) =>
     pool.query(
-        `UPDATE righe_ricezione
-     SET ricezione_id = COALESCE($1, ricezione_id),
-         prodotto_id = COALESCE($2, prodotto_id),
-         quantita_ricevuta = COALESCE($3, quantita_ricevuta),
-         ubicazione_id = COALESCE($4, ubicazione_id),
-         updated_at = CURRENT_TIMESTAMP
-     WHERE id = $5
-     RETURNING id, ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id, created_at, updated_at`,
-        [ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id, id]
+        `
+    UPDATE righe_ricezione
+    SET 
+      quantita_ricevuta = COALESCE($1, quantita_ricevuta),
+      updated_at = NOW()
+    WHERE id = $2
+    RETURNING *
+    `,
+        [quantita_ricevuta, id]
     );
 
+/* 
+ * UPDATE incrementale per ricezioni progressive
+ */
+const updateQuantitaRicevutaIncrementale = (id, incremento) =>
+    pool.query(
+        `
+    UPDATE righe_ricezione
+    SET 
+      quantita_ricevuta = quantita_ricevuta + $1,
+      updated_at = NOW()
+    WHERE id = $2
+    RETURNING id, quantita_ricevuta, updated_at
+    `,
+        [incremento, id]
+    );
+
+const resetQuantitaRicevuta = (id) =>
+    pool.query(
+        `
+    UPDATE righe_ricezione
+    SET quantita_ricevuta = 0,
+        updated_at = NOW()
+    WHERE id = $1
+    RETURNING id, quantita_ricevuta
+    `,
+        [id]
+    );
 
 const remove = (id) =>
-    pool.query('DELETE FROM righe_ricezione WHERE id = $1 RETURNING id', [id]);
+    pool.query(
+        `
+    DELETE FROM righe_ricezione 
+    WHERE id = $1 
+    RETURNING id
+    `,
+        [id]
+    );
 
+const removeByRicezioneId = (ricezione_id) =>
+    pool.query(
+        `
+    DELETE FROM righe_ricezione
+    WHERE ricezione_id = $1
+    RETURNING id
+    `,
+        [ricezione_id]
+    );
 
 module.exports = {
-    findAll, findById, findByRicezioneId, findByProdottoId,
-    create, update, remove
+    findAll,
+    findById,
+    findByRicezioneId,
+    findByProdottoId,
+    create,
+    update,
+    updateQuantitaRicevutaIncrementale,
+    resetQuantitaRicevuta,
+    remove,
+    removeByRicezioneId,
 };

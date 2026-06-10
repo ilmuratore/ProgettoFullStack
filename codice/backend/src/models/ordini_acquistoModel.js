@@ -1,123 +1,235 @@
 const pool = require('../config/db');
 
-
+/* ============================================================================
+ *  LISTA ORDINI (con totale calcolato, numero righe, totale ricevuto)
+ * ==========================================================================*/
 const findAll = () =>
     pool.query(
-        `SELECT ordini_acquisto.id,
-                ordini_acquisto.fornitore_id,
-                fornitori.ragione_sociale AS fornitore,
-                ordini_acquisto.stato,
-                ordini_acquisto.data_prevista,
-                ordini_acquisto.importo_totale,
-                ordini_acquisto.note,
-                ordini_acquisto.utente_id,
-                CONCAT(utenti.nome, ' ', utenti.cognome) AS utente,
-                ordini_acquisto.created_at,
-                ordini_acquisto.updated_at
-     FROM ordini_acquisto
-     JOIN fornitori ON ordini_acquisto.fornitore_id = fornitori.id
-     LEFT JOIN utenti ON ordini_acquisto.utente_id = utenti.id
-     ORDER BY ordini_acquisto.id`
+        `
+    SELECT 
+      o.id,
+      o.fornitore_id,
+      f.ragione_sociale AS fornitore,
+      o.stato,
+      o.data_prevista,
+      o.importo_totale,
+      o.note,
+      o.utente_id,
+      CONCAT(u.nome, ' ', u.cognome) AS utente,
+      o.created_at,
+      o.updated_at,
+
+      -- Totale calcolato dalle righe
+      COALESCE(SUM(rp.quantita_ordinata * rp.prezzo_unitario), 0) AS totale_calcolato,
+
+      -- Numero righe ordine
+      COUNT(rp.id) AS numero_righe,
+
+      -- Totale ricevuto (somma quantita_ricevuta)
+      COALESCE(SUM(rp.quantita_ricevuta), 0) AS totale_ricevuto
+
+    FROM ordini_acquisto o
+    JOIN fornitori f ON f.id = o.fornitore_id
+    LEFT JOIN utenti u ON u.id = o.utente_id
+    LEFT JOIN righe_po rp ON rp.ordine_acquisto_id = o.id
+
+    GROUP BY 
+      o.id, f.ragione_sociale, u.nome, u.cognome
+
+    ORDER BY o.created_at DESC
+    `
     );
 
-
+/* ============================================================================
+ *  DETTAGLIO ORDINE (solo tabella principale)
+ * ==========================================================================*/
 const findById = (id) =>
     pool.query(
-        `SELECT ordini_acquisto.id,
-                ordini_acquisto.fornitore_id,
-                fornitori.ragione_sociale AS fornitore,
-                ordini_acquisto.stato,
-                ordini_acquisto.data_prevista,
-                ordini_acquisto.importo_totale,
-                ordini_acquisto.note,
-                ordini_acquisto.utente_id,
-                CONCAT(utenti.nome, ' ', utenti.cognome) AS utente,
-                ordini_acquisto.created_at,
-                ordini_acquisto.updated_at
-     FROM ordini_acquisto
-     JOIN fornitori ON ordini_acquisto.fornitore_id = fornitori.id
-     LEFT JOIN utenti ON ordini_acquisto.utente_id = utenti.id
-     WHERE ordini_acquisto.id = $1`,
+        `
+    SELECT 
+      o.id,
+      o.fornitore_id,
+      f.ragione_sociale AS fornitore,
+      o.stato,
+      o.data_prevista,
+      o.importo_totale,
+      o.note,
+      o.utente_id,
+      CONCAT(u.nome, ' ', u.cognome) AS utente,
+      o.created_at,
+      o.updated_at
+    FROM ordini_acquisto o
+    JOIN fornitori f ON f.id = o.fornitore_id
+    LEFT JOIN utenti u ON u.id = o.utente_id
+    WHERE o.id = $1
+    `,
         [id]
     );
 
+/* ============================================================================
+ *  DETTAGLIO COMPLETO (ordine + righe + ricezioni)
+ * ==========================================================================*/
+const findDettaglioCompleto = async (id) => {
+    const ordine = await findById(id);
+
+    const righe = await pool.query(
+        `
+    SELECT 
+      rp.id,
+      rp.prodotto_id,
+      p.nome AS prodotto,
+      rp.quantita_ordinata,
+      rp.quantita_ricevuta,
+      rp.prezzo_unitario,
+      rp.created_at,
+      rp.updated_at
+    FROM righe_po rp
+    JOIN prodotti p ON p.id = rp.prodotto_id
+    WHERE rp.ordine_acquisto_id = $1
+    ORDER BY rp.id
+    `,
+        [id]
+    );
+
+    const ricezioni = await pool.query(
+        `
+    SELECT 
+      r.id,
+      r.data_ricezione,
+      r.note,
+      r.utente_id,
+      CONCAT(u.nome, ' ', u.cognome) AS utente,
+      r.created_at,
+      r.updated_at
+    FROM ricezioni r
+    LEFT JOIN utenti u ON u.id = r.utente_id
+    WHERE r.ordine_acquisto_id = $1
+    ORDER BY r.id DESC
+    `,
+        [id]
+    );
+
+    return {
+        ordine: ordine.rows[0],
+        righe: righe.rows,
+        ricezioni: ricezioni.rows,
+    };
+};
+
+/* ============================================================================
+ *  FILTRI
+ * ==========================================================================*/
 const findByFornitoreId = (fornitore_id) =>
     pool.query(
-        `SELECT id, fornitore_id, stato, data_prevista, importo_totale, note, utente_id, created_at, updated_at
-     FROM ordini_acquisto
-     WHERE fornitore_id = $1
-     ORDER BY id`,
+        `
+    SELECT *
+    FROM ordini_acquisto
+    WHERE fornitore_id = $1
+    ORDER BY created_at DESC
+    `,
         [fornitore_id]
     );
 
 const findByStato = (stato) =>
     pool.query(
-        `SELECT ordini_acquisto.id,
-                ordini_acquisto.fornitore_id,
-                fornitori.ragione_sociale AS fornitore,
-                ordini_acquisto.stato,
-                ordini_acquisto.data_prevista,
-                ordini_acquisto.importo_totale,
-                ordini_acquisto.note,
-                ordini_acquisto.utente_id,
-                CONCAT(utenti.nome, ' ', utenti.cognome) AS utente,
-                ordini_acquisto.created_at,
-                ordini_acquisto.updated_at
-     FROM ordini_acquisto
-     JOIN fornitori ON ordini_acquisto.fornitore_id = fornitori.id
-     LEFT JOIN utenti ON ordini_acquisto.utente_id = utenti.id
-     WHERE ordini_acquisto.stato = $1
-     ORDER BY ordini_acquisto.id`,
+        `
+    SELECT *
+    FROM ordini_acquisto
+    WHERE stato = $1::purchase_order_state
+    ORDER BY created_at DESC
+    `,
         [stato]
     );
 
-
-const create = ({ fornitore_id, stato = 'BOZZA', data_prevista, importo_totale, note, utente_id }) =>
+/* ============================================================================
+ *  ORDINI IN RITARDO (per notifiche PO_IN_RITARDO)
+ * ==========================================================================*/
+const findInRitardo = () =>
     pool.query(
-        `INSERT INTO ordini_acquisto (fornitore_id, stato, data_prevista, importo_totale, note, utente_id)
-     VALUES ($1, $2::purchase_order_state, $3, $4, $5, $6)
-     RETURNING id, fornitore_id, stato, data_prevista, importo_totale, note, utente_id, created_at, updated_at`,
-        [fornitore_id, stato, data_prevista, importo_totale, note, utente_id]
+        `
+    SELECT *
+    FROM ordini_acquisto
+    WHERE data_prevista < CURRENT_DATE
+      AND stato NOT IN ('COMPLETATO', 'ANNULLATO')
+    ORDER BY data_prevista ASC
+    `
     );
 
-const update = (id, { fornitore_id, stato, data_prevista, importo_totale, note, utente_id }) =>
+/* ============================================================================
+ *  CREATE / UPDATE
+ * ==========================================================================*/
+const create = ({ fornitore_id, data_prevista, importo_totale, note, utente_id }) =>
     pool.query(
-        `UPDATE ordini_acquisto
-     SET fornitore_id = COALESCE($1, fornitore_id),
-         stato = COALESCE($2::purchase_order_state, stato),
-         data_prevista = COALESCE($3, data_prevista),
-         importo_totale = COALESCE($4, importo_totale),
-         note = COALESCE($5, note),
-         utente_id = COALESCE($6, utente_id),
-         updated_at = CURRENT_TIMESTAMP
-     WHERE id = $7
-     RETURNING id, fornitore_id, stato, data_prevista, importo_totale, note, utente_id, created_at, updated_at`,
-        [fornitore_id, stato, data_prevista, importo_totale, note, utente_id, id]
+        `
+    INSERT INTO ordini_acquisto 
+      (fornitore_id, data_prevista, importo_totale, note, utente_id)
+    VALUES ($1, $2, $3, $4, $5)
+    RETURNING *
+    `,
+        [fornitore_id, data_prevista, importo_totale, note, utente_id]
     );
 
+/* 
+ * 
+ * update() NON modifica lo stato.
+ * 
+ */
+const update = (id, { fornitore_id, data_prevista, importo_totale, note, utente_id }) =>
+    pool.query(
+        `
+    UPDATE ordini_acquisto
+    SET 
+      fornitore_id = COALESCE($1, fornitore_id),
+      data_prevista = COALESCE($2, data_prevista),
+      importo_totale = COALESCE($3, importo_totale),
+      note = COALESCE($4, note),
+      utente_id = COALESCE($5, utente_id),
+      updated_at = NOW()
+    WHERE id = $6
+    RETURNING *
+    `,
+        [fornitore_id, data_prevista, importo_totale, note, utente_id, id]
+    );
 
+/* ============================================================================
+ *  CAMBIO STATO (state machine gestita dal service)
+ * ==========================================================================*/
 const updateStato = (id, stato) =>
     pool.query(
-        `UPDATE ordini_acquisto
-     SET stato = $1::purchase_order_state,
-         updated_at = CURRENT_TIMESTAMP
-     WHERE id = $2
-     RETURNING id, stato, updated_at`,
+        `
+    UPDATE ordini_acquisto
+    SET stato = $1::purchase_order_state,
+        updated_at = NOW()
+    WHERE id = $2
+    RETURNING id, stato, updated_at
+    `,
         [stato, id]
     );
 
+/* ============================================================================
+ *  ANNULLAMENTO ORDINE
+ * ==========================================================================*/
 const remove = (id) =>
     pool.query(
-        `UPDATE ordini_acquisto
-     SET stato = 'ANNULLATO',
-         updated_at = CURRENT_TIMESTAMP
-     WHERE id = $1
-     RETURNING id`,
+        `
+    UPDATE ordini_acquisto
+    SET stato = 'ANNULLATO',
+        updated_at = NOW()
+    WHERE id = $1
+    RETURNING id
+    `,
         [id]
     );
 
-
 module.exports = {
-    findAll, findById, findByFornitoreId, findByStato,
-    create, update, updateStato, remove
+    findAll,
+    findById,
+    findDettaglioCompleto,
+    findByFornitoreId,
+    findByStato,
+    findInRitardo,
+    create,
+    update,
+    updateStato,
+    remove,
 };

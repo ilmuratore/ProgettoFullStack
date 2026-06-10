@@ -1,0 +1,95 @@
+const ordiniAcquistoService = require('../services/ordiniAcquistoService');
+
+const getAll = async (req, res, next) => {
+    try {
+        const result = await ordiniAcquistoService.getAll(req.query);
+        res.json({ status: 'success', data: result.rows || result });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const getById = async (req, res, next) => {
+    try {
+        const result = await ordiniAcquistoService.getOrdineAcquistoById(req.params.id);
+        res.json({ status: 'success', data: result });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const create = async (req, res, next) => {
+    try {
+        const result = await ordiniAcquistoService.createOrdineAcquisto(req.body);
+        res.status(201).json({ status: 'success', data: result });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const update = async (req, res, next) => {
+    try {
+        const result = await ordiniAcquistoService.updateOrdineAcquisto(
+            req.params.id,
+            req.body
+        );
+        res.json({ status: 'success', data: result });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const updateStato = async (req, res, next) => {
+    try {
+        const result = await ordiniAcquistoService.updateStatoOrdineAcquisto(
+            req.params.id,
+            req.body.stato
+        );
+        res.json({ status: 'success', data: result });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const addRiga = async (req, res, next) => {
+    try {
+        const result = await ordiniAcquistoService.addRigaOrdineAcquisto(
+            req.params.id,
+            req.body
+        );
+        res.status(201).json({ status: 'success', data: result });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const createRicezione = async (req, res, next) => {
+    try {
+        const result = await ordiniAcquistoService.createRicezione(req.body);
+        res.status(201).json({ status: 'success', data: result });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const listRicezioni = async (req, res, next) => {
+    try {
+        const result = await ordiniAcquistoService.listRicezioniByOrdine(
+            req.params.id
+        );
+        res.json({ status: 'success', data: result });
+    } catch (err) {
+        next(err);
+    }
+};
+
+module.exports = {
+    getAll,
+    getById,
+    create,
+    update,
+    updateStato,
+    addRiga,
+    createRicezione,
+    listRicezioni,
+};

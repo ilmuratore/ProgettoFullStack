@@ -1,33 +1,34 @@
-const express             = require('express');
+const express = require('express');
 const magazziniController = require('../controllers/magazziniController');
 const ubicazioniController = require('../controllers/ubicazioniController');
-const auth                = require('../middleware/auth');
+
+const { auth } = require('../middleware/auth');
 const { requirePermesso } = require('../middleware/rbac');
-const validate            = require('../middleware/validate');
+const { validate } = require('../middleware/validate');
 
 const router = express.Router();
 const createMagazzinoBlueprint = {
-    codice:    { required: true,  type: 'string' },
-    nome:      { required: true,  type: 'string' },
+    codice: { required: true, type: 'string' },
+    nome: { required: true, type: 'string' },
     indirizzo: { required: false, type: 'string' },
-    cap:       { required: false, type: 'string' },
-    citta:     { required: false, type: 'string' },
+    cap: { required: false, type: 'string' },
+    citta: { required: false, type: 'string' },
     provincia: { required: false, type: 'string' },
-    paese:     { required: false, type: 'string' }
+    paese: { required: false, type: 'string' }
 };
 
 const updateMagazzinoBlueprint = {
-    nome:      { required: false, type: 'string' },
+    nome: { required: false, type: 'string' },
     indirizzo: { required: false, type: 'string' },
-    cap:       { required: false, type: 'string' },
-    citta:     { required: false, type: 'string' },
+    cap: { required: false, type: 'string' },
+    citta: { required: false, type: 'string' },
     provincia: { required: false, type: 'string' },
-    paese:     { required: false, type: 'string' }
+    paese: { required: false, type: 'string' }
 };
 
 const createUbicazioneBlueprint = {
-    corsia:                  { required: true,  type: 'number', integer: true, min: 1 },
-    scaffale:                { required: true,  type: 'number', integer: true, min: 1 },
+    corsia: { required: true, type: 'number', integer: true, min: 1 },
+    scaffale: { required: true, type: 'number', integer: true, min: 1 },
     temperatura_controllata: { required: false, type: 'boolean' }
 };
 
