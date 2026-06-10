@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   X, Package, MapPin, Hash, FileText, ArrowLeftRight,
   ArrowDownCircle, ArrowUpCircle, ArrowRightCircle,
@@ -8,7 +8,8 @@ import { toast } from 'sonner';
 import { movimentiStockApi } from '../../../api/movimentiStockApi';
 import { prodottiApi } from '../../../api/prodottiApi';
 import { magazzinoApi } from '../../../api/magazzinoApi';
-import type { MovimentoTipo } from '../../../types/magazzino';
+import { giacenzeApi } from '../../../api/giacenzeApi';
+import type { MovimentoTipo, Giacenza } from '../../../types/magazzino';
 
 interface TipoConfig {
   label: string;
@@ -56,11 +57,26 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<typeof EMPTY_FORM>>({});
   const [prodotti, setProdotti] = useState<{ id: number; sku: string; nome: string }[]>([]);
-  const [ubicazioni, setUbicazioni] = useState<{ id: number; codice_composto: string }[]>([]);
+  const [tutteUbicazioni, setTutteUbicazioni] = useState<{ id: number; codice_composto: string }[]>([]);
+  const [giacenzePerProdotto, setGiacenzePerProdotto] = useState<Giacenza[]>([]);
   const [loadingDati, setLoadingDati] = useState(false);
+  const [loadingGiacenze, setLoadingGiacenze] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const cfg = TIPI[tipo];
+
+  // Ubicazioni con giacenza per il prodotto selezionato (SCARICO, SPOSTAMENTO da)
+  const ubicazioniConGiacenza = useMemo(() =>
+    giacenzePerProdotto
+      .filter((g) => g.quantita > 0)
+      .map((g) => ({ id: g.ubicazione_id, codice_composto: g.ubicazione })),
+    [giacenzePerProdotto]
+  );
+
+  // Per CARICO/RETTIFICA/RESO: tutte le ubicazioni attive
+  // Per SCARICO/SPOSTAMENTO origine: solo dove il prodotto ha giacenza
+  const ubicazioniDestinazione = tutteUbicazioni;
+  const ubicazioniOrigine = ubicazioniConGiacenza;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -68,11 +84,25 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
     Promise.all([prodottiApi.list(), magazzinoApi.listUbicazioni()])
       .then(([p, u]) => {
         setProdotti(p);
-        setUbicazioni(u);
+        setTutteUbicazioni(u);
       })
       .catch(() => toast.error('Errore caricamento dati'))
       .finally(() => setLoadingDati(false));
   }, [isOpen]);
+
+  // Ricarica giacenze ogni volta che cambia il prodotto selezionato
+  useEffect(() => {
+    const prodottoId = parseInt(form.prodotto_id);
+    if (!form.prodotto_id || isNaN(prodottoId)) {
+      setGiacenzePerProdotto([]);
+      return;
+    }
+    setLoadingGiacenze(true);
+    giacenzeApi.getByProdottoId(prodottoId)
+      .then(setGiacenzePerProdotto)
+      .catch(() => setGiacenzePerProdotto([]))
+      .finally(() => setLoadingGiacenze(false));
+  }, [form.prodotto_id]);
 
   const handleClose = () => {
     setForm(EMPTY_FORM);
@@ -83,6 +113,7 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
 
   const handleChangeTipo = (t: MovimentoTipo) => {
     setTipo(t);
+    setForm(prev => ({ ...prev, ubicazione_id: '', ubicazione_da_id: '', ubicazione_a_id: '' }));
     setErrors({});
   };
 
@@ -96,14 +127,41 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
     const errs: Partial<typeof EMPTY_FORM> = {};
     if (!form.prodotto_id) errs.prodotto_id = 'Seleziona un prodotto';
     if (!form.quantita || parseInt(form.quantita) < 1) errs.quantita = 'Quantità minima 1';
+
+    const needsGiacenza = tipo === 'SCARICO_VENDITA' || tipo === 'RETTIFICA_NEGATIVA';
+    const ubicazioneOrId = cfg.isSpostamento ? form.ubicazione_da_id : form.ubicazione_id;
+
     if (cfg.isSpostamento) {
       if (!form.ubicazione_da_id) errs.ubicazione_da_id = 'Seleziona ubicazione di origine';
       if (!form.ubicazione_a_id)  errs.ubicazione_a_id  = 'Seleziona ubicazione di destinazione';
       if (form.ubicazione_da_id && form.ubicazione_a_id && form.ubicazione_da_id === form.ubicazione_a_id)
         errs.ubicazione_a_id = 'Le ubicazioni devono essere diverse';
+      // Verifica giacenza sull'origine
+      if (form.ubicazione_da_id && form.prodotto_id) {
+        const giacenza = giacenzePerProdotto.find(
+          (g) => String(g.ubicazione_id) === form.ubicazione_da_id
+        );
+        if (!giacenza || giacenza.quantita <= 0) {
+          errs.ubicazione_da_id = 'Nessuna giacenza disponibile in questa ubicazione';
+        } else if (parseInt(form.quantita) > giacenza.quantita) {
+          errs.quantita = `Quantità massima disponibile: ${giacenza.quantita}`;
+        }
+      }
     } else {
       if (!form.ubicazione_id) errs.ubicazione_id = 'Seleziona un\'ubicazione';
+      // Per SCARICO e RETTIFICA_NEGATIVA verifica giacenza sufficiente
+      if (needsGiacenza && form.ubicazione_id && form.prodotto_id) {
+        const giacenza = giacenzePerProdotto.find(
+          (g) => String(g.ubicazione_id) === form.ubicazione_id
+        );
+        if (!giacenza || giacenza.quantita <= 0) {
+          errs.ubicazione_id = 'Nessuna giacenza disponibile in questa ubicazione';
+        } else if (parseInt(form.quantita) > giacenza.quantita) {
+          errs.quantita = `Quantità massima disponibile: ${giacenza.quantita}`;
+        }
+      }
     }
+
     if (cfg.needsNote && !form.note.trim()) errs.note = 'Note obbligatorie per le rettifiche';
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -218,12 +276,16 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
                     <label className="flex items-center gap-2 text-sm font-medium text-[#2D2D2D] mb-1.5">
                       <MapPin className="w-4 h-4 text-[#9CA3AF]" /> Origine
                     </label>
-                    <select value={form.ubicazione_da_id} onChange={set('ubicazione_da_id')} className={inputCls('ubicazione_da_id')}>
+                    <select value={form.ubicazione_da_id} onChange={set('ubicazione_da_id')} className={inputCls('ubicazione_da_id')} disabled={loadingGiacenze}>
                       <option value="">Seleziona…</option>
-                      {ubicazioni.map(u => (
-                        <option key={u.id} value={u.id}>{u.codice_composto}</option>
-                      ))}
+                      {ubicazioniOrigine.map(u => {
+                        const g = giacenzePerProdotto.find(x => x.ubicazione_id === u.id);
+                        return <option key={u.id} value={u.id}>{u.codice_composto} (disp. {g?.quantita ?? 0})</option>;
+                      })}
                     </select>
+                    {!loadingGiacenze && form.prodotto_id && ubicazioniOrigine.length === 0 && (
+                      <p className="mt-1 text-xs text-[#F59E0B]">Nessuna giacenza per questo prodotto</p>
+                    )}
                     {errors.ubicazione_da_id && <p className="mt-1 text-xs text-red-500">{errors.ubicazione_da_id}</p>}
                   </div>
                   <div>
@@ -232,7 +294,7 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
                     </label>
                     <select value={form.ubicazione_a_id} onChange={set('ubicazione_a_id')} className={inputCls('ubicazione_a_id')}>
                       <option value="">Seleziona…</option>
-                      {ubicazioni.map(u => (
+                      {ubicazioniDestinazione.map(u => (
                         <option key={u.id} value={u.id}>{u.codice_composto}</option>
                       ))}
                     </select>
@@ -244,12 +306,29 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
                   <label className="flex items-center gap-2 text-sm font-medium text-[#2D2D2D] mb-1.5">
                     <MapPin className="w-4 h-4 text-[#9CA3AF]" /> Ubicazione
                   </label>
-                  <select value={form.ubicazione_id} onChange={set('ubicazione_id')} className={inputCls('ubicazione_id')}>
+                  <select
+                    value={form.ubicazione_id}
+                    onChange={set('ubicazione_id')}
+                    className={inputCls('ubicazione_id')}
+                    disabled={(tipo === 'SCARICO_VENDITA' || tipo === 'RETTIFICA_NEGATIVA') && loadingGiacenze}
+                  >
                     <option value="">Seleziona…</option>
-                    {ubicazioni.map(u => (
-                      <option key={u.id} value={u.id}>{u.codice_composto}</option>
-                    ))}
+                    {(tipo === 'SCARICO_VENDITA' || tipo === 'RETTIFICA_NEGATIVA'
+                      ? ubicazioniOrigine
+                      : ubicazioniDestinazione
+                    ).map(u => {
+                      const g = giacenzePerProdotto.find(x => x.ubicazione_id === u.id);
+                      const showDisp = tipo === 'SCARICO_VENDITA' || tipo === 'RETTIFICA_NEGATIVA';
+                      return (
+                        <option key={u.id} value={u.id}>
+                          {u.codice_composto}{showDisp && g ? ` (disp. ${g.quantita})` : ''}
+                        </option>
+                      );
+                    })}
                   </select>
+                  {(tipo === 'SCARICO_VENDITA' || tipo === 'RETTIFICA_NEGATIVA') && !loadingGiacenze && form.prodotto_id && ubicazioniOrigine.length === 0 && (
+                    <p className="mt-1 text-xs text-[#F59E0B]">Nessuna giacenza per questo prodotto</p>
+                  )}
                   {errors.ubicazione_id && <p className="mt-1 text-xs text-red-500">{errors.ubicazione_id}</p>}
                 </div>
               )}
@@ -258,10 +337,28 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-[#2D2D2D] mb-1.5">
                   <Hash className="w-4 h-4 text-[#9CA3AF]" /> Quantità
+                  {(() => {
+                    const ubicId = cfg.isSpostamento ? form.ubicazione_da_id : form.ubicazione_id;
+                    const g = ubicId ? giacenzePerProdotto.find(x => String(x.ubicazione_id) === ubicId) : null;
+                    const needsCheck = cfg.isSpostamento || tipo === 'SCARICO_VENDITA' || tipo === 'RETTIFICA_NEGATIVA';
+                    return needsCheck && g
+                      ? <span className="ml-auto text-xs text-[#6B7280] font-normal">disponibile: <strong className="text-[#2D2D2D]">{g.quantita}</strong></span>
+                      : null;
+                  })()}
                 </label>
                 <input
-                  type="number" min={1} value={form.quantita} onChange={set('quantita')}
-                  placeholder="0" className={inputCls('quantita')}
+                  type="number"
+                  min={1}
+                  max={(() => {
+                    const ubicId = cfg.isSpostamento ? form.ubicazione_da_id : form.ubicazione_id;
+                    const g = ubicId ? giacenzePerProdotto.find(x => String(x.ubicazione_id) === ubicId) : null;
+                    const needsCheck = cfg.isSpostamento || tipo === 'SCARICO_VENDITA' || tipo === 'RETTIFICA_NEGATIVA';
+                    return needsCheck && g ? g.quantita : undefined;
+                  })()}
+                  value={form.quantita}
+                  onChange={set('quantita')}
+                  placeholder="0"
+                  className={inputCls('quantita')}
                 />
                 {errors.quantita && <p className="mt-1 text-xs text-red-500">{errors.quantita}</p>}
               </div>

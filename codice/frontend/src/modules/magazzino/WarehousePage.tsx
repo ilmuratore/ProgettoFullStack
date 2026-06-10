@@ -98,10 +98,11 @@ export function WarehousePage() {
 
   const fetchMagazzini = useCallback(async () => {
     setLoading(true);
-    try { 
-      const data = await magazzinoApi.list();
-      setMagazzini(
-        data.map((mag) => ({...mag, ubicazioni: Array.isArray(mag.ubicazioni) ? mag.ubicazioni : [],}))); }
+    try {
+      const lista = await magazzinoApi.list();
+      const dettagli = await Promise.all(lista.map((m) => magazzinoApi.getById(m.id)));
+      setMagazzini(dettagli.map((mag) => ({ ...mag, ubicazioni: Array.isArray(mag.ubicazioni) ? mag.ubicazioni : [] })));
+    }
     catch (err: any) { toast.error('Errore caricamento magazzini', { description: err?.message }); }
     finally { setLoading(false); }
   }, []);
@@ -150,7 +151,7 @@ export function WarehousePage() {
           action: () => { setCategoryModalMode('create'); setSelectedCategory(null); setInitialParentCategoryId(undefined); setCategoryModalOpen(true); }
         };
       case 'giacenze':
-        return { label: 'Aggiorna Giacenze', show: true, action: () => toast.info('Disponibile con M07') };
+        return { label: 'Aggiorna Giacenze', show: false, action: () => {} };
       case 'movimenti':
         return { label: 'Nuovo Movimento', show: true, action: () => setIsMovementModalOpen(true) };
     }

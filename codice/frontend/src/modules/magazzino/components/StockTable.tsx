@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Search, Filter, ArrowUpDown } from "lucide-react";
 import { giacenzeApi } from "../../../api/giacenzeApi";
-import type { Giacenza } from "../../../types/magazzino";
+import { magazzinoApi } from "../../../api/magazzinoApi";
+import type { Giacenza, Magazzino } from "../../../types/magazzino";
 
 const getStatoBadge = (item: Giacenza) => {
   if (item.sotto_scorta) {
@@ -18,6 +19,11 @@ export function StockTable() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [magazzini, setMagazzini] = useState<Magazzino[]>([]);
+
+  useEffect(() => {
+    magazzinoApi.list().then(setMagazzini).catch(() => {});
+  }, []);
 
   // FILTRI AVANZATI
   const [filters, setFilters] = useState({
@@ -91,8 +97,9 @@ export function StockTable() {
               className="h-9 px-3 bg-white border border-[#E5EAF2] rounded-lg"
             >
               <option value="">Tutti</option>
-              <option value="1">Magazzino 1</option>
-              <option value="2">Magazzino 2</option>
+              {magazzini.map((m) => (
+                <option key={m.id} value={m.id}>{m.nome}</option>
+              ))}
             </select>
           </div>
 
@@ -209,7 +216,7 @@ export function StockTable() {
                     }`}
                   >
                     <td className="py-3 px-4 text-sm text-[#6B7280] font-mono">{item.sku}</td>
-                    <td className="py-3 px-4 text-sm text-[#2D2D2D] font-medium">{item.nome}</td>
+                    <td className="py-3 px-4 text-sm text-[#2D2D2D] font-medium">{item.prodotto}</td>
                     <td className="py-3 px-4">
                       {item.categoria ? (
                         <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-[#EEF2FF] text-[#6366F1]">

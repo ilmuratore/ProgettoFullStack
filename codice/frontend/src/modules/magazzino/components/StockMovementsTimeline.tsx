@@ -25,8 +25,7 @@ const TIPO_STYLE: Record<string, { icon: React.ElementType; color: string; bg: s
 };
 
 const isPositivo = (tipo: string) =>
-  ['CARICO_ACQUISTO', 'RETTIFICA_POSITIVA', 'RESO'].includes(tipo) ||
-  tipo === 'SPOSTAMENTO';
+  ['CARICO_ACQUISTO', 'RETTIFICA_POSITIVA', 'RESO'].includes(tipo);
 
 const formatOra = (iso: string) =>
   new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
