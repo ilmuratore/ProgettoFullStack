@@ -1,41 +1,41 @@
 const errorMessages = {
-    VALIDATION_ERROR:               'Dati richiesta non validi',
-    AUTH_REQUIRED:                  'Autenticazione richiesta',
-    CREDENZIALI_NON_VALIDE:         'Credenziali non valide',
-    UTENTE_DISABILITATO:            'Utente disabilitato',
-    PASSWORD_NON_VALIDA:            'La password attuale non è corretta',
-    ACCESS_DENIED:                  'Accesso negato',
-    EMAIL_GIA_ESISTENTE:            'Email già esistente',
-    RUOLO_NON_VALIDO:               'Ruolo non valido',
-    UTENTE_NON_TROVATO:             'Utente non trovato',
-    RESOURCE_NOT_FOUND:             'Risorsa non trovata',
-    DUPLICATE_ENTRY:                'Record già esistente (valore duplicato)',
-    INSUFFICIENT_STOCK:             'Giacenza insufficiente per completare il movimento',
-    CORRIERE_CON_SPEDIZIONI:        'Impossibile eliminare: il corriere ha spedizioni associate',
-    CATEGORIA_CON_PRODOTTI:         'Impossibile eliminare: la categoria ha prodotti associati',
-    CATEGORIA_CON_SOTTOCATEGORIE:   'Impossibile eliminare: la categoria ha sottocategorie',
-    RATE_LIMIT:                     'Troppe richieste',
-    INTERNAL_SERVER_ERROR:          'Errore interno del server'
+    VALIDATION_ERROR: 'Dati richiesta non validi',
+    AUTH_REQUIRED: 'Autenticazione richiesta',
+    CREDENZIALI_NON_VALIDE: 'Credenziali non valide',
+    UTENTE_DISABILITATO: 'Utente disabilitato',
+    PASSWORD_NON_VALIDA: 'La password attuale non è corretta',
+    ACCESS_DENIED: 'Accesso negato',
+    EMAIL_GIA_ESISTENTE: 'Email già esistente',
+    RUOLO_NON_VALIDO: 'Ruolo non valido',
+    UTENTE_NON_TROVATO: 'Utente non trovato',
+    RESOURCE_NOT_FOUND: 'Risorsa non trovata',
+    DUPLICATE_ENTRY: 'Record già esistente (valore duplicato)',
+    INSUFFICIENT_STOCK: 'Giacenza insufficiente per completare il movimento',
+    CORRIERE_CON_SPEDIZIONI: 'Impossibile eliminare: il corriere ha spedizioni associate',
+    CATEGORIA_CON_PRODOTTI: 'Impossibile eliminare: la categoria ha prodotti associati',
+    CATEGORIA_CON_SOTTOCATEGORIE: 'Impossibile eliminare: la categoria ha sottocategorie',
+    RATE_LIMIT: 'Troppe richieste',
+    INTERNAL_SERVER_ERROR: 'Errore interno del server'
 };
 
 const errorStatusCodes = {
-    VALIDATION_ERROR:               400,
-    AUTH_REQUIRED:                  401,
-    CREDENZIALI_NON_VALIDE:         401,
-    UTENTE_DISABILITATO:            401,
-    PASSWORD_NON_VALIDA:            401,
-    ACCESS_DENIED:                  403,
-    UTENTE_NON_TROVATO:             404,
-    RESOURCE_NOT_FOUND:             404,
-    EMAIL_GIA_ESISTENTE:            409,
-    DUPLICATE_ENTRY:                409,
-    CORRIERE_CON_SPEDIZIONI:        409,
-    CATEGORIA_CON_PRODOTTI:         409,
-    CATEGORIA_CON_SOTTOCATEGORIE:   409,
-    RUOLO_NON_VALIDO:               422,
-    INSUFFICIENT_STOCK:             422,
-    RATE_LIMIT:                     429,
-    INTERNAL_SERVER_ERROR:          500
+    VALIDATION_ERROR: 400,
+    AUTH_REQUIRED: 401,
+    CREDENZIALI_NON_VALIDE: 401,
+    UTENTE_DISABILITATO: 401,
+    PASSWORD_NON_VALIDA: 401,
+    ACCESS_DENIED: 403,
+    UTENTE_NON_TROVATO: 404,
+    RESOURCE_NOT_FOUND: 404,
+    EMAIL_GIA_ESISTENTE: 409,
+    DUPLICATE_ENTRY: 409,
+    CORRIERE_CON_SPEDIZIONI: 409,
+    CATEGORIA_CON_PRODOTTI: 409,
+    CATEGORIA_CON_SOTTOCATEGORIE: 409,
+    RUOLO_NON_VALIDO: 422,
+    INSUFFICIENT_STOCK: 422,
+    RATE_LIMIT: 429,
+    INTERNAL_SERVER_ERROR: 500
 };
 
 const PG_SQLSTATE = {
@@ -43,9 +43,14 @@ const PG_SQLSTATE = {
 };
 
 const errorHandler = (err, _req, res, _next) => {
-    const code       = PG_SQLSTATE[err.code] || err.code || err.message || 'INTERNAL_SERVER_ERROR';
-    const statusCode = err.statusCode || errorStatusCodes[code] || 500;
-    const message    = errorMessages[code] || err.message || errorMessages.INTERNAL_SERVER_ERROR;
+    let code = PG_SQLSTATE[err.code] || err.code;
+
+    if (!code || !errorStatusCodes[code]) {
+        code = 'INTERNAL_SERVER_ERROR';
+    }
+
+    const statusCode = err.status || errorStatusCodes[code] || 500;
+    const message = errorMessages[code] || errorMessages.INTERNAL_SERVER_ERROR;
 
     if (process.env.NODE_ENV !== 'production') {
         console.error(`[${new Date().toISOString()}] ${statusCode} - ${code}: ${message}`);
@@ -61,4 +66,4 @@ const errorHandler = (err, _req, res, _next) => {
     return res.status(statusCode).json(payload);
 };
 
-module.exports = errorHandler;
+module.exports = { errorHandler };

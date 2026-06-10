@@ -1,22 +1,23 @@
-const express                 = require('express');
-const clientiController       = require('../controllers/clientiController');
-const auth                    = require('../middleware/auth');
-const { requirePermesso }     = require('../middleware/rbac');
-const validate                = require('../middleware/validate');
+const express = require('express');
+const clientiController = require('../controllers/clientiController');
+
+const { auth } = require('../middleware/auth');
+const { requirePermesso } = require('../middleware/rbac');
+const { validate } = require('../middleware/validate');
 
 const router = express.Router();
 
 const createBlueprint = {
-    ragione_sociale: { required: true,  type: 'string' },
-    piva_cf:         { required: true,  type: 'string' },
-    email:           { required: false, type: 'string' },
-    telefono:        { required: false, type: 'string' }
+    ragione_sociale: { required: true, type: 'string' },
+    piva_cf: { required: true, type: 'string' },
+    email: { required: false, type: 'string' },
+    telefono: { required: false, type: 'string' }
 };
 const updateBlueprint = {
     ragione_sociale: { required: false, type: 'string' },
-    piva_cf:         { required: false, type: 'string' },
-    email:           { required: false, type: 'string' },
-    telefono:        { required: false, type: 'string' }
+    piva_cf: { required: false, type: 'string' },
+    email: { required: false, type: 'string' },
+    telefono: { required: false, type: 'string' }
 };
 
 router.get(

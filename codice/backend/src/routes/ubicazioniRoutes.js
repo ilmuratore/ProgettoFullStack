@@ -1,8 +1,9 @@
-const express              = require('express');
+const express = require('express');
 const ubicazioniController = require('../controllers/ubicazioniController');
-const auth                 = require('../middleware/auth');
-const { requirePermesso }  = require('../middleware/rbac');
-const validate             = require('../middleware/validate');
+
+const { auth } = require('../middleware/auth');
+const { requirePermesso } = require('../middleware/rbac');
+const { validate } = require('../middleware/validate');
 
 const router = express.Router();
 
