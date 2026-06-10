@@ -101,8 +101,8 @@ export function Sidebar({
           </div>
         )}
       </div>
-
-       {/* Supporto */}
+          
+       {/* Supporto 
         <div className="relative group/supporto">
           <button
             onClick={() => navigate('supporto')}
@@ -116,7 +116,7 @@ export function Sidebar({
               Supporto<div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#1E293B]" />
             </div>
           )}
-        </div>
+        </div>  */}
 
       {/* ── Nav ── */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-0.5">
