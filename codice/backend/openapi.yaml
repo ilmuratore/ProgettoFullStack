@@ -580,7 +580,7 @@ components:
         corsia:                  { type: integer, example: 2 }
         scaffale:                { type: integer, example: 5 }
         codice:                  { type: string,  example: "1-02-05" }
-        codice_composto:         { type: string,  example: "MAG-A / 1-02-05", description: "Campo calcolato aggiunto dal service — non presente nel DB" }
+        codice_composto:         { type: string,  example: "1-02-05", description: "Campo calcolato aggiunto dal service — valore identico a codice (non presente come colonna separata nel DB)" }
         attivo:                  { type: boolean, example: true }
         temperatura_controllata: { type: boolean, example: false }
         totale_giacenza:         { type: integer, example: 120, description: "Presente solo nel dettaglio magazzino (GET /:id)" }
@@ -614,10 +614,7 @@ components:
     MagazzinoCreateRequest:
       type: object
       required: [codice, nome]
-      description: |
-        `codice` non è modificabile dopo la creazione.
-        I campi indirizzo strutturato (cap, citta, provincia, paese) non sono nel blueprint
-        di validazione — includili nel body se necessario, il service li gestisce da `req.body`.
+      description: "`codice` non è modificabile dopo la creazione."
       properties:
         codice:    { type: string, example: MAG-B }
         nome:      { type: string, example: "Magazzino secondario Monza" }
@@ -2179,7 +2176,7 @@ paths:
                       corsia: 1
                       scaffale: 1
                       codice: 1-01-01
-                      codice_composto: "MAG-A / 1-01-01"
+                      codice_composto: "1-01-01"
                       attivo: true
                       temperatura_controllata: false
                       totale_giacenza: 250
@@ -2190,7 +2187,7 @@ paths:
                       corsia: 1
                       scaffale: 2
                       codice: 1-01-02
-                      codice_composto: "MAG-A / 1-01-02"
+                      codice_composto: "1-01-02"
                       attivo: true
                       temperatura_controllata: true
                       totale_giacenza: 0
@@ -2313,7 +2310,7 @@ paths:
                   corsia: 3
                   scaffale: 7
                   codice: 1-03-07
-                  codice_composto: "MAG-A / 1-03-07"
+                  codice_composto: "1-03-07"
                   attivo: true
                   temperatura_controllata: false
                   created_at: "2026-06-07T16:45:00.000Z"
@@ -2343,6 +2340,50 @@ paths:
   # ══════════════════════════════════════════
   # M06 — UBICAZIONI (rotte standalone)
   # ══════════════════════════════════════════
+
+  /ubicazioni:
+    get:
+      tags: [Ubicazioni]
+      summary: Lista ubicazioni attive
+      description: Restituisce tutte le ubicazioni con `attivo = true`. Ogni record include `codice_composto` calcolato dal service.
+      x-required-permission: magazzino:read
+      responses:
+        "200":
+          description: Lista ubicazioni attive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Ubicazione' }
+              example:
+                status: success
+                data:
+                  - id: 1
+                    magazzino_id: 1
+                    corsia: 1
+                    scaffale: 1
+                    codice: 1-01-01
+                    codice_composto: "1-01-01"
+                    attivo: true
+                    temperatura_controllata: false
+                    created_at: "2026-01-10T08:00:00.000Z"
+                    updated_at: "2026-01-10T08:00:00.000Z"
+                  - id: 2
+                    magazzino_id: 1
+                    corsia: 1
+                    scaffale: 2
+                    codice: 1-01-02
+                    codice_composto: "1-01-02"
+                    attivo: true
+                    temperatura_controllata: true
+                    created_at: "2026-01-10T08:00:00.000Z"
+                    updated_at: "2026-01-10T08:00:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
 
   /ubicazioni/{id}:
     parameters:
@@ -2374,7 +2415,7 @@ paths:
                   corsia: 1
                   scaffale: 1
                   codice: 1-01-01
-                  codice_composto: "MAG-A / 1-01-01"
+                  codice_composto: "1-01-01"
                   attivo: true
                   temperatura_controllata: false
                   created_at: "2026-01-10T08:00:00.000Z"
@@ -2415,7 +2456,7 @@ paths:
                   corsia: 1
                   scaffale: 1
                   codice: 1-01-01
-                  codice_composto: "MAG-A / 1-01-01"
+                  codice_composto: "1-01-01"
                   attivo: true
                   temperatura_controllata: true
                   created_at: "2026-01-10T08:00:00.000Z"
@@ -2455,7 +2496,7 @@ paths:
                   corsia: 1
                   scaffale: 1
                   codice: 1-01-01
-                  codice_composto: "MAG-A / 1-01-01"
+                  codice_composto: "1-01-01"
                   attivo: false
                   temperatura_controllata: false
                   created_at: "2026-01-10T08:00:00.000Z"

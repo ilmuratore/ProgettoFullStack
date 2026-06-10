@@ -275,7 +275,7 @@ export function AnagrafichePage() {
   const filteredCorrieri   = activeTab === 'corrieri'   ? (filteredData as Corriere[]) : [];
   const filteredDipendenti = activeTab === 'dipendenti' ? (filteredData as Dipendente[]) : [];
 
-  const tabEntity = activeTab; // fornitori | clienti | corrieri | dipendenti
+  const tabEntity = activeTab; 
 
   const canWrite  = (entity: string) => hasPermesso(`${entity}:write`);
   const canDelete = (entity: string) => hasPermesso(`${entity}:delete`);
