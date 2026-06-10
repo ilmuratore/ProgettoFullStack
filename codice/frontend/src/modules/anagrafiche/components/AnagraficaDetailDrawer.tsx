@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { X, Mail, Phone, MapPin, Globe, ExternalLink, Calendar, Building2, User, Edit, FileText, Clock, Truck, Briefcase, IdCard } from 'lucide-react';
+import { useNavigate } from 'react-router';
+import { X, Mail, Phone, MapPin, Globe, ExternalLink, Calendar, Building2, User, Edit, FileText, Clock, Truck, Briefcase, IdCard, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { clientiApi } from '../../../api/clientiApi';
 import { fornitoriApi } from '../../../api/fornitoriApi';
@@ -59,6 +60,7 @@ const getNomeVisualizzato = (entityType: EntityType, item: EntityItem): string =
 
 export function AnagraficaDetailDrawer({ entityType, entityId, isOpen, onClose, onEdit }: AnagraficaDetailDrawerProps) {
   const { hasPermesso } = useAuthStore();
+  const navigate = useNavigate();
   const [item, setItem] = useState<EntityItem | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -87,6 +89,12 @@ export function AnagraficaDetailDrawer({ entityType, entityId, isOpen, onClose, 
   const corriere = entityType === 'corriere' ? (item as Corriere | null) : null;
   const dipendente = entityType === 'dipendente' ? (item as Dipendente | null) : null;
   const isEcosystem = (cliente ?? fornitore)?.source === 'ecosystem';
+
+  const handleViewHistory = () => {
+    if (fornitore) navigate(`/acquisti?fornitore=${encodeURIComponent(fornitore.ragione_sociale)}`);
+    else if (cliente) navigate(`/vendite?cliente=${encodeURIComponent(cliente.ragione_sociale)}`);
+    onClose();
+  };
 
   return (
     <>
@@ -285,14 +293,24 @@ export function AnagraficaDetailDrawer({ entityType, entityId, isOpen, onClose, 
             </div>
 
             {/* Azioni */}
-            {canWrite && onEdit && !isEcosystem && (
-              <div className="flex justify-end pt-2">
-                <button
-                  onClick={() => onEdit(item)}
-                  className="px-4 py-2 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2 font-medium"
-                >
-                  <Edit className="w-4 h-4" /> Modifica
-                </button>
+            {((cliente || fornitore) || (canWrite && onEdit && !isEcosystem)) && (
+              <div className="flex justify-end gap-3 pt-2">
+                {(cliente || fornitore) && (
+                  <button
+                    onClick={handleViewHistory}
+                    className="px-4 py-2 bg-white border border-[#E5EAF2] text-[#2D2D2D] rounded-xl hover:bg-[#F7F9FC] transition-all flex items-center gap-2 font-medium"
+                  >
+                    <History className="w-4 h-4" /> Visualizza Storico
+                  </button>
+                )}
+                {canWrite && onEdit && !isEcosystem && (
+                  <button
+                    onClick={() => onEdit(item)}
+                    className="px-4 py-2 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2 font-medium"
+                  >
+                    <Edit className="w-4 h-4" /> Modifica
+                  </button>
+                )}
               </div>
             )}
           </div>
