@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Search, Plus, Download, Upload, Filter, MoreVertical,
-  Edit, Trash2, Eye, Mail, Phone, MapPin, Building2,
+  Edit, Trash2, Mail, Phone, MapPin, Building2,
   User, Truck, Globe, ExternalLink, Users, Calendar, AlertTriangle,
 } from 'lucide-react';
 import { PageTabBar } from '../../components/ui/PageTabBar';
@@ -10,6 +10,7 @@ import { SupplierFormModal } from '../anagrafiche/components/SupplierFormModal';
 import { ClientFormModal } from '../anagrafiche/components/ClientFormModal';
 import { CourierFormModal } from '../anagrafiche/components/CourierFormModal';
 import { EmployeeFormModal } from '../anagrafiche/components/EmployeeFormModal';
+import { AnagraficaDetailDrawer } from '../anagrafiche/components/AnagraficaDetailDrawer';
 import { toast } from 'sonner';
 import { fornitoriApi } from '../../api/fornitoriApi';
 import { clientiApi } from '../../api/clientiApi';
@@ -40,6 +41,10 @@ export function AnagrafichePage() {
 
   const [editMode, setEditMode] = useState<'create' | 'edit'>('create');
   const [selectedItem, setSelectedItem] = useState<any>(null);
+
+  const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
+  const [detailEntityType, setDetailEntityType] = useState<'cliente' | 'fornitore' | 'corriere' | 'dipendente' | null>(null);
+  const [detailEntityId, setDetailEntityId] = useState<number | null>(null);
 
   const [fornitori, setFornitori] = useState<Fornitore[]>([]);
   const [loadingFornitori, setLoadingFornitori] = useState(false);
@@ -166,7 +171,28 @@ export function AnagrafichePage() {
     }
   };
 
-  const handleView = (_item: any) => { toast.info('Funzionalità di dettaglio in arrivo'); };
+  const TAB_TO_ENTITY_TYPE: Record<TabType, 'cliente' | 'fornitore' | 'corriere' | 'dipendente'> = {
+    clienti: 'cliente',
+    fornitori: 'fornitore',
+    corrieri: 'corriere',
+    dipendenti: 'dipendente',
+  };
+
+  const handleView = (item: any) => {
+    const entityType = TAB_TO_ENTITY_TYPE[activeTab];
+    if (detailDrawerOpen && detailEntityType === entityType && detailEntityId === item.id) {
+      setDetailDrawerOpen(false);
+      return;
+    }
+    setDetailEntityType(entityType);
+    setDetailEntityId(item.id);
+    setDetailDrawerOpen(true);
+  };
+
+  const handleEditFromDrawer = (item: any) => {
+    setDetailDrawerOpen(false);
+    handleEdit(item);
+  };
 
   const handleSaveSupplier = async (data: FornitoreCreateRequest | FornitoreUpdateRequest, id?: number) => {
     try {
@@ -288,9 +314,6 @@ export function AnagrafichePage() {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40">
-        <DropdownMenuItem onClick={() => handleView(item)} className="cursor-pointer">
-          <Eye className="w-4 h-4 mr-2" />Visualizza
-        </DropdownMenuItem>
         {!hideEdit && canWrite(tabEntity) && (
           <DropdownMenuItem onClick={() => handleEdit(item)} className="cursor-pointer">
             <Edit className="w-4 h-4 mr-2" />Modifica
@@ -397,7 +420,7 @@ export function AnagrafichePage() {
                   {loadingFornitori ? <SkeletonRows cols={7} /> : filteredFornitori.length === 0
                     ? <EmptyRow cols={7} msg={searchQuery ? 'Nessun fornitore corrisponde alla ricerca' : 'Nessun fornitore. Clicca "Nuovo Fornitore" per iniziare.'} />
                     : filteredFornitori.map((f, i) => (
-                      <tr key={f.id} className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
+                      <tr key={f.id} onClick={() => handleView(f)} className={`cursor-pointer border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
                         <td className="py-3 px-4">
                           <div className="font-medium text-[#2D2D2D]">{f.ragione_sociale}</div>
                           {f.sito_web && (
@@ -429,7 +452,7 @@ export function AnagrafichePage() {
                             {f.attivo ? 'Attivo' : 'Disattivo'}
                           </span>
                         </td>
-                        <td className="py-3 px-4"><KebabMenu item={f} hideEdit={f.source === 'ecosystem'} /></td>
+                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}><KebabMenu item={f} hideEdit={f.source === 'ecosystem'} /></td>
                       </tr>
                     ))}
                 </tbody>
@@ -455,7 +478,7 @@ export function AnagrafichePage() {
                   {loadingClienti ? <SkeletonRows cols={6} /> : filteredClienti.length === 0
                     ? <EmptyRow cols={6} msg={searchQuery ? 'Nessun cliente corrisponde alla ricerca' : 'Nessun cliente. Clicca "Nuovo Cliente" per iniziare.'} />
                     : filteredClienti.map((c, i) => (
-                      <tr key={c.id} className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
+                      <tr key={c.id} onClick={() => handleView(c)} className={`cursor-pointer border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
                         <td className="py-3 px-4 font-medium text-[#2D2D2D]">{c.ragione_sociale}</td>
                         <td className="py-3 px-4 text-sm text-[#6B7280] font-mono">{c.piva_cf ?? <span className="italic text-[#9CA3AF]">—</span>}</td>
                         <td className="py-3 px-4">
@@ -475,7 +498,7 @@ export function AnagrafichePage() {
                             {c.attivo ? 'Attivo' : 'Disattivo'}
                           </span>
                         </td>
-                        <td className="py-3 px-4"><KebabMenu item={c} /></td>
+                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}><KebabMenu item={c} /></td>
                       </tr>
                     ))}
                 </tbody>
@@ -501,7 +524,7 @@ export function AnagrafichePage() {
                   {loadingCorrieri ? <SkeletonRows cols={6} /> : filteredCorrieri.length === 0
                     ? <EmptyRow cols={6} msg={searchQuery ? 'Nessun corriere corrisponde alla ricerca' : 'Nessun corriere. Clicca "Nuovo Corriere" per iniziare.'} />
                     : filteredCorrieri.map((c, i) => (
-                      <tr key={c.id} className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
+                      <tr key={c.id} onClick={() => handleView(c)} className={`cursor-pointer border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
                         <td className="py-3 px-4 text-sm font-mono font-semibold text-[#2D2D2D]">{c.codice}</td>
                         <td className="py-3 px-4 font-medium text-[#2D2D2D]">{c.nome}</td>
                         <td className="py-3 px-4">
@@ -517,7 +540,7 @@ export function AnagrafichePage() {
                             {c.attivo ? 'Attivo' : 'Disattivo'}
                           </span>
                         </td>
-                        <td className="py-3 px-4"><KebabMenu item={c} /></td>
+                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}><KebabMenu item={c} /></td>
                       </tr>
                     ))}
                 </tbody>
@@ -548,7 +571,7 @@ export function AnagrafichePage() {
                   {loadingDipendenti ? <SkeletonRows cols={5} /> : filteredDipendenti.length === 0
                     ? <EmptyRow cols={5} msg={searchQuery ? 'Nessun dipendente corrisponde alla ricerca' : 'Nessun dipendente. Clicca "Nuovo Dipendente" per iniziare.'} />
                     : filteredDipendenti.map((d, i) => (
-                      <tr key={d.id} className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
+                      <tr key={d.id} onClick={() => handleView(d)} className={`cursor-pointer border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-[#EEF2FF] flex items-center justify-center text-xs font-semibold text-[#6366F1]">
@@ -568,7 +591,7 @@ export function AnagrafichePage() {
                             ? <div className="flex items-center gap-2 text-sm text-[#6B7280]"><Calendar className="w-3 h-3 shrink-0" />{formatDataBreve(d.data_assunzione)}</div>
                             : <span className="text-sm italic text-[#9CA3AF]">—</span>}
                         </td>
-                        <td className="py-3 px-4"><KebabMenu item={d} /></td>
+                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}><KebabMenu item={d} /></td>
                       </tr>
                     ))}
                 </tbody>
@@ -593,6 +616,16 @@ export function AnagrafichePage() {
       <ClientFormModal  open={clientModalOpen}   onClose={() => setClientModalOpen(false)}   onSave={handleSaveClient}   initialData={selectedItem} mode={editMode} />
       <CourierFormModal open={courierModalOpen}   onClose={() => setCourierModalOpen(false)}   onSave={handleSaveCourier}  initialData={selectedItem} mode={editMode} />
       <EmployeeFormModal open={employeeModalOpen} onClose={() => setEmployeeModalOpen(false)} onSave={handleSaveEmployee} initialData={selectedItem} mode={editMode} />
+
+      {detailEntityType && (
+        <AnagraficaDetailDrawer
+          entityType={detailEntityType}
+          entityId={detailEntityId}
+          isOpen={detailDrawerOpen}
+          onClose={() => setDetailDrawerOpen(false)}
+          onEdit={handleEditFromDrawer}
+        />
+      )}
     </div>
   );
 }
