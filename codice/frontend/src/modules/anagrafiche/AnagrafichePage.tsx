@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Search, Plus, Download, Upload, Filter, MoreVertical,
+  Search, Plus, Download, Upload, MoreVertical,
   Edit, Trash2, Mail, Phone, MapPin, Building2,
-  User, Truck, Globe, ExternalLink, Users, Calendar, AlertTriangle, ArrowUpDown,
+  User, Truck, Globe, ExternalLink, Users, Calendar, AlertTriangle,
 } from 'lucide-react';
 import { PageTabBar } from '../../components/ui/PageTabBar';
+import { FilterButton, FilterPanel } from '../../components/ui/FilterPanel';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../../components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
 import { SupplierFormModal } from '../anagrafiche/components/SupplierFormModal';
@@ -26,6 +27,24 @@ import type {
 
 type TabType = 'fornitori' | 'clienti' | 'corrieri' | 'dipendenti';
 
+type Ordinamento = 'nessuno' | 'alfabetico';
+type StatoFilter = 'tutti' | 'attivo' | 'disattivo';
+
+interface AnagraficaFiltersState {
+  ordinamento: Ordinamento;
+  stato: StatoFilter;
+}
+
+const EMPTY_ANAGRAFICA_FILTERS: AnagraficaFiltersState = { ordinamento: 'nessuno', stato: 'tutti' };
+
+interface DipendentiFiltersState {
+  ordinamento: Ordinamento;
+  ruolo: string;
+  dataAssunzione: string;
+}
+
+const EMPTY_DIPENDENTI_FILTERS: DipendentiFiltersState = { ordinamento: 'nessuno', ruolo: 'tutti', dataAssunzione: '' };
+
 const formatDataBreve = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
 
@@ -36,10 +55,9 @@ export function AnagrafichePage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [statoFilter, setStatoFilter] = useState<'tutti' | 'attivo' | 'disattivo'>('tutti');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [ruoloFilter, setRuoloFilter] = useState<string>('tutti');
-  const [dipendentiSortField, setDipendentiSortField] = useState<'nominativo' | 'data_assunzione'>('nominativo');
+  const [fornitoriFilters, setFornitoriFilters] = useState<AnagraficaFiltersState>(EMPTY_ANAGRAFICA_FILTERS);
+  const [clientiFilters, setClientiFilters] = useState<AnagraficaFiltersState>(EMPTY_ANAGRAFICA_FILTERS);
+  const [dipendentiFilters, setDipendentiFilters] = useState<DipendentiFiltersState>(EMPTY_DIPENDENTI_FILTERS);
 
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [clientModalOpen, setClientModalOpen] = useState(false);
@@ -110,10 +128,6 @@ export function AnagrafichePage() {
 
   useEffect(() => {
     setFiltersOpen(false);
-    setStatoFilter('tutti');
-    setSortOrder('asc');
-    setRuoloFilter('tutti');
-    setDipendentiSortField('nominativo');
   }, [activeTab]);
 
   const tabs = [
@@ -306,7 +320,6 @@ export function AnagrafichePage() {
 
   const getFilteredData = () => {
     const q = searchQuery.toLowerCase();
-    const sortDir = sortOrder === 'asc' ? 1 : -1;
     switch (activeTab) {
       case 'fornitori': {
         let data = fornitori.filter(f =>
@@ -314,8 +327,11 @@ export function AnagrafichePage() {
           (f.piva ?? '').toLowerCase().includes(q) ||
           (f.email ?? '').toLowerCase().includes(q)
         );
-        if (statoFilter !== 'tutti') data = data.filter(f => f.attivo === (statoFilter === 'attivo'));
-        return [...data].sort((a, b) => sortDir * a.ragione_sociale.localeCompare(b.ragione_sociale, 'it'));
+        if (fornitoriFilters.stato !== 'tutti') data = data.filter(f => f.attivo === (fornitoriFilters.stato === 'attivo'));
+        if (fornitoriFilters.ordinamento === 'alfabetico') {
+          data = [...data].sort((a, b) => a.ragione_sociale.localeCompare(b.ragione_sociale, 'it'));
+        }
+        return data;
       }
       case 'clienti': {
         let data = clienti.filter(c =>
@@ -323,8 +339,11 @@ export function AnagrafichePage() {
           (c.piva_cf ?? '').toLowerCase().includes(q) ||
           (c.email ?? '').toLowerCase().includes(q)
         );
-        if (statoFilter !== 'tutti') data = data.filter(c => c.attivo === (statoFilter === 'attivo'));
-        return [...data].sort((a, b) => sortDir * a.ragione_sociale.localeCompare(b.ragione_sociale, 'it'));
+        if (clientiFilters.stato !== 'tutti') data = data.filter(c => c.attivo === (clientiFilters.stato === 'attivo'));
+        if (clientiFilters.ordinamento === 'alfabetico') {
+          data = [...data].sort((a, b) => a.ragione_sociale.localeCompare(b.ragione_sociale, 'it'));
+        }
+        return data;
       }
       case 'corrieri':
         return corrieri.filter(c =>
@@ -337,15 +356,12 @@ export function AnagrafichePage() {
           d.codice_fiscale.toLowerCase().includes(q) ||
           (d.ruolo_operativo ?? '').toLowerCase().includes(q)
         );
-        if (ruoloFilter !== 'tutti') data = data.filter(d => (d.ruolo_operativo ?? '') === ruoloFilter);
-        return [...data].sort((a, b) => {
-          if (dipendentiSortField === 'nominativo') {
-            return sortDir * `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`, 'it');
-          }
-          const da = a.data_assunzione ? new Date(a.data_assunzione).getTime() : 0;
-          const db = b.data_assunzione ? new Date(b.data_assunzione).getTime() : 0;
-          return sortDir * (da - db);
-        });
+        if (dipendentiFilters.ruolo !== 'tutti') data = data.filter(d => (d.ruolo_operativo ?? '') === dipendentiFilters.ruolo);
+        if (dipendentiFilters.dataAssunzione) data = data.filter(d => (d.data_assunzione ?? '').slice(0, 4) === dipendentiFilters.dataAssunzione);
+        if (dipendentiFilters.ordinamento === 'alfabetico') {
+          data = [...data].sort((a, b) => `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`, 'it'));
+        }
+        return data;
       }
       default: return [];
     }
@@ -408,6 +424,22 @@ export function AnagrafichePage() {
     : activeTab === 'corrieri' ? loadingCorrieri
     : loadingDipendenti;
 
+  const activeFiltersCount = activeTab === 'fornitori'
+    ? (fornitoriFilters.ordinamento !== 'nessuno' ? 1 : 0) + (fornitoriFilters.stato !== 'tutti' ? 1 : 0)
+    : activeTab === 'clienti'
+    ? (clientiFilters.ordinamento !== 'nessuno' ? 1 : 0) + (clientiFilters.stato !== 'tutti' ? 1 : 0)
+    : activeTab === 'dipendenti'
+    ? (dipendentiFilters.ordinamento !== 'nessuno' ? 1 : 0) + (dipendentiFilters.ruolo !== 'tutti' ? 1 : 0) + (dipendentiFilters.dataAssunzione !== '' ? 1 : 0)
+    : 0;
+
+  const resetActiveFilters = () => {
+    switch (activeTab) {
+      case 'fornitori':  setFornitoriFilters(EMPTY_ANAGRAFICA_FILTERS); break;
+      case 'clienti':    setClientiFilters(EMPTY_ANAGRAFICA_FILTERS); break;
+      case 'dipendenti': setDipendentiFilters(EMPTY_DIPENDENTI_FILTERS); break;
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -441,97 +473,117 @@ export function AnagrafichePage() {
         <PageTabBar tabs={tabs} activeTab={activeTab} onTabChange={(id) => setActiveTab(id as TabType)} />
 
         <div className="p-6">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 relative">
-              <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder={`Cerca ${activeTab}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-10 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all"
-              />
-            </div>
-            {activeTab !== 'corrieri' && (
-              <button
-                onClick={() => setFiltersOpen(o => !o)}
-                className={`px-4 py-2 border rounded-xl transition-all flex items-center gap-2 ${
-                  filtersOpen ? 'bg-[#F0FDF7] border-[#17E88F] text-[#0FA67A]' : 'bg-[#F7F9FC] border-[#E5EAF2] text-[#6B7280] hover:bg-white'
-                }`}
+          <div className="mb-6">
+            {activeTab === 'corrieri' ? (
+              <div className="relative">
+                <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder={`Cerca ${activeTab}...`}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-10 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all"
+                />
+              </div>
+            ) : (
+              <FilterPanel
+                open={filtersOpen}
+                activeFiltersCount={activeFiltersCount}
+                onToggleOpen={() => setFiltersOpen(o => !o)}
+                onReset={resetActiveFilters}
+                filterGroups={
+                  activeTab === 'fornitori' ? (
+                    <>
+                      <div>
+                        <p className="text-sm font-medium text-[#2D2D2D] mb-2">Ordinamento</p>
+                        <div className="flex flex-wrap gap-2">
+                          <FilterButton
+                            label="Ragione Sociale (A → Z)"
+                            active={fornitoriFilters.ordinamento === 'alfabetico'}
+                            onClick={() => setFornitoriFilters(f => ({ ...f, ordinamento: f.ordinamento === 'alfabetico' ? 'nessuno' : 'alfabetico' }))}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-[#2D2D2D] mb-2">Stato</p>
+                        <div className="flex flex-wrap gap-2">
+                          <FilterButton label="Tutti" active={fornitoriFilters.stato === 'tutti'} onClick={() => setFornitoriFilters(f => ({ ...f, stato: 'tutti' }))} />
+                          <FilterButton label="Attivo" active={fornitoriFilters.stato === 'attivo'} onClick={() => setFornitoriFilters(f => ({ ...f, stato: 'attivo' }))} />
+                          <FilterButton label="Disattivo" active={fornitoriFilters.stato === 'disattivo'} onClick={() => setFornitoriFilters(f => ({ ...f, stato: 'disattivo' }))} />
+                        </div>
+                      </div>
+                    </>
+                  ) : activeTab === 'clienti' ? (
+                    <>
+                      <div>
+                        <p className="text-sm font-medium text-[#2D2D2D] mb-2">Ordinamento</p>
+                        <div className="flex flex-wrap gap-2">
+                          <FilterButton
+                            label="Denominazione Cliente (A → Z)"
+                            active={clientiFilters.ordinamento === 'alfabetico'}
+                            onClick={() => setClientiFilters(f => ({ ...f, ordinamento: f.ordinamento === 'alfabetico' ? 'nessuno' : 'alfabetico' }))}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-[#2D2D2D] mb-2">Stato</p>
+                        <div className="flex flex-wrap gap-2">
+                          <FilterButton label="Tutti" active={clientiFilters.stato === 'tutti'} onClick={() => setClientiFilters(f => ({ ...f, stato: 'tutti' }))} />
+                          <FilterButton label="Attivo" active={clientiFilters.stato === 'attivo'} onClick={() => setClientiFilters(f => ({ ...f, stato: 'attivo' }))} />
+                          <FilterButton label="Disattivo" active={clientiFilters.stato === 'disattivo'} onClick={() => setClientiFilters(f => ({ ...f, stato: 'disattivo' }))} />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <p className="text-sm font-medium text-[#2D2D2D] mb-2">Ordinamento</p>
+                        <div className="flex flex-wrap gap-2">
+                          <FilterButton
+                            label="Nominativo (A → Z)"
+                            active={dipendentiFilters.ordinamento === 'alfabetico'}
+                            onClick={() => setDipendentiFilters(f => ({ ...f, ordinamento: f.ordinamento === 'alfabetico' ? 'nessuno' : 'alfabetico' }))}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-[#2D2D2D] mb-2">Ruolo Operativo</p>
+                        <select
+                          value={dipendentiFilters.ruolo}
+                          onChange={(e) => setDipendentiFilters(f => ({ ...f, ruolo: e.target.value }))}
+                          className="h-10 px-3 bg-white border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
+                        >
+                          <option value="tutti">Tutti</option>
+                          {ruoliOperativi.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-[#2D2D2D] mb-2">Anno Assunzione</p>
+                        <input
+                          type="number"
+                          placeholder="Es. 1999"
+                          value={dipendentiFilters.dataAssunzione}
+                          onChange={(e) => setDipendentiFilters(f => ({ ...f, dataAssunzione: e.target.value }))}
+                          className="h-10 px-3 w-28 bg-white border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
+                        />
+                      </div>
+                    </>
+                  )
+                }
               >
-                <Filter className="w-4 h-4" /> Filtri
-              </button>
+                <div className="relative">
+                  <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder={`Cerca ${activeTab}...`}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full h-10 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all"
+                  />
+                </div>
+              </FilterPanel>
             )}
           </div>
-
-          {filtersOpen && (activeTab === 'fornitori' || activeTab === 'clienti') && (
-            <div className="flex flex-wrap items-end gap-4 mb-6 p-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl">
-              <div>
-                <label className="block text-xs font-medium text-[#6B7280] mb-1.5">
-                  Ordina per {activeTab === 'fornitori' ? 'Ragione Sociale' : 'Denominazione Cliente'}
-                </label>
-                <select
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-                  className="h-10 px-3 bg-white border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
-                >
-                  <option value="asc">A → Z</option>
-                  <option value="desc">Z → A</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-[#6B7280] mb-1.5">Stato</label>
-                <select
-                  value={statoFilter}
-                  onChange={(e) => setStatoFilter(e.target.value as 'tutti' | 'attivo' | 'disattivo')}
-                  className="h-10 px-3 bg-white border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
-                >
-                  <option value="tutti">Tutti</option>
-                  <option value="attivo">Attivo</option>
-                  <option value="disattivo">Disattivo</option>
-                </select>
-              </div>
-            </div>
-          )}
-
-          {filtersOpen && activeTab === 'dipendenti' && (
-            <div className="flex flex-wrap items-end gap-4 mb-6 p-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl">
-              <div>
-                <label className="block text-xs font-medium text-[#6B7280] mb-1.5">Ordina per</label>
-                <select
-                  value={dipendentiSortField}
-                  onChange={(e) => setDipendentiSortField(e.target.value as 'nominativo' | 'data_assunzione')}
-                  className="h-10 px-3 bg-white border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
-                >
-                  <option value="nominativo">Nominativo</option>
-                  <option value="data_assunzione">Data Assunzione</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-[#6B7280] mb-1.5">Ordine</label>
-                <button
-                  onClick={() => setSortOrder(o => o === 'asc' ? 'desc' : 'asc')}
-                  className="h-10 px-3 bg-white border border-[#E5EAF2] rounded-xl hover:bg-[#F7F9FC] transition-all text-sm flex items-center gap-2 text-[#6B7280]"
-                >
-                  <ArrowUpDown className="w-4 h-4" />
-                  {dipendentiSortField === 'nominativo'
-                    ? (sortOrder === 'asc' ? 'A → Z' : 'Z → A')
-                    : (sortOrder === 'asc' ? 'Meno recente' : 'Più recente')}
-                </button>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-[#6B7280] mb-1.5">Ruolo Operativo</label>
-                <select
-                  value={ruoloFilter}
-                  onChange={(e) => setRuoloFilter(e.target.value)}
-                  className="h-10 px-3 bg-white border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
-                >
-                  <option value="tutti">Tutti</option>
-                  {ruoliOperativi.map(r => <option key={r} value={r}>{r}</option>)}
-                </select>
-              </div>
-            </div>
-          )}
 
           {/* ── FORNITORI ── */}
           {activeTab === 'fornitori' && (
@@ -550,7 +602,7 @@ export function AnagrafichePage() {
                 </thead>
                 <tbody>
                   {loadingFornitori ? <SkeletonRows cols={7} /> : filteredFornitori.length === 0
-                    ? <EmptyRow cols={7} msg={searchQuery ? 'Nessun fornitore corrisponde alla ricerca' : 'Nessun fornitore. Clicca "Nuovo Fornitore" per iniziare.'} />
+                    ? <EmptyRow cols={7} msg={searchQuery || activeFiltersCount > 0 ? 'Nessun fornitore corrisponde alla ricerca' : 'Nessun fornitore. Clicca "Nuovo Fornitore" per iniziare.'} />
                     : filteredFornitori.map((f, i) => (
                       <tr key={f.id} onClick={() => handleView(f)} className={`cursor-pointer border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
                         <td className="py-3 px-4">
@@ -608,7 +660,7 @@ export function AnagrafichePage() {
                 </thead>
                 <tbody>
                   {loadingClienti ? <SkeletonRows cols={6} /> : filteredClienti.length === 0
-                    ? <EmptyRow cols={6} msg={searchQuery ? 'Nessun cliente corrisponde alla ricerca' : 'Nessun cliente. Clicca "Nuovo Cliente" per iniziare.'} />
+                    ? <EmptyRow cols={6} msg={searchQuery || activeFiltersCount > 0 ? 'Nessun cliente corrisponde alla ricerca' : 'Nessun cliente. Clicca "Nuovo Cliente" per iniziare.'} />
                     : filteredClienti.map((c, i) => (
                       <tr key={c.id} onClick={() => handleView(c)} className={`cursor-pointer border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
                         <td className="py-3 px-4 font-medium text-[#2D2D2D]">{c.ragione_sociale}</td>
@@ -701,7 +753,7 @@ export function AnagrafichePage() {
                 </thead>
                 <tbody>
                   {loadingDipendenti ? <SkeletonRows cols={5} /> : filteredDipendenti.length === 0
-                    ? <EmptyRow cols={5} msg={searchQuery ? 'Nessun dipendente corrisponde alla ricerca' : 'Nessun dipendente. Clicca "Nuovo Dipendente" per iniziare.'} />
+                    ? <EmptyRow cols={5} msg={searchQuery || activeFiltersCount > 0 ? 'Nessun dipendente corrisponde alla ricerca' : 'Nessun dipendente. Clicca "Nuovo Dipendente" per iniziare.'} />
                     : filteredDipendenti.map((d, i) => (
                       <tr key={d.id} onClick={() => handleView(d)} className={`cursor-pointer border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
                         <td className="py-3 px-4">
