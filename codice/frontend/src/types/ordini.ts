@@ -34,11 +34,31 @@ export interface RigaOrdineVenditaCreateRequest {
   quantita: number;
 }
 
+export interface PrelievoUbicazioneVendita {
+  ubicazione_id: number;
+  quantita: number;
+}
+
+export interface PrelievoRigaVendita {
+  riga_id: number;
+  ubicazioni: PrelievoUbicazioneVendita[];
+}
+
 export interface OrdineVenditaCreateRequest {
   cliente_id: number;
   destinazione_id: number;
   data_consegna_richiesta?: string;
   righe: RigaOrdineVenditaCreateRequest[];
+}
+
+export interface OrdineVenditaUpdatePickingRequest {
+  stato_picking: StatoPickingVendita;
+  prelievi?: PrelievoRigaVendita[];
+}
+
+export interface OrdineVenditaUpdatePickingResponse {
+  ordine: OrdineVendita;
+  movimenti: unknown[];
 }
 
 export interface DisponibilitaOrdineVendita {

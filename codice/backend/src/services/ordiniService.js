@@ -61,11 +61,15 @@ const getDisponibilita = async (prodotto_id, client) => {
 };
 
 const getAll = async (filters = {}) => {
-    const { stato, cliente_id } = filters;
+    const { stato, stato_picking, cliente_id } = filters;
     if (stato && !VALID_STATES.includes(stato)) {
         throwError('VALIDATION_ERROR', `Stato non valido. Valori ammessi: ${VALID_STATES.join(', ')}`);
     }
+    if (stato_picking && !VALID_PICKING.includes(stato_picking)) {
+        throwError('VALIDATION_ERROR', `Stato picking non valido. Valori ammessi: ${VALID_PICKING.join(', ')}`);
+    }
     if (stato) return (await ordiniModel.findByStato(stato)).rows;
+    if (stato_picking) return (await ordiniModel.findByStatoPicking(stato_picking)).rows;
     if (cliente_id) return (await ordiniModel.findByClienteId(cliente_id)).rows;
     return (await ordiniModel.findAll()).rows;
 };

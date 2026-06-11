@@ -58,6 +58,23 @@ const findByClienteId = (cliente_id) =>
         [cliente_id]
     );
 
+const findByStatoPicking = (stato_picking) =>
+    pool.query(
+        `
+        SELECT ordini.*,
+               clienti.ragione_sociale AS cliente,
+               destinazioni_clienti.etichetta AS destinazione,
+               CONCAT(utenti.nome, ' ', utenti.cognome) AS utente
+        FROM ordini
+        JOIN clienti ON ordini.cliente_id = clienti.id
+        LEFT JOIN destinazioni_clienti ON ordini.destinazione_id = destinazioni_clienti.id
+        LEFT JOIN utenti ON ordini.utente_id = utenti.id
+        WHERE ordini.stato_picking = $1::sales_order_picking_state
+        ORDER BY ordini.data_ordine DESC;
+        `,
+        [stato_picking]
+    );
+
 const findById = (id, client) =>
     (client || pool).query(
         `
@@ -177,6 +194,7 @@ module.exports = {
     findAll,
     findByStato,
     findByClienteId,
+    findByStatoPicking,
     findById,
     findByIdForUpdate,
     update,
