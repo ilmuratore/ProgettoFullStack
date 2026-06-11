@@ -1,0 +1,78 @@
+const ordiniService = require('../services/ordiniService');
+
+const getAll = async (req, res, next) => {
+    try {
+        const data = await ordiniService.getAll(req.query);
+        res.json({ status: 'success', data });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const getById = async (req, res, next) => {
+    try {
+        const data = await ordiniService.getById(req.params.id);
+        res.json({ status: 'success', data });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const getDisponibilita = async (req, res, next) => {
+    try {
+        const data = await ordiniService.getDisponibilita(req.params.prodotto_id);
+        res.json({ status: 'success', data });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const create = async (req, res, next) => {
+    try {
+        const data = await ordiniService.create({ ...req.body, utente_id: req.user.id });
+        res.status(201).json({ status: 'success', data });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const update = async (req, res, next) => {
+    try {
+        const data = await ordiniService.update(req.params.id, req.body);
+        res.json({ status: 'success', data });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const updateStato = async (req, res, next) => {
+    try {
+        const data = await ordiniService.updateStato(req.params.id, req.body.stato);
+        res.json({ status: 'success', data });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const updateStatoPicking = async (req, res, next) => {
+    try {
+        const data = await ordiniService.updateStatoPicking(
+            req.params.id,
+            req.body.stato_picking,
+            req.body.prelievi
+        );
+        res.json({ status: 'success', data });
+    } catch (err) {
+        next(err);
+    }
+};
+
+module.exports = {
+    getAll,
+    getById,
+    getDisponibilita,
+    create,
+    update,
+    updateStato,
+    updateStatoPicking
+};
