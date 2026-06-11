@@ -1,6 +1,6 @@
 {
   "info": {
-    "name": "LogiChain M09 - Ordini di Vendita",
+    "name": "LogiChain V2 — M09 - Ordini di Vendita",
     "description": "Collection self-bootstrapping M09. PRIMA DI ESEGUIRE: imposta le variabili admin_email e admin_password con le credenziali del seed admin (ADMIN_EMAIL/ADMIN_PASSWORD del .env). Il Setup crea cliente, destinazione, prodotto, magazzino, ubicazione e carico stock con valori timestamp-based. I test coprono disponibilita (totale-impegnato), conferma con blocco FIFO, picking con scarico, e le validazioni. Richiede backend su {{base_url}} con M09 e modulo destinazioni montati.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
