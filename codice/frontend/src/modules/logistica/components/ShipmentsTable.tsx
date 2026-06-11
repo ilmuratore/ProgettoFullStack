@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Filter, ArrowUpDown, Eye, Package, MapPin } from 'lucide-react';
+import { Search, Filter, ArrowUpDown, Package, MapPin } from 'lucide-react';
 
 interface ShipmentsTableProps {
   onShipmentClick: (id: string) => void;
@@ -80,7 +80,6 @@ export function ShipmentsTable({ onShipmentClick }: ShipmentsTableProps) {
               <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Stato</th>
               <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Destinazione</th>
               <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Ultimo Agg.</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Azioni</th>
             </tr>
           </thead>
           <tbody>
@@ -123,11 +122,6 @@ export function ShipmentsTable({ onShipmentClick }: ShipmentsTableProps) {
                 </td>
                 <td className="py-3 px-3">
                   <span className="text-xs text-[#9CA3AF]">{ship.ultimoAgg}</span>
-                </td>
-                <td className="py-3 px-3">
-                  <button className="p-1.5 hover:bg-[#F7F9FC] rounded-lg transition-colors">
-                    <Eye className="w-4 h-4 text-[#6B7280]" />
-                  </button>
                 </td>
               </tr>
             ))}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { Search, Filter, ArrowUpDown, Eye, ChevronDown } from 'lucide-react';
+import { Search, Filter, ArrowUpDown, ChevronDown } from 'lucide-react';
 
 type OrderStatus = 'BOZZA' | 'CONFERMATO' | 'SPEDITO' | 'ANNULLATO';
 type PickingStatus = 'NON_AVVIATO' | 'IN_PICKING' | 'PICKING_COMPLETATO';
@@ -108,7 +108,7 @@ export function SalesOrdersTable({ onOrderClick }: SalesOrdersTableProps) {
         <table className="w-full">
           <thead>
             <tr className="border-b border-[#E5EAF2]">
-              {['N° Ordine', 'Cliente', 'Data', 'Destinazione', 'Importo', 'Stato Ordine', 'Picking', 'Spedizione', 'Responsabile', 'Agg.', ''].map((col, i) => (
+              {['N° Ordine', 'Cliente', 'Data', 'Destinazione', 'Importo', 'Stato Ordine', 'Picking', 'Spedizione', 'Responsabile', 'Agg.'].map((col, i) => (
                 <th key={i} className="text-left py-3 px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap">
                   {col && (
                     <button className="flex items-center gap-1 hover:text-[#2D2D2D] transition-colors">
@@ -163,14 +163,6 @@ export function SalesOrdersTable({ onOrderClick }: SalesOrdersTableProps) {
                   </td>
                   <td className="py-3.5 px-3">
                     <span className="text-xs text-[#9CA3AF] whitespace-nowrap">{order.ultimoAggiornamento}</span>
-                  </td>
-                  <td className="py-3.5 px-3">
-                    <button
-                      onClick={e => { e.stopPropagation(); onOrderClick(order.id); }}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-[#E5EAF2] rounded-lg"
-                    >
-                      <Eye className="w-4 h-4 text-[#6B7280]" />
-                    </button>
                   </td>
                 </tr>
               );

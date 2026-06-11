@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowDown, ArrowUp, ArrowUpDown, MoreVertical, Edit, Eye, Search } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, MoreVertical, Edit, Search } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../../components/ui/dropdown-menu';
 import type { ProdottoListino } from '../../../types/prodotti';
 import { EMPTY_PRODUCT_FILTERS, ProductsFilter, type ProductFiltersState } from './ProductsFilter';
@@ -112,14 +112,14 @@ function SortableHeader({
 function ProductActions({
   item,
   canWriteProdotti,
-  onView,
   onEdit,
 }: {
   item: ProdottoListino;
   canWriteProdotti: boolean;
-  onView: (item: ProdottoListino) => void;
   onEdit: (item: ProdottoListino) => void;
 }) {
+  if (!canWriteProdotti) return null;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -128,14 +128,9 @@ function ProductActions({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40">
-        <DropdownMenuItem onClick={() => onView(item)} className="cursor-pointer">
-          <Eye className="w-4 h-4 mr-2" />Visualizza
+        <DropdownMenuItem onClick={() => onEdit(item)} className="cursor-pointer">
+          <Edit className="w-4 h-4 mr-2" />Modifica
         </DropdownMenuItem>
-        {canWriteProdotti && (
-          <DropdownMenuItem onClick={() => onEdit(item)} className="cursor-pointer">
-            <Edit className="w-4 h-4 mr-2" />Modifica
-          </DropdownMenuItem>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -246,7 +241,11 @@ export function ProductsTab({
                   : 'Nessun prodotto. Clicca "Nuovo Prodotto" per iniziare.'}
               </td></tr>
               : filteredProdotti.map((p, i) => (
-                <tr key={p.id} className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
+                <tr
+                  key={p.id}
+                  onClick={() => onView(p)}
+                  className={`cursor-pointer border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}
+                >
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
                       <span className="font-medium text-[#2D2D2D]">{p.nome}</span>
@@ -258,11 +257,10 @@ export function ProductsTab({
                   <td className="py-3 px-4 text-sm text-[#6B7280] font-mono">{p.sku}</td>
                   <td className="py-3 px-4 text-sm font-semibold text-[#2D2D2D] text-right">{formatPrezzo(p.prezzo)}</td>
                   <td className="py-3 px-4 text-sm text-[#6B7280]">{formatData(p.data_agg_prezzo)}</td>
-                  <td className="py-3 px-4">
+                  <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
                     <ProductActions
                       item={p}
                       canWriteProdotti={canWriteProdotti}
-                      onView={onView}
                       onEdit={onEdit}
                     />
                   </td>

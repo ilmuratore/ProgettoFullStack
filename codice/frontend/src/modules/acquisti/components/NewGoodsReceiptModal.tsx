@@ -10,7 +10,7 @@ import type {
 } from '../../../types/acquisti';
 import type { Ubicazione } from '../../../types/magazzino';
 
-interface RegisterReceiptModalProps {
+interface NewGoodsReceiptModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated?: () => void;
@@ -32,7 +32,7 @@ const ORDINI_RICEVIBILI: OrdineAcquistoLista['stato'][] = ['CONFERMATO', 'IN_RIC
 
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
 
-export function RegisterReceiptModal({ isOpen, onClose, onCreated }: RegisterReceiptModalProps) {
+export function NewGoodsReceiptModal({ isOpen, onClose, onCreated }: NewGoodsReceiptModalProps) {
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [orders, setOrders] = useState<OrdineAcquistoLista[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
@@ -124,18 +124,24 @@ export function RegisterReceiptModal({ isOpen, onClose, onCreated }: RegisterRec
 
   const handleConfirm = async () => {
     if (!selectedOrderId) return;
-    const righe: RigaRicezioneOrdineCreate[] = lines
-      .filter((l) => l.quantita_ricevuta > 0 && l.ubicazione_id > 0)
-      .map((l) => ({
-        prodotto_id: l.prodotto_id,
-        quantita_ricevuta: l.quantita_ricevuta,
-        ubicazione_id: l.ubicazione_id,
-      }));
 
-    if (righe.length === 0) {
-      toast.error('Inserisci almeno una riga con quantità e ubicazione');
+    const righeAttive = lines.filter((l) => l.quantita_ricevuta > 0);
+    if (righeAttive.length === 0) {
+      toast.error('Inserisci almeno una riga con quantità ricevuta maggiore di zero');
       return;
     }
+
+    const rigaSenzaUbicazione = righeAttive.find((l) => l.ubicazione_id <= 0);
+    if (rigaSenzaUbicazione) {
+      toast.error(`Seleziona un'ubicazione per "${rigaSenzaUbicazione.prodotto}"`);
+      return;
+    }
+
+    const righe: RigaRicezioneOrdineCreate[] = righeAttive.map((l) => ({
+      prodotto_id: l.prodotto_id,
+      quantita_ricevuta: l.quantita_ricevuta,
+      ubicazione_id: l.ubicazione_id,
+    }));
 
     setSubmitting(true);
     try {
@@ -304,7 +310,9 @@ export function RegisterReceiptModal({ isOpen, onClose, onCreated }: RegisterRec
                   </div>
                 ) : lines.length === 0 ? (
                   <div className="rounded-2xl border border-[#E5EAF2] bg-[#F7F9FC] p-6 text-center text-sm text-[#6B7280]">
-                    Tutte le righe di questo ordine risultano già completamente ricevute.
+                    {orderDetail?.righe.length
+                      ? 'Tutte le righe di questo ordine risultano già completamente ricevute.'
+                      : 'Questo ordine non contiene righe prodotto.'}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -368,7 +376,7 @@ export function RegisterReceiptModal({ isOpen, onClose, onCreated }: RegisterRec
             onClick={currentStep === 1 ? handleNext : handleConfirm}
             disabled={
               (currentStep === 1 && !selectedOrderId) ||
-              (currentStep === 2 && submitting)
+              (currentStep === 2 && (submitting || loadingDetail || lines.length === 0))
             }
             className="px-6 py-2.5 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
