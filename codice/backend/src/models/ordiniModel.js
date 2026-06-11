@@ -1,14 +1,14 @@
 const pool = require('../config/db');
 
-const create = ({ cliente_id, destinazione_id, data_consegna_richiesta, importo_totale, utente_id }, client) =>
+const create = ({ cliente_id, destinazione_id, data_consegna_richiesta, utente_id }, client) =>
     (client || pool).query(
         `
         INSERT INTO ordini
-        (cliente_id, destinazione_id, data_consegna_richiesta, importo_totale, utente_id)
-        VALUES ($1, $2, $3, $4, $5)
+        (cliente_id, destinazione_id, data_consegna_richiesta, utente_id)
+        VALUES ($1, $2, $3, $4)
         RETURNING *;
         `,
-        [cliente_id, destinazione_id, data_consegna_richiesta, importo_totale, utente_id]
+        [cliente_id, destinazione_id, data_consegna_richiesta, utente_id]
     );
 
 const findAll = () =>
@@ -63,17 +63,16 @@ const findByIdForUpdate = (id, client) =>
         [id]
     );
 
-const update = (id, { data_consegna_richiesta, importo_totale }, client) =>
+const update = (id, { data_consegna_richiesta }, client) =>
     (client || pool).query(
         `
         UPDATE ordini
         SET data_consegna_richiesta = COALESCE($1, data_consegna_richiesta),
-            importo_totale          = COALESCE($2, importo_totale),
             updated_at              = NOW()
-        WHERE id = $3
+        WHERE id = $2
         RETURNING *;
         `,
-        [data_consegna_richiesta, importo_totale, id]
+        [data_consegna_richiesta, id]
     );
 
 const updateStato = (id, stato, client) =>

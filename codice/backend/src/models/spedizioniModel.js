@@ -101,20 +101,18 @@ const create = ({ ordine_id, cliente_id, destinazione_id, corriere_id, stato = '
         [ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number]
     );
 
-const update = (id, { ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number }) =>
+const update = (id, { tracking_number }) =>
     pool.query(
-        `UPDATE spedizioni
-     SET ordine_id = COALESCE($1, ordine_id),
-         cliente_id = COALESCE($2, cliente_id),
-         destinazione_id = COALESCE($3, destinazione_id),
-         corriere_id = COALESCE($4, corriere_id),
-         stato = COALESCE($5::shipping_state, stato),
-         tracking_number = COALESCE($6, tracking_number),
-         updated_at = CURRENT_TIMESTAMP
-     WHERE id = $7
-     RETURNING id, ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number, created_at, updated_at`,
-        [ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number, id]
+        `
+        UPDATE spedizioni
+        SET tracking_number = COALESCE($1, tracking_number),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+        RETURNING id, ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number, created_at, updated_at
+        `,
+        [tracking_number, id]
     );
+
 
 
 const updateStato = (id, stato) =>
