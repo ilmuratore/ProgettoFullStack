@@ -11,12 +11,11 @@ const throwError = (code, message) => {
     throw err;
 };
 
-
 const getAll = async (query) => {
-    const result = await ordiniAcquistoModel.findAll();
+    const { stato, fornitore_id } = query || {};
+    const result = await ordiniAcquistoModel.findAllFiltered({ stato, fornitore_id });
     return result;
 };
-
 
 const getOrdineAcquistoById = async (id) => {
     const result = await ordiniAcquistoModel.findDettaglioCompleto(id);
@@ -25,7 +24,6 @@ const getOrdineAcquistoById = async (id) => {
     }
     return result;
 };
-
 
 const createOrdineAcquisto = async (data) => {
     const client = await pool.connect();
@@ -38,7 +36,6 @@ const createOrdineAcquisto = async (data) => {
             throwError('VALIDATION_ERROR', 'Un ordine deve contenere almeno una riga');
         }
 
-        // Calcolo importo totale
         const importo_totale = righe.reduce(
             (acc, r) => acc + (Number(r.quantita) * Number(r.prezzo_unitario)),
             0
@@ -71,15 +68,41 @@ const createOrdineAcquisto = async (data) => {
     }
 };
 
-
 const updateOrdineAcquisto = async (id, data) => {
-    const result = await ordiniAcquistoModel.update(id, data);
-    if (result.rowCount === 0) {
-        throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato');
-    }
-    return result.rows[0];
-};
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
 
+        const ordineRes = await ordiniAcquistoModel.findById(id, client);
+        if (ordineRes.rowCount === 0) {
+            throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato');
+        }
+
+        const righeRes = await righePoModel.findByOrdineAcquistoId(id, client);
+        const importo_totale = righeRes.rows.reduce(
+            (acc, r) => acc + (Number(r.quantita_ordinata) * Number(r.prezzo_unitario)),
+            0
+        );
+
+        const payload = { ...data };
+        delete payload.importo_totale;
+
+        const result = await ordiniAcquistoModel.update(
+            id,
+            { ...payload, importo_totale },
+            client
+        );
+
+        await client.query('COMMIT');
+        return result.rows[0];
+
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
+};
 
 const updateStatoOrdineAcquisto = async (id, stato) => {
     const result = await ordiniAcquistoModel.updateStato(id, stato);
@@ -89,9 +112,6 @@ const updateStatoOrdineAcquisto = async (id, stato) => {
     return result.rows[0];
 };
 
-/* 
- * ADD RIGA ORDINE (fix transazione)
-*/
 const addRigaOrdineAcquisto = async (ordineId, data) => {
     const client = await pool.connect();
     try {
@@ -130,9 +150,6 @@ const addRigaOrdineAcquisto = async (ordineId, data) => {
     }
 };
 
-/* 
- * CREATE RICEZIONE (fix transazione + over-receipt)
- */
 const createRicezione = async (payload) => {
     const client = await pool.connect();
     try {
@@ -151,7 +168,6 @@ const createRicezione = async (payload) => {
             throwError('STATE_TRANSITION_INVALID', 'Ordine non in stato valido per ricezione');
         }
 
-        // CREA RICEZIONE
         const ricezioneRes = await ricezioniModel.create({
             ordine_acquisto_id,
             data_ricezione,
@@ -161,17 +177,14 @@ const createRicezione = async (payload) => {
 
         const ricezione = ricezioneRes.rows[0];
 
-        // LEGGI RIGHE PO UNA SOLA VOLTA
         const righePoRes = await righePoModel.findByOrdineAcquistoId(ordine_acquisto_id, client);
         const righePo = righePoRes.rows;
 
-        // CREA MAPPA prodotto → riga_po
         const mappa = new Map();
         for (const r of righePo) {
             mappa.set(r.prodotto_id, r);
         }
 
-        // PROCESSA RIGHE RICEZIONE
         for (const r of righe) {
 
             await righeRicezioneModel.create({
@@ -209,7 +222,6 @@ const createRicezione = async (payload) => {
             }, client);
         }
 
-        // RICALCOLA STATO ORDINE
         const righePoFinal = await righePoModel.findByOrdineAcquistoId(ordine_acquisto_id, client);
 
         const tutteCompletate = righePoFinal.rows.every(
@@ -234,7 +246,6 @@ const createRicezione = async (payload) => {
         client.release();
     }
 };
-
 
 const listRicezioniByOrdine = async (ordineId) => {
     const res = await ricezioniModel.findByOrdineAcquistoId(ordineId);
