@@ -2,9 +2,9 @@ openapi: 3.0.3
 
 info:
   title: LogiChain ERP — API
-  version: "2.0.0"
+  version: "2.1.0"
   description: |
-    API REST per LogiChain ERP — milestone M01–M07.
+    API REST per LogiChain ERP — milestone M01–M08 + Ordini di Vendita.
 
     ## Autenticazione
     Tutte le rotte (eccetto `POST /auth/login`) richiedono un token JWT nell'header:
@@ -156,8 +156,6 @@ tags:
     description: Anagrafica fornitori (M03)
   - name: Clienti
     description: Anagrafica clienti (M04)
-  - name: Destinazioni
-    description: Indirizzi di consegna dei clienti — sub-risorsa, permessi clienti:* (M09)
   - name: Corrieri
     description: Anagrafica aziende corriere — permessi magazzino:read/write (M05)
   - name: Dipendenti
@@ -175,12 +173,9 @@ tags:
   - name: Ricezioni
     description: Ricezioni merce su ordini di acquisto e relative righe — permessi acquisti:* (M08)
   - name: Ordini
-    description: |
-      Ordini di vendita / in uscita (M09). Ciclo commerciale BOZZA → CONFERMATO → SPEDITO/ANNULLATO
-      e ciclo picking NON_AVVIATO → IN_PICKING → PICKING_COMPLETATO.
-      La disponibilità per le vendite è calcolata come giacenza fisica totale meno la quantità
-      impegnata da ordini CONFERMATO non ancora prelevati. Lo scarico effettivo delle giacenze
-      Permessi: ordini:read · ordini:write (Resp. Vendite) · ordini:approve (stato + picking).
+    description: Ordini in uscita / Sales Orders — ciclo BOZZA→SPEDITO + macchina stato picking, permessi ordini:* (M09)
+  - name: Destinazioni
+    description: Destinazioni di consegna per cliente — sotto-risorsa di Clienti, permessi clienti:* (M04 ext)
 
 # ─────────────────────────────────────────────
 # COMPONENTI RIUTILIZZABILI
@@ -958,64 +953,135 @@ components:
         quantita:      { type: number, minimum: 0.01, example: 40 }
         ubicazione_id: { type: integer, minimum: 1, example: 12 }
 
-    Ordine:
-      description: Testata di un ordine di vendita.
+    # ── DESTINAZIONI CLIENTI (M04 ext) ────────
+    Destinazione:
       type: object
       properties:
-        id:                      { type: integer, example: 31 }
-        cliente_id:              { type: integer, example: 4 }
-        cliente:                 { type: string,  example: "Rossi Costruzioni S.r.l.", description: "Ragione sociale (join), presente nelle liste" }
-        destinazione_id:         { type: integer, example: 9 }
-        stato:
-          type: string
-          enum: [BOZZA, CONFERMATO, SPEDITO, ANNULLATO]
-          example: BOZZA
-        stato_picking:
-          type: string
-          enum: [NON_AVVIATO, IN_PICKING, PICKING_COMPLETATO]
-          example: NON_AVVIATO
-        data_ordine:             { type: string, format: date-time, example: "2026-06-10T09:00:00.000Z" }
-        data_consegna_richiesta: { type: string, format: date, nullable: true, example: "2026-06-20" }
-        importo_totale:          { type: number, example: 1540.00 }
-        utente_id:               { type: integer, nullable: true, example: 6 }
-        created_at:              { type: string, format: date-time, example: "2026-06-10T09:00:00.000Z" }
-        updated_at:              { type: string, format: date-time, example: "2026-06-10T09:00:00.000Z" }
+        id:          { type: integer, example: 5 }
+        cliente_id:  { type: integer, example: 1 }
+        etichetta:   { type: string, example: "Sede operativa", nullable: true }
+        indirizzo:   { type: string, example: "Via Roma 12", nullable: true }
+        cap:         { type: string, example: "20100", nullable: true }
+        citta:       { type: string, example: "Milano", nullable: true }
+        provincia:   { type: string, example: "MI", nullable: true }
+        paese:       { type: string, example: "Italia", nullable: true }
+        predefinita: { type: boolean, example: false }
+        created_at:  { type: string, format: date-time }
+        updated_at:  { type: string, format: date-time }
+
+    DestinazioneCreateRequest:
+      type: object
+      description: Tutti i campi sono opzionali eccetto la coerenza col cliente (path).
+      properties:
+        etichetta:   { type: string, example: "Sede operativa" }
+        indirizzo:   { type: string, example: "Via Roma 12" }
+        cap:         { type: string, example: "20100" }
+        citta:       { type: string, example: "Milano" }
+        provincia:   { type: string, example: "MI" }
+        paese:       { type: string, example: "Italia" }
+        predefinita: { type: boolean, example: false }
+
+    DestinazioneUpdateRequest:
+      type: object
+      description: Tutti i campi sono opzionali. Inviare solo quelli da modificare.
+      properties:
+        etichetta:   { type: string, example: "Magazzino di consegna" }
+        indirizzo:   { type: string, example: "Via Milano 5" }
+        cap:         { type: string, example: "20121" }
+        citta:       { type: string, example: "Milano" }
+        provincia:   { type: string, example: "MI" }
+        paese:       { type: string, example: "Italia" }
+        predefinita: { type: boolean, example: true }
+
+    # ── GIACENZE — VISTA LISTA FILTRATA (M07) ──
+    GiacenzaLista:
+      description: |
+        Riga della lista giacenze filtrata (GET /giacenze). Arricchita con magazzino,
+        flag `sotto_scorta` e timestamp ultimo movimento.
+      type: object
+      properties:
+        prodotto_id:      { type: integer, example: 7 }
+        ubicazione_id:    { type: integer, example: 12 }
+        sku:              { type: string, example: VLV-001 }
+        prodotto:         { type: string, example: "Valvola a sfera 1/2\"" }
+        magazzino:        { type: string, example: "Magazzino principale Sesto" }
+        ubicazione:       { type: string, example: "1-02-05" }
+        quantita:         { type: integer, example: 85 }
+        scorta_minima:    { type: integer, example: 50 }
+        sotto_scorta:     { type: boolean, example: false }
+        ultimo_movimento: { type: string, format: date-time, nullable: true, example: "2026-06-08T10:15:00.000Z" }
+
+    # ─── M09 — Ordini di Vendita (Sales Orders) ───
+    StatoOrdineVendita:
+      type: string
+      enum: [BOZZA, CONFERMATO, SPEDITO, ANNULLATO]
+      example: BOZZA
+      description: |
+        Ciclo di vita ordine di vendita. Transizioni: BOZZA→CONFERMATO→SPEDITO.
+        Da BOZZA o CONFERMATO è possibile passare ad ANNULLATO.
+
+    StatoPicking:
+      type: string
+      enum: [NON_AVVIATO, IN_PICKING, PICKING_COMPLETATO]
+      example: NON_AVVIATO
+      description: |
+        Macchina stato del picking, indipendente dallo stato ordine.
+        Transizioni: NON_AVVIATO→IN_PICKING→PICKING_COMPLETATO.
 
     RigaOrdine:
-      description: Riga di dettaglio di un ordine di vendita.
+      description: Riga di un ordine di vendita (tabella `righe_ordine`).
       type: object
       properties:
-        id:              { type: integer, example: 80 }
-        ordine_id:       { type: integer, example: 31 }
+        id:              { type: integer, example: 20 }
+        ordine_id:       { type: integer, example: 88 }
         prodotto_id:     { type: integer, example: 7 }
-        sku:             { type: string,  example: VLV-001 }
-        prodotto:        { type: string,  example: "Valvola a sfera 1/2\"" }
-        quantita:        { type: integer, example: 50 }
-        prezzo_unitario: { type: number,  nullable: true, example: 12.50 }
-        created_at:      { type: string, format: date-time, example: "2026-06-10T09:00:00.000Z" }
-        updated_at:      { type: string, format: date-time, example: "2026-06-10T09:00:00.000Z" }
+        sku:             { type: string, example: VLV-001 }
+        prodotto:        { type: string, example: "Valvola a sfera 1/2\"", description: "Nome prodotto (solo nelle GET con JOIN)" }
+        quantita:        { type: integer, example: 10 }
+        prezzo_unitario: { type: number, example: 12.50, description: "Prezzo preso dal listino prodotto al momento della creazione" }
+        created_at:      { type: string, format: date-time }
+        updated_at:      { type: string, format: date-time }
 
-    OrdineDettaglio:
-      description: Ordine con le sue righe.
+    OrdineVenditaLista:
+      description: Vista lista ordini di vendita (GET /ordini).
       type: object
       properties:
-        ordine: { $ref: '#/components/schemas/Ordine' }
+        id:              { type: integer, example: 88 }
+        cliente_id:      { type: integer, example: 1 }
+        cliente:         { type: string, example: "Officine Manzoni S.r.l." }
+        destinazione_id: { type: integer, example: 5 }
+        stato:           { $ref: '#/components/schemas/StatoOrdineVendita' }
+        stato_picking:   { $ref: '#/components/schemas/StatoPicking' }
+        data_ordine:     { type: string, format: date-time, example: "2026-06-09T09:00:00.000Z" }
+        data_consegna_richiesta: { type: string, format: date, example: "2026-06-25", nullable: true }
+        importo_totale:  { type: number, example: 125.00 }
+        utente_id:       { type: integer, example: 2, nullable: true }
+        created_at:      { type: string, format: date-time }
+        updated_at:      { type: string, format: date-time }
+
+    OrdineVenditaDettaglio:
+      description: Dettaglio ordine di vendita (GET /ordini/:id) — testata + righe.
+      type: object
+      properties:
+        ordine:
+          allOf:
+            - $ref: '#/components/schemas/OrdineVenditaLista'
         righe:
           type: array
           items: { $ref: '#/components/schemas/RigaOrdine' }
 
-    OrdineCreateRequest:
+    OrdineVenditaCreateRequest:
       type: object
       required: [cliente_id, destinazione_id, righe]
       description: |
-        Crea un ordine in stato BOZZA con le sue righe.
-        `utente_id` è derivato dal token (non accettato dal body).
-        `importo_totale` è calcolato server-side dalla somma quantita × prezzo_unitario delle righe.
-        La destinazione deve appartenere al cliente indicato.
+        Crea un ordine in stato BOZZA. `importo_totale` è calcolato dal server dai prezzi di listino.
+        Ogni riga richiede `prodotto_id` e `quantita` (il prezzo è preso dal listino). La destinazione deve
+        appartenere al cliente indicato.
       properties:
-        cliente_id:              { type: integer, minimum: 1, example: 4 }
-        destinazione_id:         { type: integer, minimum: 1, example: 9 }
-        data_consegna_richiesta: { type: string, format: date, example: "2026-06-20" }
+        cliente_id:              { type: integer, minimum: 1, example: 1 }
+        destinazione_id:         { type: integer, minimum: 1, example: 5 }
+        data_consegna_richiesta: { type: string, format: date, example: "2026-06-25" }
+        utente_id:               { type: integer, minimum: 1, example: 2 }
         righe:
           type: array
           minItems: 1
@@ -1023,52 +1089,38 @@ components:
             type: object
             required: [prodotto_id, quantita]
             properties:
-              prodotto_id:     { type: integer, minimum: 1, example: 7 }
-              quantita:        { type: integer, minimum: 1, example: 50 }
-              prezzo_unitario: { type: number, example: 12.50 }
+              prodotto_id: { type: integer, minimum: 1, example: 7 }
+              quantita:    { type: integer, minimum: 1, example: 10 }
 
-    OrdineUpdateRequest:
+    OrdineVenditaUpdateRequest:
       type: object
-      description: Modifica consentita solo in stato BOZZA. Solo data_consegna_richiesta è modificabile.
+      description: Aggiorna la testata. Inviare solo i campi da modificare.
       properties:
-        data_consegna_richiesta: { type: string, format: date, example: "2026-06-22" }
+        data_consegna_richiesta: { type: string, format: date, example: "2026-06-27" }
 
-    OrdineStatoRequest:
+    OrdineVenditaStatoRequest:
       type: object
       required: [stato]
-      description: |
-        Transizione di stato commerciale. Transizioni ammesse:
-        BOZZA → CONFERMATO | ANNULLATO; CONFERMATO → SPEDITO | ANNULLATO.
-        Alla CONFERMA viene verificata la disponibilità (totale − impegnato): se insufficiente → 422.
-        Il passaggio a SPEDITO richiede stato_picking = PICKING_COMPLETATO.
       properties:
-        stato:
-          type: string
-          enum: [BOZZA, CONFERMATO, SPEDITO, ANNULLATO]
-          example: CONFERMATO
+        stato: { $ref: '#/components/schemas/StatoOrdineVendita' }
 
     OrdinePickingRequest:
       type: object
       required: [stato_picking]
       description: |
-        Avanzamento del picking. Transizioni: NON_AVVIATO → IN_PICKING → PICKING_COMPLETATO.
-        Gestibile solo su ordini in stato CONFERMATO.
-        Per `stato_picking=PICKING_COMPLETATO` è obbligatorio il campo `prelievi`: per ogni riga
-        la somma delle quantità prelevate deve corrispondere alla quantità ordinata.
-        Al completamento viene generato un movimento SCARICO_VENDITA per ciascuna ubicazione di prelievo.
+        Aggiorna lo stato picking. Per passare a `PICKING_COMPLETATO` è obbligatorio l'array `prelievi`:
+        per ogni riga, l'elenco delle ubicazioni da cui prelevare. La somma delle quantità prelevate
+        di ogni riga deve corrispondere alla quantità ordinata. Ogni prelievo genera un movimento `SCARICO_VENDITA`.
       properties:
-        stato_picking:
-          type: string
-          enum: [NON_AVVIATO, IN_PICKING, PICKING_COMPLETATO]
-          example: PICKING_COMPLETATO
+        stato_picking: { $ref: '#/components/schemas/StatoPicking' }
         prelievi:
           type: array
-          description: Obbligatorio solo quando stato_picking = PICKING_COMPLETATO.
+          description: "Obbligatorio solo quando stato_picking = PICKING_COMPLETATO."
           items:
             type: object
             required: [riga_id, ubicazioni]
             properties:
-              riga_id: { type: integer, example: 80 }
+              riga_id: { type: integer, minimum: 1, example: 20 }
               ubicazioni:
                 type: array
                 minItems: 1
@@ -1076,57 +1128,17 @@ components:
                   type: object
                   required: [ubicazione_id, quantita]
                   properties:
-                    ubicazione_id: { type: integer, example: 12 }
-                    quantita:      { type: integer, minimum: 1, example: 30 }
+                    ubicazione_id: { type: integer, minimum: 1, example: 12 }
+                    quantita:      { type: integer, minimum: 1, example: 10 }
 
-    Disponibilita:
-      description: |
-        Disponibilità commerciale di un prodotto. `disponibile = totale − impegnato`.
-        `impegnato` = somma delle quantità di righe appartenenti a ordini CONFERMATO non ancora
-        a PICKING_COMPLETATO (calcolo runtime, nessuna colonna materializzata).
+    DisponibilitaProdotto:
+      description: Disponibilità calcolata di un prodotto (GET /ordini/disponibilita/:prodotto_id).
       type: object
       properties:
         prodotto_id: { type: integer, example: 7 }
-        totale:      { type: integer, example: 120, description: "Somma giacenza fisica su tutte le ubicazioni" }
-        impegnato:   { type: integer, example: 50,  description: "Quantità riservata da ordini confermati non prelevati" }
-        disponibile: { type: integer, example: 70 }
-
-    PickingResult:
-      description: Risposta al completamento picking — ordine aggiornato + movimenti di scarico generati.
-      type: object
-      properties:
-        ordine: { $ref: '#/components/schemas/Ordine' }
-        movimenti:
-          type: array
-          items: { $ref: '#/components/schemas/MovimentoStock' }
-
-    Destinazione:
-      description: Indirizzo di consegna associato a un cliente.
-      type: object
-      properties:
-        id:          { type: integer, example: 9 }
-        cliente_id:  { type: integer, example: 4 }
-        etichetta:   { type: string, nullable: true, example: "Sede operativa" }
-        indirizzo:   { type: string, nullable: true, example: "Via Roma 1" }
-        cap:         { type: string, nullable: true, example: "20100" }
-        citta:       { type: string, nullable: true, example: "Milano" }
-        provincia:   { type: string, nullable: true, example: "MI" }
-        paese:       { type: string, nullable: true, example: "Italia" }
-        predefinita: { type: boolean, example: true }
-        created_at:  { type: string, format: date-time }
-        updated_at:  { type: string, format: date-time }
-
-    DestinazioneRequest:
-      type: object
-      description: Tutti i campi opzionali tranne nessuno obbligatorio; cliente_id deriva dal path.
-      properties:
-        etichetta:   { type: string, example: "Sede operativa" }
-        indirizzo:   { type: string, example: "Via Roma 1" }
-        cap:         { type: string, example: "20100" }
-        citta:       { type: string, example: "Milano" }
-        provincia:   { type: string, example: "MI" }
-        paese:       { type: string, example: "Italia" }
-        predefinita: { type: boolean, example: false }
+        totale:      { type: integer, example: 125, description: "Somma giacenze di tutte le ubicazioni" }
+        impegnato:   { type: integer, example: 30, description: "Quantità impegnata su ordini non evasi" }
+        disponibile: { type: integer, example: 95, description: "totale - impegnato" }
 
 # ─────────────────────────────────────────────
 # SECURITY DEFAULT
@@ -2114,6 +2126,134 @@ paths:
         "403": { $ref: '#/components/responses/Forbidden' }
         "404": { $ref: '#/components/responses/NotFound' }
 
+  /clienti/{id}/destinazioni:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 1
+    get:
+      tags: [Destinazioni]
+      summary: Lista destinazioni di un cliente
+      description: Restituisce le destinazioni di consegna del cliente. Richiede permesso `clienti:read`.
+      x-required-permission: clienti:read
+      responses:
+        "200":
+          description: Lista destinazioni
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Destinazione' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Destinazioni]
+      summary: Crea destinazione per cliente
+      description: Aggiunge una destinazione di consegna al cliente. Richiede permesso `clienti:write`.
+      x-required-permission: clienti:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DestinazioneCreateRequest' }
+            example:
+              etichetta: "Sede operativa"
+              indirizzo: "Via Roma 12"
+              cap: "20100"
+              citta: "Milano"
+              provincia: "MI"
+              paese: "Italia"
+              predefinita: false
+      responses:
+        "201":
+          description: Destinazione creata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/Destinazione' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /clienti/{id}/destinazioni/{destId}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 1
+      - name: destId
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 5
+    get:
+      tags: [Destinazioni]
+      summary: Dettaglio destinazione
+      x-required-permission: clienti:read
+      responses:
+        "200":
+          description: Destinazione
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/Destinazione' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Destinazioni]
+      summary: Aggiorna destinazione
+      x-required-permission: clienti:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DestinazioneUpdateRequest' }
+      responses:
+        "200":
+          description: Destinazione aggiornata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/Destinazione' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Destinazioni]
+      summary: Elimina destinazione
+      x-required-permission: clienti:delete
+      responses:
+        "200":
+          description: Destinazione eliminata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
   # ══════════════════════════════════════════
   # M05 — CORRIERI
   # ══════════════════════════════════════════
@@ -2884,6 +3024,64 @@ paths:
   # ══════════════════════════════════════════
   # M07 — GIACENZE
   # ══════════════════════════════════════════
+
+  /giacenze:
+    get:
+      tags: [Giacenze]
+      summary: Lista giacenze con filtri
+      description: |
+        Restituisce le giacenze per prodotto/ubicazione, arricchite con `magazzino`, flag `sotto_scorta`
+        e `ultimo_movimento`. Filtri opzionali via query. Richiede permesso `giacenze:read`.
+      x-required-permission: giacenze:read
+      parameters:
+        - name: search
+          in: query
+          required: false
+          description: Filtra per SKU o nome prodotto (ILIKE)
+          schema: { type: string }
+          example: "BOLT"
+        - name: magazzino
+          in: query
+          required: false
+          description: ID magazzino
+          schema: { type: integer, minimum: 1 }
+          example: 1
+        - name: ubicazione
+          in: query
+          required: false
+          description: Filtra per codice ubicazione (ILIKE)
+          schema: { type: string }
+          example: "A-01"
+        - name: sotto_scorta
+          in: query
+          required: false
+          description: Se valorizzato, restituisce solo giacenze con quantità sotto la scorta minima
+          schema: { type: boolean }
+          example: true
+        - name: q_min
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0 }
+          example: 10
+        - name: q_max
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0 }
+          example: 500
+      responses:
+        "200":
+          description: Lista giacenze
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/GiacenzaLista' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
 
   /giacenze/{prodotto_id}:
     parameters:
@@ -3808,26 +4006,31 @@ paths:
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
         "404": { $ref: '#/components/responses/NotFound' }
+  # ══════════════════════════════════════════
+  # M09 — ORDINI DI VENDITA (Sales Orders)
+  # ══════════════════════════════════════════
 
   /ordini:
     get:
       tags: [Ordini]
       summary: Lista ordini di vendita
       description: |
-        Restituisce gli ordini in ordine cronologico inverso.
-        Filtri opzionali via query: `stato`, `cliente_id`.
-        Richiede `ordini:read`.
+        Restituisce gli ordini di vendita. Filtri opzionali via query: `stato`, `cliente_id`.
+        Richiede permesso `ordini:read`.
       x-required-permission: ordini:read
       parameters:
-        - in: query
-          name: stato
-          schema: { type: string, enum: [BOZZA, CONFERMATO, SPEDITO, ANNULLATO] }
-        - in: query
-          name: cliente_id
-          schema: { type: integer }
+        - name: stato
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/StatoOrdineVendita' }
+        - name: cliente_id
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+          example: 1
       responses:
         "200":
-          description: Lista ordini
+          description: Lista ordini di vendita
           content:
             application/json:
               schema:
@@ -3836,21 +4039,31 @@ paths:
                   status: { type: string, example: success }
                   data:
                     type: array
-                    items: { $ref: '#/components/schemas/Ordine' }
+                    items: { $ref: '#/components/schemas/OrdineVenditaLista' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
+
     post:
       tags: [Ordini]
       summary: Crea ordine di vendita
       description: |
-        Crea un ordine in BOZZA con righe. `utente_id` derivato dal token.
-        Richiede `ordini:write`.
+        Crea un ordine in stato `BOZZA` con le sue righe in una transazione.
+        Il prezzo di ogni riga è preso dal listino prodotto; `importo_totale` è calcolato dal server.
+        La destinazione deve appartenere al cliente. Richiede permesso `ordini:write`.
       x-required-permission: ordini:write
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/OrdineCreateRequest' }
+            schema: { $ref: '#/components/schemas/OrdineVenditaCreateRequest' }
+            example:
+              cliente_id: 1
+              destinazione_id: 5
+              data_consegna_richiesta: "2026-06-25"
+              utente_id: 2
+              righe:
+                - { prodotto_id: 7, quantita: 10 }
+                - { prodotto_id: 8, quantita: 5 }
       responses:
         "201":
           description: Ordine creato
@@ -3860,77 +4073,88 @@ paths:
                 type: object
                 properties:
                   status: { type: string, example: success }
-                  data:   { $ref: '#/components/schemas/OrdineDettaglio' }
+                  data:
+                    type: object
+                    properties:
+                      ordine: { $ref: '#/components/schemas/OrdineVenditaLista' }
+                      righe:
+                        type: array
+                        items: { $ref: '#/components/schemas/RigaOrdine' }
         "400": { $ref: '#/components/responses/ValidationError' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
-        "404": { $ref: '#/components/responses/NotFound' }
+        "404":
+          description: Cliente, destinazione o prodotto non trovato
+          content:
+            application/json:
+              example: { status: error, code: RESOURCE_NOT_FOUND, message: Cliente non trovato, details: [] }
 
   /ordini/disponibilita/{prodotto_id}:
+    parameters:
+      - name: prodotto_id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 7
     get:
       tags: [Ordini]
-      summary: Disponibilità commerciale prodotto
+      summary: Disponibilità prodotto
       description: |
-        Ritorna totale / impegnato / disponibile per un prodotto.
-        Usato dal modulo vendite per mostrare il disponibile reale.
-        Richiede `ordini:read`.
+        Restituisce totale giacenza, quantità impegnata su ordini e disponibile netto del prodotto.
+        Richiede permesso `ordini:read`.
       x-required-permission: ordini:read
-      parameters:
-        - in: path
-          name: prodotto_id
-          required: true
-          schema: { type: integer }
       responses:
         "200":
-          description: Disponibilità
+          description: Disponibilità prodotto
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   status: { type: string, example: success }
-                  data:   { $ref: '#/components/schemas/Disponibilita' }
+                  data: { $ref: '#/components/schemas/DisponibilitaProdotto' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
         "404": { $ref: '#/components/responses/NotFound' }
 
   /ordini/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 88
     get:
       tags: [Ordini]
-      summary: Dettaglio ordine
+      summary: Dettaglio ordine di vendita
+      description: Restituisce testata + righe. Richiede permesso `ordini:read`.
       x-required-permission: ordini:read
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
       responses:
         "200":
-          description: Ordine con righe
+          description: Dettaglio ordine
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   status: { type: string, example: success }
-                  data:   { $ref: '#/components/schemas/OrdineDettaglio' }
+                  data: { $ref: '#/components/schemas/OrdineVenditaDettaglio' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
         "404": { $ref: '#/components/responses/NotFound' }
+
     patch:
       tags: [Ordini]
-      summary: Modifica ordine (solo BOZZA)
+      summary: Modifica testata ordine
+      description: Aggiorna i campi di testata. Richiede permesso `ordini:write`.
       x-required-permission: ordini:write
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/OrdineUpdateRequest' }
+            schema: { $ref: '#/components/schemas/OrdineVenditaUpdateRequest' }
+            example:
+              data_consegna_richiesta: "2026-06-27"
       responses:
         "200":
           description: Ordine aggiornato
@@ -3940,36 +4164,32 @@ paths:
                 type: object
                 properties:
                   status: { type: string, example: success }
-                  data:   { $ref: '#/components/schemas/Ordine' }
+                  data: { $ref: '#/components/schemas/OrdineVenditaLista' }
         "400": { $ref: '#/components/responses/ValidationError' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
         "404": { $ref: '#/components/responses/NotFound' }
-        "409":
-          description: Ordine non in stato BOZZA
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ErrorResponse' }
 
   /ordini/{id}/stato:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 88
     patch:
       tags: [Ordini]
-      summary: Cambia stato commerciale
+      summary: Cambia stato ordine
       description: |
-        Transizioni BOZZA→CONFERMATO/ANNULLATO, CONFERMATO→SPEDITO/ANNULLATO.
-        Alla conferma controlla la disponibilità (422 se insufficiente).
-        SPEDITO richiede picking completato. Richiede `ordini:approve`.
+        Transizione di stato validata (vedi `StatoOrdineVendita`). Richiede permesso `ordini:approve`.
       x-required-permission: ordini:approve
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/OrdineStatoRequest' }
+            schema: { $ref: '#/components/schemas/OrdineVenditaStatoRequest' }
+            example:
+              stato: CONFERMATO
       responses:
         "200":
           description: Stato aggiornato
@@ -3979,187 +4199,96 @@ paths:
                 type: object
                 properties:
                   status: { type: string, example: success }
-                  data:   { $ref: '#/components/schemas/Ordine' }
+                  data: { $ref: '#/components/schemas/OrdineVenditaLista' }
         "400": { $ref: '#/components/responses/ValidationError' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
         "404": { $ref: '#/components/responses/NotFound' }
         "409":
-          description: Transizione di stato non consentita
+          description: Transizione di stato non valida
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ErrorResponse' }
-        "422": { $ref: '#/components/responses/InsufficientStock' }
+              example: { status: error, code: STATE_TRANSITION_INVALID, message: Transizione di stato non valida, details: [] }
 
   /ordini/{id}/picking:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 88
     patch:
       tags: [Ordini]
-      summary: Avanza picking (scarico al completamento)
+      summary: Aggiorna stato picking
       description: |
-        NON_AVVIATO→IN_PICKING→PICKING_COMPLETATO. Solo su ordini CONFERMATO.
-        A PICKING_COMPLETATO richiede `prelievi` e genera gli SCARICO_VENDITA.
-        Richiede `ordini:approve` (Resp. Magazzino / Resp. Vendite / Resp. Azienda).
+        Avanza la macchina stato picking. Per `PICKING_COMPLETATO` è obbligatorio l'array `prelievi`:
+        ogni riga deve essere coperta da una o più ubicazioni di prelievo la cui somma uguagli la quantità
+        ordinata. Ogni prelievo genera un movimento `SCARICO_VENDITA`. Richiede permesso `ordini:approve`.
       x-required-permission: ordini:approve
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/OrdinePickingRequest' }
+            examples:
+              avvio:
+                summary: Avvio picking
+                value: { stato_picking: IN_PICKING }
+              completamento:
+                summary: Completamento con prelievi
+                value:
+                  stato_picking: PICKING_COMPLETATO
+                  prelievi:
+                    - riga_id: 20
+                      ubicazioni:
+                        - { ubicazione_id: 12, quantita: 7 }
+                        - { ubicazione_id: 15, quantita: 3 }
       responses:
         "200":
-          description: Picking aggiornato (con movimenti se completato)
+          description: Stato picking aggiornato
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   status: { type: string, example: success }
-                  data:   { $ref: '#/components/schemas/PickingResult' }
+                  data: { $ref: '#/components/schemas/OrdineVenditaLista' }
         "400": { $ref: '#/components/responses/ValidationError' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
         "404": { $ref: '#/components/responses/NotFound' }
-        "409":
-          description: Transizione picking non consentita o ordine non CONFERMATO
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ErrorResponse' }
         "422": { $ref: '#/components/responses/InsufficientStock' }
 
-  /clienti/{id}/destinazioni:
-    get:
-      tags: [Destinazioni]
-      summary: Lista destinazioni del cliente
-      x-required-permission: clienti:read
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
-      responses:
-        "200":
-          description: Lista destinazioni
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status: { type: string, example: success }
-                  data:
-                    type: array
-                    items: { $ref: '#/components/schemas/Destinazione' }
-        "401": { $ref: '#/components/responses/Unauthorized' }
-        "403": { $ref: '#/components/responses/Forbidden' }
-        "404": { $ref: '#/components/responses/NotFound' }
-    post:
-      tags: [Destinazioni]
-      summary: Crea destinazione per il cliente
-      x-required-permission: clienti:write
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/DestinazioneRequest' }
-      responses:
-        "201":
-          description: Destinazione creata
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status: { type: string, example: success }
-                  data:   { $ref: '#/components/schemas/Destinazione' }
-        "400": { $ref: '#/components/responses/ValidationError' }
-        "401": { $ref: '#/components/responses/Unauthorized' }
-        "403": { $ref: '#/components/responses/Forbidden' }
-        "404": { $ref: '#/components/responses/NotFound' }
+  # ══════════════════════════════════════════
+  # M08 (ext) — PDF ORDINE DI ACQUISTO
+  # ══════════════════════════════════════════
 
-  /clienti/{id}/destinazioni/{destId}:
-    get:
-      tags: [Destinazioni]
-      summary: Dettaglio destinazione
-      x-required-permission: clienti:read
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
-        - in: path
-          name: destId
-          required: true
-          schema: { type: integer }
-      responses:
-        "200":
-          description: Destinazione
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status: { type: string, example: success }
-                  data:   { $ref: '#/components/schemas/Destinazione' }
-        "401": { $ref: '#/components/responses/Unauthorized' }
-        "403": { $ref: '#/components/responses/Forbidden' }
-        "404": { $ref: '#/components/responses/NotFound' }
-    patch:
-      tags: [Destinazioni]
-      summary: Modifica destinazione
-      x-required-permission: clienti:write
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
-        - in: path
-          name: destId
-          required: true
-          schema: { type: integer }
-      requestBody:
+  /ordini-acquisto/{id}/pdf:
+    parameters:
+      - name: id
+        in: path
         required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/DestinazioneRequest' }
+        schema: { type: integer }
+        example: 15
+      - name: download
+        in: query
+        required: false
+        description: "`1` per forzare il download come allegato (Content-Disposition: attachment); altrimenti inline."
+        schema: { type: string, enum: ["1"] }
+        example: "1"
+    get:
+      tags: [OrdiniAcquisto]
+      summary: Genera PDF ordine di acquisto
+      description: |
+        Restituisce il PDF dell'ordine di acquisto (`Content-Type: application/pdf`).
+        Con `?download=1` il PDF è servito come allegato. Richiede permesso `acquisti:read`.
+      x-required-permission: acquisti:read
       responses:
         "200":
-          description: Destinazione aggiornata
+          description: PDF ordine
           content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status: { type: string, example: success }
-                  data:   { $ref: '#/components/schemas/Destinazione' }
-        "400": { $ref: '#/components/responses/ValidationError' }
+            application/pdf:
+              schema: { type: string, format: binary }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
         "404": { $ref: '#/components/responses/NotFound' }
-    delete:
-      tags: [Destinazioni]
-      summary: Elimina destinazione
-      x-required-permission: clienti:delete
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: integer }
-        - in: path
-          name: destId
-          required: true
-          schema: { type: integer }
-      responses:
-        "204": { $ref: '#/components/responses/NoContent' }
-        "401": { $ref: '#/components/responses/Unauthorized' }
-        "403": { $ref: '#/components/responses/Forbidden' }
-        "404": { $ref: '#/components/responses/NotFound' }
-
