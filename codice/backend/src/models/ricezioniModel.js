@@ -1,7 +1,7 @@
 const pool = require('../config/db');
 
-const findAll = () =>
-    pool.query(
+const findAll = (client = pool) =>
+    client.query(
         `
     SELECT 
       r.id,
@@ -23,8 +23,8 @@ const findAll = () =>
     `
     );
 
-const findById = (id) =>
-    pool.query(
+const findById = (id, client = pool) =>
+    client.query(
         `
     SELECT 
       r.id,
@@ -47,8 +47,8 @@ const findById = (id) =>
         [id]
     );
 
-const findByOrdineAcquistoId = (ordine_acquisto_id) =>
-    pool.query(
+const findByOrdineAcquistoId = (ordine_acquisto_id, client = pool) =>
+    client.query(
         `
     SELECT 
       id, ordine_acquisto_id, data_ricezione, note, utente_id, created_at, updated_at
@@ -59,8 +59,8 @@ const findByOrdineAcquistoId = (ordine_acquisto_id) =>
         [ordine_acquisto_id]
     );
 
-const findByUtenteId = (utente_id) =>
-    pool.query(
+const findByUtenteId = (utente_id, client = pool) =>
+    client.query(
         `
     SELECT 
       id, ordine_acquisto_id, data_ricezione, note, utente_id, created_at, updated_at
@@ -71,8 +71,8 @@ const findByUtenteId = (utente_id) =>
         [utente_id]
     );
 
-const create = ({ ordine_acquisto_id, data_ricezione, note, utente_id }) =>
-    pool.query(
+const create = ({ ordine_acquisto_id, data_ricezione, note, utente_id }, client = pool) =>
+    client.query(
         `
     INSERT INTO ricezioni 
       (ordine_acquisto_id, data_ricezione, note, utente_id)
@@ -86,8 +86,8 @@ const create = ({ ordine_acquisto_id, data_ricezione, note, utente_id }) =>
  * UPDATE limitato: non si può cambiare ordine, utente, data_ricezione.
  * Solo note è modificabile.
  */
-const update = (id, { note }) =>
-    pool.query(
+const update = (id, { note }, client = pool) =>
+    client.query(
         `
     UPDATE ricezioni
     SET 
@@ -99,8 +99,8 @@ const update = (id, { note }) =>
         [note, id]
     );
 
-const remove = (id) =>
-    pool.query(
+const remove = (id, client = pool) =>
+    client.query(
         `
     DELETE FROM ricezioni 
     WHERE id = $1 
@@ -109,8 +109,8 @@ const remove = (id) =>
         [id]
     );
 
-const removeByOrdineAcquistoId = (ordine_acquisto_id) =>
-    pool.query(
+const removeByOrdineAcquistoId = (ordine_acquisto_id, client = pool) =>
+    client.query(
         `
     DELETE FROM ricezioni
     WHERE ordine_acquisto_id = $1
@@ -122,10 +122,10 @@ const removeByOrdineAcquistoId = (ordine_acquisto_id) =>
 /* 
  * DETTAGLIO COMPLETO: ricezione + righe_ricezione
  */
-const findDettaglioCompleto = async (id) => {
-    const ricezione = await findById(id);
+const findDettaglioCompleto = async (id, client = pool) => {
+    const ricezione = await findById(id, client);
 
-    const righe = await pool.query(
+    const righe = await client.query(
         `
     SELECT 
       rr.id,
