@@ -10,7 +10,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   UserCog,
-  LogOut,
+  HelpCircle,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -22,7 +22,6 @@ interface SidebarProps {
   onCollapsedChange?: (collapsed: boolean) => void;
   user?: User;
   accessiblePages?: string[];
-  onLogout?: () => void;
 }
 
 const ROLE_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
@@ -55,7 +54,6 @@ export function Sidebar({
   onCollapsedChange,
   user,
   accessiblePages,
-  onLogout,
 }: SidebarProps) {
   const [activeItem, setActiveItem] = useState(activePage);
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -101,22 +99,6 @@ export function Sidebar({
           </div>
         )}
       </div>
-          
-       {/* Supporto 
-        <div className="relative group/supporto">
-          <button
-            onClick={() => navigate('supporto')}
-            className={`w-full flex items-center rounded-xl hover:bg-[#F7F9FC] transition-all ${isCollapsed ? 'justify-center p-3' : 'gap-3 px-4 py-2.5'}`}
-          >
-            <HelpCircle className="w-4 h-4 text-[#9CA3AF] flex-shrink-0" />
-            {!isCollapsed && <span className="text-sm text-[#6B7280]">Supporto</span>}
-          </button>
-          {isCollapsed && (
-            <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1E293B] text-white text-xs font-medium rounded-lg opacity-0 group-hover/supporto:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
-              Supporto<div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#1E293B]" />
-            </div>
-          )}
-        </div>  */}
 
       {/* ── Nav ── */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-0.5">
@@ -150,6 +132,28 @@ export function Sidebar({
           );
         })}
       </nav>
+
+      {/* ── Supporto ── */}
+      <div className={`flex-shrink-0 ${isCollapsed ? 'p-2' : 'p-3'}`}>
+        <div className="relative group/supporto">
+          <button
+            onClick={() => navigate('supporto')}
+            className={`w-full flex items-center rounded-xl transition-all ${isCollapsed ? 'justify-center p-3' : 'gap-3 px-4 py-2.5'} ${
+              activeItem === 'supporto'
+                ? 'bg-[#F0FFF8] text-[#17E88F]'
+                : 'text-[#6B7280] hover:bg-[#F7F9FC] hover:text-[#374151]'
+            }`}
+          >
+            <HelpCircle className={`w-4 h-4 flex-shrink-0 ${activeItem === 'supporto' ? 'text-[#17E88F]' : 'text-[#9CA3AF] group-hover/supporto:text-[#374151]'}`} />
+            {!isCollapsed && <span className="text-sm font-medium">Supporto</span>}
+          </button>
+          {isCollapsed && (
+            <div className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-2 bg-[#1E293B] text-white text-xs font-medium rounded-lg opacity-0 group-hover/supporto:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">
+              Supporto<div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#1E293B]" />
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* ── Footer ── */}
       <div className={`border-t border-[#E5EAF2] space-y-1 flex-shrink-0 ${isCollapsed ? 'p-2' : 'p-3'}`}>
