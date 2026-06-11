@@ -1,62 +1,25 @@
 import { ShoppingBag, Euro, Truck, Package, CheckCircle, TrendingUp, AlertTriangle } from 'lucide-react';
 
-const kpis = [
-  {
-    icon: ShoppingBag,
-    title: 'Ordini Attivi',
-    value: '245',
-    subtitle: '+8,4% rispetto al mese scorso',
-    trend: 8.4,
-    iconBg: 'bg-gradient-to-br from-[#3B82F6] to-[#2563EB]',
-  },
-  {
-    icon: Euro,
-    title: 'Valore Ordini',
-    value: '€ 3.875.420',
-    subtitle: 'Valore totale portafoglio',
-    trend: 12.1,
-    iconBg: 'bg-gradient-to-br from-[#17E88F] to-[#0FA67A]',
-  },
-  {
-    icon: Truck,
-    title: 'Ordini da Spedire',
-    value: '87',
-    subtitle: 'In attesa di spedizione',
-    trend: -3.2,
-    iconBg: 'bg-gradient-to-br from-[#F59E0B] to-[#D97706]',
-    isWarning: true,
-  },
-  {
-    icon: Package,
-    title: 'Ordini in Picking',
-    value: '42',
-    subtitle: 'In lavorazione magazzino',
-    trend: 5.7,
-    iconBg: 'bg-gradient-to-br from-[#8B5CF6] to-[#7C3AED]',
-  },
-  {
-    icon: CheckCircle,
-    title: 'Completati Oggi',
-    value: '31',
-    subtitle: 'Ordini evasi in giornata',
-    trend: 18.4,
-    iconBg: 'bg-gradient-to-br from-[#06B6D4] to-[#0891B2]',
-  },
-  {
-    icon: TrendingUp,
-    title: 'Tasso Evasione',
-    value: '96,8%',
-    subtitle: 'Performance evasione ordini',
-    trend: 1.2,
-    iconBg: 'bg-gradient-to-br from-[#17E88F] to-[#059669]',
-  },
-];
+export interface SalesKpiItem {
+  title: string;
+  value: string;
+  subtitle: string;
+  trend: number;
+  iconBg: string;
+  isWarning?: boolean;
+}
 
-export function SalesKPIs() {
+interface SalesKPIsProps {
+  kpis: SalesKpiItem[];
+}
+
+const icons = [ShoppingBag, Euro, Truck, Package, CheckCircle, TrendingUp];
+
+export function SalesKPIs({ kpis }: SalesKPIsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
       {kpis.map((kpi, index) => {
-        const Icon = kpi.icon;
+        const Icon = icons[index] ?? ShoppingBag;
         const isPositiveTrend = kpi.trend > 0;
 
         return (
@@ -78,7 +41,7 @@ export function SalesKPIs() {
                   isPositiveTrend ? 'bg-[#DCFCE7] text-[#22C55E]' : 'bg-[#FEE2E2] text-[#EF4444]'
                 }`}>
                   <TrendingUp className={`w-3 h-3 ${!isPositiveTrend ? 'rotate-180' : ''}`} />
-                  <span className="text-xs font-medium">{Math.abs(kpi.trend)}%</span>
+                  <span className="text-xs font-medium">{Math.abs(kpi.trend).toFixed(1)}%</span>
                 </div>
               )}
             </div>

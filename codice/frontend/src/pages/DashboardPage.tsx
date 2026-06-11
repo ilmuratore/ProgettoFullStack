@@ -16,6 +16,9 @@ import { useAuthStore, RUOLO_ID_TO_NOME } from '../store/authStore';
 import { giacenzeApi } from '../api/giacenzeApi';
 import { prodottiApi } from '../api/prodottiApi';
 import { acquistiApi } from '../api/acquistiApi';
+import { ordiniApi } from '../api/ordiniApi';
+import { spedizioniApi } from '../api/spedizioniApi';
+import { magazzinoApi } from '../api/magazzinoApi';
 import { notificheApi } from '../api/notificheApi';
 import type { Notifica, NotifType } from '../types/notifiche';
 
@@ -46,22 +49,66 @@ export function DashboardPage() {
   const [valoreStock, setValoreStock] = useState<number | null>(null);
   const [ordiniAperti, setOrdiniAperti] = useState<number | null>(null);
   const [sottoScorta, setSottoScorta] = useState<number | null>(null);
+  const [spedizioniOggi, setSpedizioniOggi] = useState<number | null>(null);
+  const [barChartData, setBarChartData] = useState([
+    { name: 'Ricevuti', value: 0, color: '#17E88F' },
+    { name: 'Confermati', value: 0, color: '#22C55E' },
+    { name: 'In Elaborazione', value: 0, color: '#3B82F6' },
+    { name: 'Completati', value: 0, color: '#0FA67A' },
+    { name: 'Annullati', value: 0, color: '#EF4444' },
+  ]);
+  const [pieChartData, setPieChartData] = useState([
+    { name: 'Bozza', value: 0, color: '#6B7280' },
+    { name: 'In Picking', value: 0, color: '#F59E0B' },
+    { name: 'In Preparazione', value: 0, color: '#3B82F6' },
+    { name: 'Spedito', value: 0, color: '#17E88F' },
+  ]);
+  const [warehouseCapacity, setWarehouseCapacity] = useState({ capacity: 0, occupied: 0, available: 0 });
 
   useEffect(() => {
-    Promise.all([giacenzeApi.list(), prodottiApi.list()])
-      .then(([giacenze, prodotti]) => {
+    Promise.all([
+      giacenzeApi.list(),
+      prodottiApi.list(),
+      acquistiApi.list(),
+      ordiniApi.list(),
+      spedizioniApi.list(),
+      magazzinoApi.listUbicazioni(),
+    ])
+      .then(([giacenze, prodotti, ordiniAcquisto, ordiniVendita, spedizioni, ubicazioni]) => {
         const prezzoByProdotto = new Map(prodotti.map((p) => [p.id, Number(p.prezzo ?? 0)]));
         const totale = giacenze.reduce((sum, g) => sum + g.quantita * (prezzoByProdotto.get(g.prodotto_id) ?? 0), 0);
         setValoreStock(totale);
+        setSottoScorta(giacenze.filter((g) => g.sotto_scorta).length);
+        setOrdiniAperti(ordiniAcquisto.filter((o) => o.stato !== 'COMPLETATO' && o.stato !== 'ANNULLATO').length);
+
+        const today = new Date().toDateString();
+        setSpedizioniOggi(spedizioni.filter((s) => new Date(s.created_at).toDateString() === today).length);
+
+        const last30 = new Date();
+        last30.setDate(last30.getDate() - 30);
+        const ordiniAcquisto30 = ordiniAcquisto.filter((o) => new Date(o.created_at) >= last30);
+        setBarChartData([
+          { name: 'Ricevuti', value: ordiniAcquisto30.filter((o) => o.totale_ricevuto > 0).length, color: '#17E88F' },
+          { name: 'Confermati', value: ordiniAcquisto30.filter((o) => o.stato === 'CONFERMATO').length, color: '#22C55E' },
+          { name: 'In Elaborazione', value: ordiniAcquisto30.filter((o) => o.stato === 'INVIATO' || o.stato === 'IN_RICEZIONE').length, color: '#3B82F6' },
+          { name: 'Completati', value: ordiniAcquisto30.filter((o) => o.stato === 'COMPLETATO').length, color: '#0FA67A' },
+          { name: 'Annullati', value: ordiniAcquisto30.filter((o) => o.stato === 'ANNULLATO').length, color: '#EF4444' },
+        ]);
+
+        setPieChartData([
+          { name: 'Bozza', value: ordiniVendita.filter((o) => o.stato === 'BOZZA').length, color: '#6B7280' },
+          { name: 'In Picking', value: ordiniVendita.filter((o) => o.stato === 'CONFERMATO' && o.stato_picking === 'IN_PICKING').length, color: '#F59E0B' },
+          { name: 'In Preparazione', value: ordiniVendita.filter((o) => o.stato === 'CONFERMATO' && o.stato_picking !== 'IN_PICKING').length, color: '#3B82F6' },
+          { name: 'Spedito', value: ordiniVendita.filter((o) => o.stato === 'SPEDITO').length, color: '#17E88F' },
+        ]);
+
+        const occupiedSet = new Set(giacenze.filter((g) => Number(g.quantita) > 0).map((g) => g.ubicazione_id));
+        const totalUbicazioni = ubicazioni.length;
+        const occupied = occupiedSet.size;
+        const available = Math.max(0, totalUbicazioni - occupied);
+        const capacity = totalUbicazioni > 0 ? Math.round((occupied / totalUbicazioni) * 100) : 0;
+        setWarehouseCapacity({ capacity, occupied, available });
       })
-      .catch(() => {});
-
-    giacenzeApi.list({ scorta: 'sotto' })
-      .then((data) => setSottoScorta(data.length))
-      .catch(() => {});
-
-    acquistiApi.list()
-      .then((ordini) => setOrdiniAperti(ordini.filter((o) => o.stato !== 'COMPLETATO' && o.stato !== 'ANNULLATO').length))
       .catch(() => {});
 
     notificheApi.list()
@@ -127,14 +174,14 @@ export function DashboardPage() {
                 <KPICard icon={Package} title="Valore Totale Stock" value={valoreStock !== null ? formatCurrency(valoreStock) : '...'} iconBgColor="bg-gradient-to-br from-[#3B82F6] to-[#2563EB]" iconColor="text-white" />
                 <KPICard icon={ClipboardList} title="Ordini da Evadere" value={ordiniAperti !== null ? String(ordiniAperti) : '...'} iconBgColor="bg-gradient-to-br from-[#F59E0B] to-[#D97706]" iconColor="text-white" />
                 <KPICard icon={AlertTriangle} title="Prodotti Sottoscorta" value={sottoScorta !== null ? String(sottoScorta) : '...'} iconBgColor="bg-gradient-to-br from-[#EF4444] to-[#DC2626]" iconColor="text-white" />
-                <KPICard icon={Truck} title="Spedizioni Odierne" value="87" trend={15.7} iconBgColor="bg-gradient-to-br from-[#17E88F] to-[#0FA67A]" iconColor="text-white" />
+                <KPICard icon={Truck} title="Spedizioni Odierne" value={spedizioniOggi !== null ? String(spedizioniOggi) : '...'} iconBgColor="bg-gradient-to-br from-[#17E88F] to-[#0FA67A]" iconColor="text-white" />
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2"><OrdersBarChart /></div>
-                <div><OrdersPieChart /></div>
+                <div className="lg:col-span-2"><OrdersBarChart data={barChartData} /></div>
+                <div><OrdersPieChart data={pieChartData} /></div>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <WarehouseCapacity /><CriticalProductsAlert /><MiniCalendar />
+                <WarehouseCapacity capacity={warehouseCapacity.capacity} occupied={warehouseCapacity.occupied} available={warehouseCapacity.available} /><CriticalProductsAlert /><MiniCalendar />
               </div>
               <ActivityTable />
             </div>
