@@ -34,7 +34,7 @@ const shippingStateBadge = (stato: string) => {
 
 export function LogisticsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null);
+  const [selectedShipmentId, setSelectedShipmentId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<LogisticsTab>('spedizioni');
   const [shipments, setShipments] = useState<Spedizione[]>([]);
   const [loadingShipments, setLoadingShipments] = useState(true);

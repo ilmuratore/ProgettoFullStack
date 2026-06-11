@@ -5,7 +5,7 @@ import { spedizioniApi } from '../../../api/spedizioniApi';
 import type { Spedizione, StatoSpedizione } from '../../../types/spedizioni';
 
 interface ShipmentsTableProps {
-  onShipmentClick: (id: string) => void;
+  onShipmentClick: (id: number) => void;
   shipments?: Spedizione[];
   loading?: boolean;
   reloadKey?: number;
@@ -126,7 +126,7 @@ export function ShipmentsTable({ onShipmentClick, shipments: shipmentsProp, load
                 <tr
                   key={ship.id}
                   className="border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors cursor-pointer"
-                  onClick={() => onShipmentClick(label)}
+                  onClick={() => onShipmentClick(ship.id)}
                 >
                   <td className="py-3 px-3">
                     <div className="flex items-center gap-2">

@@ -72,11 +72,11 @@ app.use('/api/v1/ricezioni', require('./src/routes/ricezioniRoutes'));
 app.use('/api/v1/ordini', require('./src/routes/ordiniRoutes'));
 
 // M10 — Spedizioni & DDT
-// app.use('/api/v1/spedizioni',       require('./src/routes/spedizioniRoutes'));
+app.use('/api/v1/spedizioni',       require('./src/routes/spedizioniRoutes'));
 // app.use('/api/v1/ddt',              require('./src/routes/ddtRoutes'));
 
 // M11 — Notifiche
-// app.use('/api/v1/notifiche',        require('./src/routes/notificheRoutes'));
+app.use('/api/v1/notifiche',        require('./src/routes/notificheRoutes'));
 
 // M12 — Dashboard & KPI
 // app.use('/api/v1/dashboard',        require('./src/routes/dashboardRoutes'));
