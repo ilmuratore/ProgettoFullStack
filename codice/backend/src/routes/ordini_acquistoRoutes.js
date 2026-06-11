@@ -30,7 +30,7 @@ const updateStatoBlueprint = {
 
 const addRigaBlueprint = {
     prodotto_id: { required: true, type: 'number', integer: true, min: 1 },
-    quantita: { required: true, type: 'number', min: 0.01 },
+    quantita_ordinata: { required: true, type: 'number', min: 0.01 },
     prezzo_unitario: { required: true, type: 'number', min: 0 },
 };
 
