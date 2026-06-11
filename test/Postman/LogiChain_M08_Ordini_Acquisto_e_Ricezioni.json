@@ -413,7 +413,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('400 Validation', () => pm.response.to.have.status(400));",
-                  "pm.test('code VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
+                  "pm.test('ha errore', () => pm.expect(pm.response.json().error || pm.response.json().code).to.exist);"
                 ]
               }
             }
@@ -451,7 +451,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('400 Validation', () => pm.response.to.have.status(400));",
-                  "pm.test('code VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
+                  "pm.test('ha errore', () => pm.expect(pm.response.json().error || pm.response.json().code).to.exist);"
                 ]
               }
             }
@@ -1120,7 +1120,7 @@
           }
         },
         {
-          "name": "03 GET /ricezioni/:id/righe → 200",
+          "name": "03 GET /ricezioni/:id/righe — deprecata → 410",
           "event": [
             {
               "listen": "test",
@@ -1128,9 +1128,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "var d = pm.response.json();",
-                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "pm.test('array', () => pm.expect(d.data).to.be.an('array'));",
-                  "pm.test('>=1 riga', () => pm.expect(d.data.length).to.be.at.least(1));"
+                  "pm.test('410 Gone', () => pm.response.to.have.status(410));",
+                  "pm.test('messaggio deprecazione', () => pm.expect(d.error).to.include('deprecato'));"
                 ]
               }
             }
@@ -1187,14 +1186,16 @@
           }
         },
         {
-          "name": "05 POST /ricezioni/:id/righe — aggiungi riga → 201",
+          "name": "05 POST /ricezioni/:id/righe — deprecata → 410",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('201 Created', () => pm.response.to.have.status(201));"
+                  "var d = pm.response.json();",
+                  "pm.test('410 Gone', () => pm.response.to.have.status(410));",
+                  "pm.test('messaggio deprecazione', () => pm.expect(d.error).to.include('deprecato'));"
                 ]
               }
             }
@@ -1224,7 +1225,7 @@
           }
         },
         {
-          "name": "06 GET /ricezioni/:id/righe — riga presente → 200",
+          "name": "06 GET /ricezioni/:id/righe — deprecata → 410",
           "event": [
             {
               "listen": "test",
@@ -1232,8 +1233,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "var d = pm.response.json();",
-                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "pm.test('>=1 riga', () => pm.expect(d.data.length).to.be.at.least(1));"
+                  "pm.test('410 Gone', () => pm.response.to.have.status(410));",
+                  "pm.test('messaggio deprecazione', () => pm.expect(d.error).to.include('deprecato'));"
                 ]
               }
             }

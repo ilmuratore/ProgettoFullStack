@@ -13,12 +13,6 @@ const createBlueprint = {
     note: { required: false, type: 'string' }
 };
 
-const addRigaBlueprint = {
-    prodotto_id: { required: true, type: 'number', integer: true, min: 1 },
-    quantita: { required: true, type: 'number', min: 0.01 },
-    ubicazione_id: { required: true, type: 'number', integer: true, min: 1 }
-};
-
 // GET /api/v1/ricezioni
 router.get(
     '/',
@@ -49,7 +43,12 @@ router.get(
     '/:id/righe',
     auth,
     requirePermesso('acquisti:read'),
-    ricezioniController.getRighe
+    (req, res) => {
+        res.status(410).json({
+            status: 'error',
+            error: 'Endpoint deprecato. Usare GET /api/v1/ordini-acquisto/:id/ricezioni'
+        });
+    }
 );
 
 // POST /api/v1/ricezioni/:id/righe
@@ -57,8 +56,12 @@ router.post(
     '/:id/righe',
     auth,
     requirePermesso('acquisti:approve'),
-    validate(addRigaBlueprint),
-    ricezioniController.addRiga
+    (req, res) => {
+        res.status(410).json({
+            status: 'error',
+            error: 'Endpoint deprecato. Usare POST /api/v1/ordini-acquisto/ricezioni'
+        });
+    }
 );
 
 module.exports = router;

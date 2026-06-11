@@ -20,7 +20,6 @@ const createBlueprint = {
 const updateBlueprint = {
     fornitore_id: { required: false, type: 'number', integer: true, min: 1 },
     data_prevista: { required: false, type: 'string' },
-    importo_totale: { required: false, type: 'number', min: 0 },
     note: { required: false, type: 'string' },
     // utente_id rimosso (issue31)
 };
@@ -31,7 +30,7 @@ const updateStatoBlueprint = {
 
 const addRigaBlueprint = {
     prodotto_id: { required: true, type: 'number', integer: true, min: 1 },
-    quantita_ordinata: { required: true, type: 'number', min: 0.01 },
+    quantita: { required: true, type: 'number', min: 0.01 },
     prezzo_unitario: { required: true, type: 'number', min: 0 },
 };
 

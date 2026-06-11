@@ -1,6 +1,7 @@
 const pool = require('../config/db');
 
-const findAll = async () => {
+const findAll = async (client = pool) => {
+    const executor = client || pool;
     const query = `
         SELECT
             o.*,
@@ -10,10 +11,11 @@ const findAll = async () => {
         GROUP BY o.id
         ORDER BY o.id DESC
     `;
-    return pool.query(query);
+    return executor.query(query);
 };
 
-const findAllFiltered = async ({ stato, fornitore_id }) => {
+const findAllFiltered = async ({ stato, fornitore_id }, client = pool) => {
+    const executor = client || pool;
     const params = [];
     const conditions = [];
 
@@ -42,11 +44,12 @@ const findAllFiltered = async ({ stato, fornitore_id }) => {
         ORDER BY o.id DESC
     `;
 
-    return pool.query(query, params);
+    return executor.query(query, params);
 };
 
-const findDettaglioCompleto = async (id) => {
-    const ordineRes = await pool.query(
+const findDettaglioCompleto = async (id, client = pool) => {
+    const executor = client || pool;
+    const ordineRes = await executor.query(
         'SELECT * FROM ordini_acquisto WHERE id = $1',
         [id]
     );
@@ -55,7 +58,7 @@ const findDettaglioCompleto = async (id) => {
         return { ordine: null, righe: [] };
     }
 
-    const righeRes = await pool.query(
+    const righeRes = await executor.query(
         'SELECT * FROM righe_po WHERE ordine_acquisto_id = $1 ORDER BY id',
         [id]
     );
@@ -66,7 +69,7 @@ const findDettaglioCompleto = async (id) => {
     };
 };
 
-const findById = async (id, client) => {
+const findById = async (id, client = pool) => {
     const executor = client || pool;
     return executor.query(
         'SELECT * FROM ordini_acquisto WHERE id = $1',
@@ -74,7 +77,7 @@ const findById = async (id, client) => {
     );
 };
 
-const create = async (data, client) => {
+const create = async (data, client = pool) => {
     const executor = client || pool;
     const {
         fornitore_id,
@@ -102,7 +105,7 @@ const create = async (data, client) => {
     return executor.query(query, values);
 };
 
-const update = async (id, data, client) => {
+const update = async (id, data, client = pool) => {
     const executor = client || pool;
 
     const fields = [];
@@ -131,7 +134,7 @@ const update = async (id, data, client) => {
     return executor.query(query, values);
 };
 
-const updateStato = async (id, stato, client) => {
+const updateStato = async (id, stato, client = pool) => {
     const executor = client || pool;
     return executor.query(
         'UPDATE ordini_acquisto SET stato = $1 WHERE id = $2 RETURNING *',
