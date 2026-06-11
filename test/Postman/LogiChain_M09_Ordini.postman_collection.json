@@ -1,0 +1,1031 @@
+{
+  "info": {
+    "name": "LogiChain M09 - Ordini di Vendita",
+    "description": "Collection self-bootstrapping M09. PRIMA DI ESEGUIRE: imposta le variabili admin_email e admin_password con le credenziali del seed admin (ADMIN_EMAIL/ADMIN_PASSWORD del .env). Il Setup crea cliente, destinazione, prodotto, magazzino, ubicazione e carico stock con valori timestamp-based. I test coprono disponibilita (totale-impegnato), conferma con blocco FIFO, picking con scarico, e le validazioni. Richiede backend su {{base_url}} con M09 e modulo destinazioni montati.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 Setup",
+      "item": [
+        {
+          "name": "00 - Login Admin (da variabili admin_email/admin_password)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test(\"login ok\", () => pm.response.to.have.status(200));",
+                  "if (j.data && j.data.token) { pm.collectionVariables.set(\"token\", j.data.token); }",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01 - Init Timestamp",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"ts\", Date.now().toString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"me ok\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Crea Cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/clienti",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "clienti"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ragione_sociale\": \"Cliente M09 {{ts}}\",\n  \"piva_cf\": \"PIVA{{ts}}\",\n  \"email\": \"cli{{ts}}@test.it\",\n  \"telefono\": \"000\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j=pm.response.json();",
+                  "pm.test(\"cliente creato\",()=>pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"cliente_id\", j.data.id);",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Crea Destinazione",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/clienti/{{cliente_id}}/destinazioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "clienti",
+                "{{cliente_id}}",
+                "destinazioni"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"etichetta\": \"Sede {{ts}}\",\n  \"indirizzo\": \"Via Test 1\",\n  \"cap\": \"20100\",\n  \"citta\": \"Milano\",\n  \"provincia\": \"MI\",\n  \"paese\": \"Italia\",\n  \"predefinita\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j=pm.response.json();",
+                  "pm.test(\"destinazione creata\",()=>pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"destinazione_id\", j.data.id);",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - Crea Prodotto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/prodotti",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "prodotti"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Prodotto M09 {{ts}}\",\n  \"sku\": \"M09-{{ts}}\",\n  \"prezzo\": 12.5\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j=pm.response.json();",
+                  "pm.test(\"prodotto creato\",()=>pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"prodotto_id\", j.data.id);",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 - Crea Magazzino",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/magazzini",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "magazzini"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codice\": \"MAGM09{{ts}}\",\n  \"nome\": \"Mag M09 {{ts}}\",\n  \"citta\": \"Milano\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j=pm.response.json();",
+                  "pm.test(\"magazzino creato\",()=>pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"magazzino_id\", j.data.id);",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 - Crea Ubicazione",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/magazzini/{{magazzino_id}}/ubicazioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "magazzini",
+                "{{magazzino_id}}",
+                "ubicazioni"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"corsia\": 1,\n  \"scaffale\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j=pm.response.json();",
+                  "pm.test(\"ubicazione creata\",()=>pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"ubicazione_id\", j.data.id);",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 - Carico Stock Iniziale (100)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/movimenti-stock",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "movimenti-stock"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prodotto_id\": \"{{prodotto_id}}\",\n  \"ubicazione_id\": \"{{ubicazione_id}}\",\n  \"quantita\": 100,\n  \"movimento_tipo\": \"CARICO_ACQUISTO\",\n  \"riferimento\": \"setup:m09\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"carico ok\",()=>pm.expect(pm.response.code).to.be.oneOf([200,201]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 Ordini M09",
+      "item": [
+        {
+          "name": "01 - Disponibilita iniziale (100/0/100)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/ordini/disponibilita/{{prodotto_id}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j=pm.response.json();",
+                  "pm.test(\"200\",()=>pm.response.to.have.status(200));",
+                  "pm.test(\"totale 100\",()=>pm.expect(j.data.totale).to.eql(100));",
+                  "pm.test(\"impegnato 0\",()=>pm.expect(j.data.impegnato).to.eql(0));",
+                  "pm.test(\"disponibile 100\",()=>pm.expect(j.data.disponibile).to.eql(100));",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Crea Ordine (BOZZA, qta 50)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/ordini",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente_id\": \"{{cliente_id}}\",\n  \"destinazione_id\": \"{{destinazione_id}}\",\n  \"data_consegna_richiesta\": \"2026-07-01\",\n  \"righe\": [\n    {\n      \"prodotto_id\": \"{{prodotto_id}}\",\n      \"quantita\": 50,\n      \"prezzo_unitario\": 12.5\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j=pm.response.json();",
+                  "pm.test(\"201\",()=>pm.response.to.have.status(201));",
+                  "pm.test(\"stato BOZZA\",()=>pm.expect(j.data.ordine.stato).to.eql(\"BOZZA\"));",
+                  "pm.collectionVariables.set(\"ordine_id\", j.data.ordine.id);",
+                  "pm.collectionVariables.set(\"riga_id\", j.data.righe[0].id);",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Disponibilita dopo BOZZA (ancora 100 disp)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/ordini/disponibilita/{{prodotto_id}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j=pm.response.json();",
+                  "pm.test(\"impegnato ancora 0 (bozza non impegna)\",()=>pm.expect(j.data.impegnato).to.eql(0));",
+                  "pm.test(\"disponibile 100\",()=>pm.expect(j.data.disponibile).to.eql(100));",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - Conferma Ordine",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/ordini/{{ordine_id}}/stato",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato\": \"CONFERMATO\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j=pm.response.json();",
+                  "pm.test(\"200\",()=>pm.response.to.have.status(200));",
+                  "pm.test(\"CONFERMATO\",()=>pm.expect(j.data.stato).to.eql(\"CONFERMATO\"));",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 - Disponibilita dopo CONFERMA (impegnato 50, disp 50)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/ordini/disponibilita/{{prodotto_id}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j=pm.response.json();",
+                  "pm.test(\"impegnato 50\",()=>pm.expect(j.data.impegnato).to.eql(50));",
+                  "pm.test(\"disponibile 50\",()=>pm.expect(j.data.disponibile).to.eql(50));",
+                  "pm.test(\"totale ancora 100 (non scaricato)\",()=>pm.expect(j.data.totale).to.eql(100));",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 - Conferma con disponibilita insufficiente (qta 200) -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/ordini",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente_id\": \"{{cliente_id}}\",\n  \"destinazione_id\": \"{{destinazione_id}}\",\n  \"righe\": [\n    {\n      \"prodotto_id\": \"{{prodotto_id}}\",\n      \"quantita\": 200,\n      \"prezzo_unitario\": 1\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j=pm.response.json();",
+                  "pm.test(\"ordine grande creato in bozza\",()=>pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"ordine_big\", j.data.ordine.id);",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 - Conferma ordine grande -> 422 INSUFFICIENT_STOCK",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/ordini/{{ordine_big}}/stato",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato\": \"CONFERMATO\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"422\",()=>pm.response.to.have.status(422));",
+                  "const j=pm.response.json();",
+                  "pm.test(\"codice INSUFFICIENT_STOCK\",()=>pm.expect(j.code).to.eql(\"INSUFFICIENT_STOCK\"));",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 - Avvia Picking (IN_PICKING)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/ordini/{{ordine_id}}/picking",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato_picking\": \"IN_PICKING\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j=pm.response.json();",
+                  "pm.test(\"200\",()=>pm.response.to.have.status(200));",
+                  "pm.test(\"IN_PICKING\",()=>pm.expect(j.data.ordine.stato_picking).to.eql(\"IN_PICKING\"));",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 - Completa Picking con prelievi (scarico 50) ",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/ordini/{{ordine_id}}/picking",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato_picking\": \"PICKING_COMPLETATO\",\n  \"prelievi\": [\n    {\n      \"riga_id\": \"{{riga_id}}\",\n      \"ubicazioni\": [\n        {\n          \"ubicazione_id\": \"{{ubicazione_id}}\",\n          \"quantita\": 50\n        }\n      ]\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j=pm.response.json();",
+                  "pm.test(\"200\",()=>pm.response.to.have.status(200));",
+                  "pm.test(\"PICKING_COMPLETATO\",()=>pm.expect(j.data.ordine.stato_picking).to.eql(\"PICKING_COMPLETATO\"));",
+                  "pm.test(\"1 movimento scarico\",()=>pm.expect(j.data.movimenti.length).to.eql(1));",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10 - Disponibilita dopo scarico (totale 50, impegnato 0, disp 50)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/ordini/disponibilita/{{prodotto_id}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j=pm.response.json();",
+                  "pm.test(\"totale 50 (scaricato)\",()=>pm.expect(j.data.totale).to.eql(50));",
+                  "pm.test(\"impegnato 0 (picking completato libera impegno)\",()=>pm.expect(j.data.impegnato).to.eql(0));",
+                  "pm.test(\"disponibile 50\",()=>pm.expect(j.data.disponibile).to.eql(50));",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11 - Spedisci ordine (CONFERMATO->SPEDITO)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/ordini/{{ordine_id}}/stato",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato\": \"SPEDITO\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j=pm.response.json();",
+                  "pm.test(\"200\",()=>pm.response.to.have.status(200));",
+                  "pm.test(\"SPEDITO\",()=>pm.expect(j.data.stato).to.eql(\"SPEDITO\"));",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12 - Picking su prelievi non quadrati -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/ordini",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente_id\": \"{{cliente_id}}\",\n  \"destinazione_id\": \"{{destinazione_id}}\",\n  \"righe\": [\n    {\n      \"prodotto_id\": \"{{prodotto_id}}\",\n      \"quantita\": 10,\n      \"prezzo_unitario\": 1\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j=pm.response.json();",
+                  "pm.collectionVariables.set(\"ordine_q\", j.data.ordine.id);",
+                  "pm.collectionVariables.set(\"riga_q\", j.data.righe[0].id);",
+                  "pm.test(\"creato\",()=>pm.response.to.have.status(201));",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13 - Conferma ordine_q",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/ordini/{{ordine_q}}/stato",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato\": \"CONFERMATO\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200\",()=>pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14 - Picking prelievi sbagliati (5 invece di 10) -> 400",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/ordini/{{ordine_q}}/picking",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato_picking\": \"PICKING_COMPLETATO\",\n  \"prelievi\": [\n    {\n      \"riga_id\": \"{{riga_q}}\",\n      \"ubicazioni\": [\n        {\n          \"ubicazione_id\": \"{{ubicazione_id}}\",\n          \"quantita\": 5\n        }\n      ]\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 validazione\",()=>pm.response.to.have.status(400));",
+                  "const j=pm.response.json();",
+                  "pm.test(\"VALIDATION_ERROR\",()=>pm.expect(j.code).to.eql(\"VALIDATION_ERROR\"));",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "admin_email",
+      "value": "CAMBIAMI@logichain.local"
+    },
+    {
+      "key": "admin_password",
+      "value": "CAMBIAMI"
+    },
+    {
+      "key": "ts",
+      "value": ""
+    },
+    {
+      "key": "cliente_id",
+      "value": ""
+    },
+    {
+      "key": "destinazione_id",
+      "value": ""
+    },
+    {
+      "key": "prodotto_id",
+      "value": ""
+    },
+    {
+      "key": "magazzino_id",
+      "value": ""
+    },
+    {
+      "key": "ubicazione_id",
+      "value": ""
+    },
+    {
+      "key": "ordine_id",
+      "value": ""
+    },
+    {
+      "key": "riga_id",
+      "value": ""
+    },
+    {
+      "key": "ordine_big",
+      "value": ""
+    },
+    {
+      "key": "ordine_q",
+      "value": ""
+    },
+    {
+      "key": "riga_q",
+      "value": ""
+    }
+  ]
+}
