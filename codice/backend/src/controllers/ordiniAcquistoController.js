@@ -38,7 +38,10 @@ const getPdf = async (req, res, next) => {
 
 const create = async (req, res, next) => {
     try {
-        const result = await ordiniAcquistoService.createOrdineAcquisto(req.body);
+        const data = { ...req.body, utente_id: req.user.id };
+        delete data.utente_id; // sicurezza: non accettare dal client
+
+        const result = await ordiniAcquistoService.createOrdineAcquisto(data);
         res.status(201).json({ status: 'success', data: result });
     } catch (err) {
         next(err);
@@ -83,12 +86,16 @@ const addRiga = async (req, res, next) => {
 
 const createRicezione = async (req, res, next) => {
     try {
-        const result = await ordiniAcquistoService.createRicezione(req.body);
+        const data = { ...req.body, utente_id: req.user.id };
+        delete data.utente_id;
+
+        const result = await ordiniAcquistoService.createRicezione(data);
         res.status(201).json({ status: 'success', data: result });
     } catch (err) {
         next(err);
     }
 };
+
 
 const listRicezioni = async (req, res, next) => {
     try {

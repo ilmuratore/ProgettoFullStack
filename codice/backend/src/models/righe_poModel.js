@@ -1,10 +1,7 @@
 const pool = require('../config/db');
 
-/* ============================================================================
- *  LISTA COMPLETA RIGHE PO
- * ==========================================================================*/
-const findAll = () =>
-    pool.query(
+const findAll = (client = pool) =>
+    client.query(
         `
     SELECT 
       rp.id,
@@ -24,11 +21,8 @@ const findAll = () =>
     `
     );
 
-/* ============================================================================
- *  DETTAGLIO RIGA
- * ==========================================================================*/
-const findById = (id) =>
-    pool.query(
+const findById = (id, client = pool) =>
+    client.query(
         `
     SELECT 
       rp.id,
@@ -49,11 +43,9 @@ const findById = (id) =>
         [id]
     );
 
-/* ============================================================================
- *  RIGHE PER ORDINE
- * ==========================================================================*/
-const findByOrdineAcquistoId = (ordine_acquisto_id) =>
-    pool.query(
+
+const findByOrdineAcquistoId = (ordine_acquisto_id, client = pool) =>
+    client.query(
         `
     SELECT 
       rp.id,
@@ -75,11 +67,9 @@ const findByOrdineAcquistoId = (ordine_acquisto_id) =>
         [ordine_acquisto_id]
     );
 
-/* ============================================================================
- *  RIGHE PER PRODOTTO
- * ==========================================================================*/
-const findByProdottoId = (prodotto_id) =>
-    pool.query(
+
+const findByProdottoId = (prodotto_id, client = pool) =>
+    client.query(
         `
     SELECT 
       id, ordine_acquisto_id, prodotto_id,
@@ -93,11 +83,9 @@ const findByProdottoId = (prodotto_id) =>
         [prodotto_id]
     );
 
-/* ============================================================================
- *  CREATE
- * ==========================================================================*/
-const create = ({ ordine_acquisto_id, prodotto_id, quantita_ordinata, prezzo_unitario }) =>
-    pool.query(
+
+const create = ({ ordine_acquisto_id, prodotto_id, quantita_ordinata, prezzo_unitario }, client = pool) =>
+    client.query(
         `
     INSERT INTO righe_po 
       (ordine_acquisto_id, prodotto_id, quantita_ordinata, quantita_ricevuta, prezzo_unitario)
@@ -107,11 +95,9 @@ const create = ({ ordine_acquisto_id, prodotto_id, quantita_ordinata, prezzo_uni
         [ordine_acquisto_id, prodotto_id, quantita_ordinata, prezzo_unitario]
     );
 
-/* ============================================================================
- *  UPDATE (NO CAMBIO PRODOTTO / NO CAMBIO ORDINE)
- * ==========================================================================*/
-const update = (id, { quantita_ordinata, prezzo_unitario }) =>
-    pool.query(
+
+const update = (id, { quantita_ordinata, prezzo_unitario }, client = pool) =>
+    client.query(
         `
     UPDATE righe_po
     SET 
@@ -124,11 +110,9 @@ const update = (id, { quantita_ordinata, prezzo_unitario }) =>
         [quantita_ordinata, prezzo_unitario, id]
     );
 
-/* ============================================================================
- *  UPDATE QUANTITÀ RICEVUTA (INCREMENTALE)
- * ==========================================================================*/
-const updateQuantitaRicevuta = (id, incremento) =>
-    pool.query(
+
+const updateQuantitaRicevuta = (id, incremento, client = pool) =>
+    client.query(
         `
     UPDATE righe_po
     SET 
@@ -143,8 +127,8 @@ const updateQuantitaRicevuta = (id, incremento) =>
 /* ============================================================================
  *  RESET QUANTITÀ RICEVUTA (solo per rollback)
  * ==========================================================================*/
-const resetQuantitaRicevuta = (id) =>
-    pool.query(
+const resetQuantitaRicevuta = (id, client = pool) =>
+    client.query(
         `
     UPDATE righe_po
     SET quantita_ricevuta = 0,
@@ -155,11 +139,9 @@ const resetQuantitaRicevuta = (id) =>
         [id]
     );
 
-/* ============================================================================
- *  DELETE
- * ==========================================================================*/
-const remove = (id) =>
-    pool.query(
+
+const remove = (id, client = pool) =>
+    client.query(
         `
     DELETE FROM righe_po 
     WHERE id = $1 
