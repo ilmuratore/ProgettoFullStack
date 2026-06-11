@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Package, Clock, User, MapPin } from 'lucide-react';
-import { toast } from 'sonner';
-import { ricezioniApi } from '../../../api/ricezioniApi';
-import type { Ricezione, RigaRicezione } from '../../../types/acquisti';
+import type { Ricezione } from '../../../types/acquisti';
 
 interface GoodsReceiptsTimelineProps {
   ricezioni: Ricezione[];
@@ -14,28 +12,12 @@ const PAGE_SIZE = 6;
 const fmtDataOra = (iso: string | null): string =>
   iso
     ? new Date(iso).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
-    : '—';
+    : '-';
 
 export function GoodsReceiptsTimeline({ ricezioni, loading }: GoodsReceiptsTimelineProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [righeMap, setRigheMap] = useState<Record<number, RigaRicezione[]>>({});
-  const [loadingRighe, setLoadingRighe] = useState<Record<number, boolean>>({});
 
   const visible = ricezioni.slice(0, visibleCount);
-  const visibleIds = visible.map((r) => r.id).join(',');
-
-  useEffect(() => {
-    visible.forEach((r) => {
-      if (righeMap[r.id] || loadingRighe[r.id]) return;
-      setLoadingRighe((prev) => ({ ...prev, [r.id]: true }));
-      ricezioniApi
-        .getRighe(r.id)
-        .then((righe) => setRigheMap((prev) => ({ ...prev, [r.id]: righe })))
-        .catch((err: any) => toast.error('Errore caricamento righe ricezione', { description: err?.message }))
-        .finally(() => setLoadingRighe((prev) => ({ ...prev, [r.id]: false })));
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleIds]);
 
   return (
     <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
@@ -57,15 +39,8 @@ export function GoodsReceiptsTimeline({ ricezioni, loading }: GoodsReceiptsTimel
       ) : (
         <div className="space-y-4">
           {visible.map((receipt, index) => {
-            const righe = righeMap[receipt.id] ?? [];
-            const totaleQuantita = righe.reduce((sum, r) => sum + Number(r.quantita_ricevuta), 0);
-            const prodotti = righe.map((r) => r.prodotto).join(', ');
-            const ubicazioni = Array.from(new Set(righe.map((r) => r.ubicazione)));
-            const ubicazioneLabel = ubicazioni.length === 0
-              ? '—'
-              : ubicazioni.length === 1
-                ? ubicazioni[0]
-                : `${ubicazioni.length} ubicazioni`;
+            const detailLabel = receipt.note?.trim() || 'Ricezione registrata';
+            const ubicazioneLabel = receipt.note?.trim() || 'Dettaglio righe non disponibile';
 
             return (
               <div
@@ -85,15 +60,10 @@ export function GoodsReceiptsTimeline({ ricezioni, loading }: GoodsReceiptsTimel
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium text-[#2D2D2D] font-mono">OA-{String(receipt.ordine_acquisto_id).padStart(4, '0')}</span>
-                        {totaleQuantita > 0 && (
-                          <span className="px-2 py-0.5 rounded text-xs font-medium bg-[#DCFCE7] text-[#22C55E]">
-                            {totaleQuantita} unità
-                          </span>
-                        )}
                       </div>
                       <div className="text-sm text-[#6B7280]">{receipt.fornitore}</div>
                       <div className="text-sm text-[#2D2D2D] font-medium mt-1">
-                        {loadingRighe[receipt.id] ? 'Caricamento prodotti...' : (prodotti || '—')}
+                        {detailLabel}
                       </div>
                     </div>
                     <div className="text-right">
@@ -103,14 +73,14 @@ export function GoodsReceiptsTimeline({ ricezioni, loading }: GoodsReceiptsTimel
                       </div>
                       <div className="flex items-center gap-1 text-xs text-[#6B7280] mt-1">
                         <User className="w-3 h-3" />
-                        {receipt.utente ?? '—'}
+                        {receipt.utente ?? '-'}
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 mt-2 px-3 py-1.5 bg-[#F7F9FC] rounded-lg inline-flex">
                     <MapPin className="w-3 h-3 text-[#6B7280]" />
-                    <span className="text-xs text-[#6B7280]">Ubicazione:</span>
+                    <span className="text-xs text-[#6B7280]">Nota:</span>
                     <span className="text-xs font-mono text-[#2D2D2D]">{ubicazioneLabel}</span>
                   </div>
                 </div>

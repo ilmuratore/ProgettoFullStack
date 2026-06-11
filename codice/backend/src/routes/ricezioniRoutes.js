@@ -43,12 +43,7 @@ router.get(
     '/:id/righe',
     auth,
     requirePermesso('acquisti:read'),
-    (req, res) => {
-        res.status(410).json({
-            status: 'error',
-            error: 'Endpoint deprecato. Usare GET /api/v1/ordini-acquisto/:id/ricezioni'
-        });
-    }
+    ricezioniController.getRighe
 );
 
 // POST /api/v1/ricezioni/:id/righe

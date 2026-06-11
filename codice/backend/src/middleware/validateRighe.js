@@ -35,10 +35,12 @@ function validateRighe(req, res, next) {
             continue;
         }
 
-        if (typeof r.quantita !== 'number' || r.quantita <= 0) {
+        const quantitaOrdinata = r.quantita_ordinata ?? r.quantita;
+
+        if (typeof quantitaOrdinata !== 'number' || quantitaOrdinata <= 0) {
             return res.status(400).json({
                 status: 'error',
-                error: 'quantita deve essere un numero > 0'
+                error: 'quantita_ordinata deve essere un numero > 0'
             });
         }
 
