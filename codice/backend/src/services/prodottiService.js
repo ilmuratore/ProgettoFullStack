@@ -13,7 +13,7 @@ const getAll = async () => {
 
 const getById = async (id) => {
     const result = await prodottiModel.findById(id);
-    if (result.rowCount === 0 || result.rows[0].attivo === false) {
+    if (result.rowCount === 0) {
         throwError('RESOURCE_NOT_FOUND', 'Prodotto non trovato');
     }
     return result.rows[0];
