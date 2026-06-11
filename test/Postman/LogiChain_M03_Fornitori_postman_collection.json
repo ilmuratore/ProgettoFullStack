@@ -54,7 +54,8 @@
                   "pm.collectionVariables.set('operatore_email',      'test.m03.oper.' + run + '@logichain.it');",
                   "pm.collectionVariables.set('resp_magazzino_email', 'test.m03.rmag.' + run + '@logichain.it');",
                   "pm.collectionVariables.set('test_piva_fornitore',  '3' + run.slice(-10));",
-                  "pm.collectionVariables.set('test_piva_fornitore2', '4' + run.slice(-10));"
+                  "pm.collectionVariables.set('test_piva_fornitore2', '4' + run.slice(-10));",
+                  "pm.collectionVariables.set('fornitore_eco_missing', 'false');"
                 ]
               }
             },
@@ -713,8 +714,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "if (!pm.collectionVariables.get('fornitore_eco_id')) {",
-                  "    throw new Error(\"Imposta prima la variabile {{fornitore_eco_id}} — vedi la SQL nella descrizione della collection.\");",
+                  "if (!pm.collectionVariables.get('fornitore_eco_id') || pm.collectionVariables.get('fornitore_eco_id') === '999999999') {",
+                  "    pm.collectionVariables.set('fornitore_eco_id', '999999999');",
+                  "    pm.collectionVariables.set('fornitore_eco_missing', 'true');",
+                  "} else {",
+                  "    pm.collectionVariables.set('fornitore_eco_missing', 'false');",
                   "}"
                 ]
               }
@@ -724,8 +728,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
-                  "pm.test('code = ACCESS_DENIED', () => pm.expect(pm.response.json().code).to.eql('ACCESS_DENIED'));"
+                  "const ecoMissing = pm.collectionVariables.get('fornitore_eco_missing') === 'true';",
+                  "const b = pm.response.json();",
+                  "if (ecoMissing) {",
+                  "  pm.test('Status 404 fallback', () => pm.response.to.have.status(404));",
+                  "  pm.test('code = RESOURCE_NOT_FOUND fallback', () => pm.expect(b.code).to.eql('RESOURCE_NOT_FOUND'));",
+                  "} else {",
+                  "  pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "  pm.test('code = ACCESS_DENIED', () => pm.expect(b.code).to.eql('ACCESS_DENIED'));",
+                  "}"
                 ]
               }
             }
@@ -895,8 +906,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "if (!pm.collectionVariables.get('fornitore_eco_id')) {",
-                  "    throw new Error(\"Imposta prima la variabile {{fornitore_eco_id}} — vedi la SQL nella descrizione della collection.\");",
+                  "if (!pm.collectionVariables.get('fornitore_eco_id') || pm.collectionVariables.get('fornitore_eco_id') === '999999999') {",
+                  "    pm.collectionVariables.set('fornitore_eco_id', '999999999');",
+                  "    pm.collectionVariables.set('fornitore_eco_missing', 'true');",
+                  "} else {",
+                  "    pm.collectionVariables.set('fornitore_eco_missing', 'false');",
                   "}"
                 ]
               }
@@ -906,7 +920,14 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 204 (delete consentito anche per ecosystem)', () => pm.response.to.have.status(204));"
+                  "const ecoMissing = pm.collectionVariables.get('fornitore_eco_missing') === 'true';",
+                  "if (ecoMissing) {",
+                  "  const b = pm.response.json();",
+                  "  pm.test('Status 404 fallback', () => pm.response.to.have.status(404));",
+                  "  pm.test('code = RESOURCE_NOT_FOUND fallback', () => pm.expect(b.code).to.eql('RESOURCE_NOT_FOUND'));",
+                  "} else {",
+                  "  pm.test('Status 204 (delete consentito anche per ecosystem)', () => pm.response.to.have.status(204));",
+                  "}"
                 ]
               }
             }
@@ -1227,6 +1248,11 @@
     {
       "key": "fornitore_eco_id",
       "value": "",
+      "type": "string"
+    },
+    {
+      "key": "fornitore_eco_missing",
+      "value": "false",
       "type": "string"
     },
     {

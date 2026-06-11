@@ -4,6 +4,7 @@ const router = express.Router();
 const { auth } = require('../middleware/auth');
 const { requirePermesso } = require('../middleware/rbac');
 const { validate } = require('../middleware/validate');
+const { validateRighe } = require('../middleware/validateRighe');
 
 const ordiniAcquistoController = require('../controllers/ordiniAcquistoController.js');
 
@@ -13,15 +14,14 @@ const createBlueprint = {
     fornitore_id: { required: true, type: 'number', integer: true, min: 1 },
     data_prevista: { required: false, type: 'string' },
     note: { required: false, type: 'string' },
-    utente_id: { required: false, type: 'number', integer: true, min: 1 },
+    // utente_id rimosso (issue31)
 };
 
 const updateBlueprint = {
     fornitore_id: { required: false, type: 'number', integer: true, min: 1 },
     data_prevista: { required: false, type: 'string' },
-    importo_totale: { required: false, type: 'number', min: 0 },
     note: { required: false, type: 'string' },
-    utente_id: { required: false, type: 'number', integer: true, min: 1 },
+    // utente_id rimosso (issue31)
 };
 
 const updateStatoBlueprint = {
@@ -30,7 +30,7 @@ const updateStatoBlueprint = {
 
 const addRigaBlueprint = {
     prodotto_id: { required: true, type: 'number', integer: true, min: 1 },
-    quantita_ordinata: { required: true, type: 'number', min: 0.01 },
+    quantita: { required: true, type: 'number', min: 0.01 },
     prezzo_unitario: { required: true, type: 'number', min: 0 },
 };
 
@@ -38,7 +38,7 @@ const createRicezioneBlueprint = {
     ordine_acquisto_id: { required: true, type: 'number', integer: true, min: 1 },
     data_ricezione: { required: false, type: 'string' },
     note: { required: false, type: 'string' },
-    utente_id: { required: false, type: 'number', integer: true, min: 1 },
+    // utente_id rimosso (issue31)
 };
 
 
@@ -58,15 +58,6 @@ router.get(
     ordiniAcquistoController.getAll
 );
 
-
-// GET /api/v1/ordini-acquisto/:id/pdf
-router.get(
-    '/:id/pdf',
-    auth,
-    requirePermesso('acquisti:read'),
-    ordiniAcquistoController.getPdf
-);
-
 // GET /api/v1/ordini-acquisto/:id
 router.get(
     '/:id',
@@ -81,6 +72,7 @@ router.post(
     auth,
     requirePermesso('acquisti:write'),
     validate(createBlueprint),
+    validateRighe,
     ordiniAcquistoController.create
 );
 
@@ -117,6 +109,7 @@ router.post(
     auth,
     requirePermesso('acquisti:approve'),
     validate(createRicezioneBlueprint),
+    validateRighe,
     ordiniAcquistoController.createRicezione
 );
 

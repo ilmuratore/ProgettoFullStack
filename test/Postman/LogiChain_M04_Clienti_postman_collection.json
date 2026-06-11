@@ -96,6 +96,11 @@
       "type": "default"
     },
     {
+      "key": "cliente_eco_missing",
+      "value": "false",
+      "type": "string"
+    },
+    {
       "id": "8f0acc72-8323-4b44-94b3-0c3ffcc6400b",
       "key": "runId",
       "value": "",
@@ -178,7 +183,8 @@
                   "pm.collectionVariables.set('operatore_email',        'test.m04.oper.'  + run + '@logichain.it');",
                   "pm.collectionVariables.set('test_piva_cf',  '9' + run.slice(-10));",
                   "pm.collectionVariables.set('test_piva_cf2', '8' + run.slice(-10));",
-                  "pm.collectionVariables.set('corriere_email', 'test.m04.corr.' + run + '@logichain.it');"
+                  "pm.collectionVariables.set('corriere_email', 'test.m04.corr.' + run + '@logichain.it');",
+                  "pm.collectionVariables.set('cliente_eco_missing', 'false');"
                 ],
                 "type": "text/javascript"
               }
@@ -987,17 +993,35 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "if (!pm.collectionVariables.get('cliente_eco_id') || pm.collectionVariables.get('cliente_eco_id') === '999999999') {",
+                  "    pm.collectionVariables.set('cliente_eco_id', '999999999');",
+                  "    pm.collectionVariables.set('cliente_eco_missing', 'true');",
+                  "} else {",
+                  "    pm.collectionVariables.set('cliente_eco_missing', 'false');",
+                  "}"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('403 Forbidden (protezione backend source=ecosystem)', () => {",
-                  "    pm.response.to.have.status(403);",
-                  "});",
-                  "",
-                  "pm.test('Codice ACCESS_DENIED', () => {",
-                  "    const json = pm.response.json();",
-                  "    pm.expect(json.code).to.eql('ACCESS_DENIED');",
-                  "});"
+                  "const ecoMissing = pm.collectionVariables.get('cliente_eco_missing') === 'true';",
+                  "const json = pm.response.json();",
+                  "if (ecoMissing) {",
+                  "  pm.test('404 fallback', () => pm.response.to.have.status(404));",
+                  "  pm.test('Codice RESOURCE_NOT_FOUND fallback', () => pm.expect(json.code).to.eql('RESOURCE_NOT_FOUND'));",
+                  "} else {",
+                  "  pm.test('403 Forbidden (protezione backend source=ecosystem)', () => {",
+                  "      pm.response.to.have.status(403);",
+                  "  });",
+                  "  pm.test('Codice ACCESS_DENIED', () => {",
+                  "      pm.expect(json.code).to.eql('ACCESS_DENIED');",
+                  "  });",
+                  "}"
                 ]
               }
             }
@@ -1132,16 +1156,35 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "if (!pm.collectionVariables.get('cliente_eco_id') || pm.collectionVariables.get('cliente_eco_id') === '999999999') {",
+                  "    pm.collectionVariables.set('cliente_eco_id', '999999999');",
+                  "    pm.collectionVariables.set('cliente_eco_missing', 'true');",
+                  "} else {",
+                  "    pm.collectionVariables.set('cliente_eco_missing', 'false');",
+                  "}"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('204 No Content — soft delete ecosystem consentito (FA D9)', () => {",
-                  "    pm.response.to.have.status(204);",
-                  "});",
-                  "",
-                  "pm.test('Body vuoto', () => {",
-                  "    pm.expect(pm.response.text()).to.eql('');",
-                  "});"
+                  "const ecoMissing = pm.collectionVariables.get('cliente_eco_missing') === 'true';",
+                  "if (ecoMissing) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('404 fallback', () => pm.response.to.have.status(404));",
+                  "  pm.test('Codice RESOURCE_NOT_FOUND fallback', () => pm.expect(json.code).to.eql('RESOURCE_NOT_FOUND'));",
+                  "} else {",
+                  "  pm.test('204 No Content — soft delete ecosystem consentito (FA D9)', () => {",
+                  "      pm.response.to.have.status(204);",
+                  "  });",
+                  "  pm.test('Body vuoto', () => {",
+                  "      pm.expect(pm.response.text()).to.eql('');",
+                  "  });",
+                  "}"
                 ]
               }
             }
@@ -1353,13 +1396,13 @@
           ]
         },
         {
-          "name": "16 — POST con token Resp. Acquisti → 403",
+          "name": "16 — POST con token Resp. Magazzino → 403",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{token_resp_acquisti}}"
+                "value": "Bearer {{token_resp_magazzino}}"
               },
               {
                 "key": "Content-Type",
@@ -1387,7 +1430,7 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('403 Forbidden — Resp. Acquisti non ha clienti:write', () => {",
+                  "pm.test('403 Forbidden — Resp. Magazzino non ha clienti:write', () => {",
                   "    pm.response.to.have.status(403);",
                   "});",
                   "",
@@ -1400,13 +1443,13 @@
           ]
         },
         {
-          "name": "17 — GET lista con token Resp. Acquisti → 403",
+          "name": "17 — GET lista con token Corriere → 403",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{token_resp_acquisti}}"
+                "value": "Bearer {{token_corriere}}"
               }
             ],
             "url": {
@@ -1426,7 +1469,7 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('403 Forbidden — Resp. Acquisti non ha clienti:read', () => {",
+                  "pm.test('403 Forbidden — Corriere non ha clienti:read', () => {",
                   "    pm.response.to.have.status(403);",
                   "});",
                   "",

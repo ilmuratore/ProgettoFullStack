@@ -1,7 +1,7 @@
 const pool = require('../config/db');
 
-const findAll = () =>
-    pool.query(
+const findAll = (client = pool) =>
+    client.query(
         `
     SELECT 
       rr.id,
@@ -23,8 +23,8 @@ const findAll = () =>
     `
     );
 
-const findById = (id) =>
-    pool.query(
+const findById = (id, client = pool) =>
+    client.query(
         `
     SELECT 
       rr.id,
@@ -47,8 +47,8 @@ const findById = (id) =>
         [id]
     );
 
-const findByRicezioneId = (ricezione_id) =>
-    pool.query(
+const findByRicezioneId = (ricezione_id, client = pool) =>
+    client.query(
         `
     SELECT 
       rr.id,
@@ -72,8 +72,8 @@ const findByRicezioneId = (ricezione_id) =>
         [ricezione_id]
     );
 
-const findByProdottoId = (prodotto_id) =>
-    pool.query(
+const findByProdottoId = (prodotto_id, client = pool) =>
+    client.query(
         `
     SELECT 
       rr.id,
@@ -94,8 +94,8 @@ const findByProdottoId = (prodotto_id) =>
         [prodotto_id]
     );
 
-const create = ({ ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id }) =>
-    pool.query(
+const create = ({ ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id }, client = pool) =>
+    client.query(
         `
     INSERT INTO righe_ricezione 
       (ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id)
@@ -109,8 +109,8 @@ const create = ({ ricezione_id, prodotto_id, quantita_ricevuta, ubicazione_id })
  * UPDATE limitato: non si può cambiare ricezione, prodotto, ubicazione.
  * Solo quantita_ricevuta può essere modificata (rollback).
  */
-const update = (id, { quantita_ricevuta }) =>
-    pool.query(
+const update = (id, { quantita_ricevuta }, client = pool) =>
+    client.query(
         `
     UPDATE righe_ricezione
     SET 
@@ -125,8 +125,8 @@ const update = (id, { quantita_ricevuta }) =>
 /* 
  * UPDATE incrementale per ricezioni progressive
  */
-const updateQuantitaRicevutaIncrementale = (id, incremento) =>
-    pool.query(
+const updateQuantitaRicevutaIncrementale = (id, incremento, client = pool) =>
+    client.query(
         `
     UPDATE righe_ricezione
     SET 
@@ -138,8 +138,8 @@ const updateQuantitaRicevutaIncrementale = (id, incremento) =>
         [incremento, id]
     );
 
-const resetQuantitaRicevuta = (id) =>
-    pool.query(
+const resetQuantitaRicevuta = (id, client = pool) =>
+    client.query(
         `
     UPDATE righe_ricezione
     SET quantita_ricevuta = 0,
@@ -150,8 +150,8 @@ const resetQuantitaRicevuta = (id) =>
         [id]
     );
 
-const remove = (id) =>
-    pool.query(
+const remove = (id, client = pool) =>
+    client.query(
         `
     DELETE FROM righe_ricezione 
     WHERE id = $1 
@@ -160,8 +160,8 @@ const remove = (id) =>
         [id]
     );
 
-const removeByRicezioneId = (ricezione_id) =>
-    pool.query(
+const removeByRicezioneId = (ricezione_id, client = pool) =>
+    client.query(
         `
     DELETE FROM righe_ricezione
     WHERE ricezione_id = $1

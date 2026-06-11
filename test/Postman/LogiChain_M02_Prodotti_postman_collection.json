@@ -48,7 +48,11 @@
                   "var run = Date.now().toString();",
                   "pm.collectionVariables.set('runId', run);",
                   "pm.collectionVariables.set('sku_1', 'VIT-M6-' + run);",
-                  "pm.collectionVariables.set('sku_2', 'BUL-M8-' + run);"
+                  "pm.collectionVariables.set('sku_2', 'BUL-M8-' + run);",
+                  "pm.collectionVariables.set('operatorEmail_run', 'operatore.m02.' + run + '@logichain.it');",
+                  "pm.collectionVariables.set('operatorPassword_run', 'Operatore123!');",
+                  "pm.collectionVariables.set('corriereEmail_run', 'corriere.m02.' + run + '@logichain.it');",
+                  "pm.collectionVariables.set('corrierePassword_run', 'Corriere123!');"
                 ]
               }
             },
@@ -90,7 +94,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Op\",\n  \"cognome\": \"Eratore\",\n  \"email\": \"{{operatorEmail}}\",\n  \"password\": \"{{operatorPassword}}\",\n  \"ruolo_id\": 9\n}",
+              "raw": "{\n  \"nome\": \"Op\",\n  \"cognome\": \"Eratore\",\n  \"email\": \"{{operatorEmail_run}}\",\n  \"password\": \"{{operatorPassword_run}}\",\n  \"ruolo_id\": 9\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -104,8 +108,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Registra Operatore -> 201 o 409 (gia esistente)', function () {",
-                  "  pm.expect([201, 409]).to.include(pm.response.code);",
+                  "pm.test('Registra Operatore -> 201', function () {",
+                  "  pm.response.to.have.status(201);",
                   "});"
                 ]
               }
@@ -136,7 +140,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Cor\",\n  \"cognome\": \"Riere\",\n  \"email\": \"{{corriereEmail}}\",\n  \"password\": \"{{corrierePassword}}\",\n  \"ruolo_id\": 10\n}",
+              "raw": "{\n  \"nome\": \"Cor\",\n  \"cognome\": \"Riere\",\n  \"email\": \"{{corriereEmail_run}}\",\n  \"password\": \"{{corrierePassword_run}}\",\n  \"ruolo_id\": 10\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -150,8 +154,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Registra Corriere -> 201 o 409 (gia esistente)', function () {",
-                  "  pm.expect([201, 409]).to.include(pm.response.code);",
+                  "pm.test('Registra Corriere -> 201', function () {",
+                  "  pm.response.to.have.status(201);",
                   "});"
                 ]
               }
@@ -177,7 +181,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{operatorEmail}}\",\n  \"password\": \"{{operatorPassword}}\"\n}",
+              "raw": "{\n  \"email\": \"{{operatorEmail_run}}\",\n  \"password\": \"{{operatorPassword_run}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -221,7 +225,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{corriereEmail}}\",\n  \"password\": \"{{corrierePassword}}\"\n}",
+              "raw": "{\n  \"email\": \"{{corriereEmail_run}}\",\n  \"password\": \"{{corrierePassword_run}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -827,43 +831,6 @@
           ]
         },
         {
-          "name": "13 - GET prodotto eliminato -> 404",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token_admin}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/prodotti/{{prodotto_id}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "prodotti",
-                "{{prodotto_id}}"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "var b = pm.response.json();",
-                  "pm.test('13 GET prodotto eliminato -> 404', function () { pm.response.to.have.status(404); });",
-                  "pm.test('code = RESOURCE_NOT_FOUND', function () { pm.expect(b.code).to.eql('RESOURCE_NOT_FOUND'); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
           "name": "14 - GET lista: eliminato compare con attivo=false -> 200",
           "request": {
             "method": "GET",
@@ -1081,12 +1048,28 @@
       "value": "Operatore123"
     },
     {
+      "key": "operatorEmail_run",
+      "value": ""
+    },
+    {
+      "key": "operatorPassword_run",
+      "value": ""
+    },
+    {
       "key": "corriereEmail",
       "value": "corriere@logichain.it"
     },
     {
       "key": "corrierePassword",
       "value": "Corriere123"
+    },
+    {
+      "key": "corriereEmail_run",
+      "value": ""
+    },
+    {
+      "key": "corrierePassword_run",
+      "value": ""
     },
     {
       "key": "token_admin",

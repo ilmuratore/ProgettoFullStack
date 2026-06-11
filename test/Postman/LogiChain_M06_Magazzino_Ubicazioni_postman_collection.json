@@ -83,6 +83,11 @@
       "key": "runId",
       "value": "",
       "type": "default"
+    },
+    {
+      "key": "magazzino_codice",
+      "value": "",
+      "type": "default"
     }
   ],
   "item": [
@@ -132,7 +137,8 @@
                   "var run = Date.now().toString();",
                   "pm.collectionVariables.set('runId', run);",
                   "pm.collectionVariables.set('resp_magazzino_email', 'test.m06.rmag.' + run + '@logichain.it');",
-                  "pm.collectionVariables.set('operatore_email',      'test.m06.oper.' + run + '@logichain.it');"
+                  "pm.collectionVariables.set('operatore_email',      'test.m06.oper.' + run + '@logichain.it');",
+                  "pm.collectionVariables.set('magazzino_codice',     'MAG-' + run.slice(-6));"
                 ],
                 "type": "text/javascript"
               }
@@ -389,7 +395,7 @@
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
                   "const d = pm.response.json();",
                   "pm.test('status success', () => pm.expect(d.status).to.eql('success'));",
-                  "pm.test('codice corretto', () => pm.expect(d.data.codice).to.eql('MAG-TEST'));",
+                  "pm.test('codice corretto', () => pm.expect(d.data.codice).to.eql(pm.collectionVariables.get('magazzino_codice')));",
                   "pm.test('attivo true', () => pm.expect(d.data.attivo).to.be.true);",
                   "pm.collectionVariables.set('magazzino_id', d.data.id);"
                 ],
@@ -412,7 +418,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"codice\":\"MAG-TEST\",\"nome\":\"Magazzino Test\",\"indirizzo\":\"Via Test 1, Milano\"}"
+              "raw": "{\"codice\":\"{{magazzino_codice}}\",\"nome\":\"Magazzino Test\",\"indirizzo\":\"Via Test 1, Milano\"}"
             }
           }
         },
@@ -446,7 +452,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"codice\":\"MAG-TEST\",\"nome\":\"Altro Magazzino\"}"
+              "raw": "{\"codice\":\"{{magazzino_codice}}\",\"nome\":\"Altro Magazzino\"}"
             }
           }
         },
@@ -547,7 +553,7 @@
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json();",
                   "pm.test('nome aggiornato', () => pm.expect(d.data.nome).to.eql('Magazzino Aggiornato'));",
-                  "pm.test('codice invariato', () => pm.expect(d.data.codice).to.eql('MAG-TEST'));"
+                  "pm.test('codice invariato', () => pm.expect(d.data.codice).to.eql(pm.collectionVariables.get('magazzino_codice')));"
                 ],
                 "type": "text/javascript"
               }
@@ -581,7 +587,7 @@
                 "exec": [
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const d = pm.response.json();",
-                  "pm.test('codice NON modificato', () => pm.expect(d.data.codice).to.eql('MAG-TEST'));"
+                  "pm.test('codice NON modificato', () => pm.expect(d.data.codice).to.eql(pm.collectionVariables.get('magazzino_codice')));"
                 ],
                 "type": "text/javascript"
               }

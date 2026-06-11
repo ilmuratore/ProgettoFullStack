@@ -17,16 +17,16 @@ const login = async (email, password) => {
     const utente = result.rows[0];
 
     if (!utente) {
-        throw new Error('CREDENZIALI_NON_VALIDE');
+        throwError('CREDENZIALI_NON_VALIDE', 'Credenziali non valide');
     }
 
     if (!utente.attivo) {
-        throw new Error('UTENTE_DISABILITATO');
+        throwError('UTENTE_DISABILITATO', 'Utente disabilitato');
     }
 
     const passwordValida = await bcrypt.compare(password, utente.password_hash);
     if (!passwordValida) {
-        throw new Error('CREDENZIALI_NON_VALIDE');
+        throwError('CREDENZIALI_NON_VALIDE', 'Credenziali non valide');
     }
 
     const token = jwt.sign(
@@ -48,6 +48,7 @@ const login = async (email, password) => {
             cognome: utente.cognome,
             email: utente.email,
             ruolo_id: utente.ruolo_id,
+            ruolo: utente.ruolo,
             ruolo_nome: utente.ruolo,
         }
     };
@@ -57,13 +58,13 @@ const login = async (email, password) => {
 const register = async ({ nome, cognome, email, password, ruolo_id, attivo = true }) => {
     const emailEsistente = await utentiModel.findByEmail(email);
     if (emailEsistente.rows.length) {
-        throw new Error('EMAIL_GIA_ESISTENTE');
+        throwError('EMAIL_GIA_ESISTENTE', 'Email gia esistente');
     }
 
     const ruoloResult = await ruoliModel.findById(ruolo_id);
     const ruolo = ruoloResult.rows[0];
     if (!ruolo) {
-        throw new Error('RUOLO_NON_VALIDO');
+        throwError('RUOLO_NON_VALIDO', 'Ruolo non valido');
     }
 
     const password_hash = await bcrypt.hash(password, 12);
@@ -87,6 +88,7 @@ const register = async ({ nome, cognome, email, password, ruolo_id, attivo = tru
         cognome: utenteCreato.cognome,
         email: utenteCreato.email,
         ruolo_id: utenteCreato.ruolo_id,
+        ruolo: utenteCompleto?.ruolo || ruolo.nome,
         ruolo_nome: utenteCompleto?.ruolo || ruolo.nome,
     };
 };
@@ -97,7 +99,7 @@ const getMe = async (utente_id) => {
     const utente = result.rows[0];
 
     if (!utente) {
-        throw new Error('UTENTE_NON_TROVATO');
+        throwError('UTENTE_NON_TROVATO', 'Utente non trovato');
     }
 
     return {
@@ -106,6 +108,7 @@ const getMe = async (utente_id) => {
         cognome: utente.cognome,
         email: utente.email,
         ruolo_id: utente.ruolo_id,
+        ruolo: utente.ruolo,
         ruolo_nome: utente.ruolo,
     };
 };
