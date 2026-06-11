@@ -1,34 +1,78 @@
+import { useEffect, useState } from 'react';
 import { AlertTriangle, TrendingUp, Bell } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { acquistiApi } from '../../../api/acquistiApi';
+import { fornitoriApi } from '../../../api/fornitoriApi';
+import type { OrdineAcquistoLista, StatoOrdineAcquisto } from '../../../types/acquisti';
 
-const lateOrders = [
-  { numero: 'PO-2026-012', fornitore: 'Imballaggi Express', ritardo: 5 },
-  { numero: 'PO-2026-018', fornitore: 'Materiali Nord', ritardo: 3 },
-  { numero: 'PO-2026-021', fornitore: 'Packaging Pro', ritardo: 8 },
-  { numero: 'PO-2026-025', fornitore: 'Supplies Italia', ritardo: 2 },
-];
+const formatCurrency = (n: number) =>
+  new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 
-const statusData = [
-  { name: 'Bozza', value: 12, color: '#6B7280' },
-  { name: 'Inviato', value: 28, color: '#3B82F6' },
-  { name: 'Confermato', value: 35, color: '#8B5CF6' },
-  { name: 'In Ricezione', value: 24, color: '#F59E0B' },
-  { name: 'Completato', value: 89, color: '#22C55E' },
-];
+const ATTIVI: ReadonlySet<StatoOrdineAcquisto> = new Set(['BOZZA', 'INVIATO', 'CONFERMATO', 'IN_RICEZIONE']);
 
-const topSuppliers = [
-  { nome: 'Packaging Solutions Italia', ordini: 24, importo: '€ 285.450', leadTime: '7,2 giorni' },
-  { nome: 'Pallet Systems Europe', ordini: 18, importo: '€ 198.320', leadTime: '8,5 giorni' },
-  { nome: 'Film Protezione Italia', ordini: 15, importo: '€ 167.890', leadTime: '6,8 giorni' },
-];
+const STATO_CONFIG: Record<StatoOrdineAcquisto, { label: string; color: string }> = {
+  BOZZA:        { label: 'Bozza',        color: '#6B7280' },
+  INVIATO:      { label: 'Inviato',      color: '#3B82F6' },
+  CONFERMATO:   { label: 'Confermato',   color: '#8B5CF6' },
+  IN_RICEZIONE: { label: 'In Ricezione', color: '#F59E0B' },
+  COMPLETATO:   { label: 'Completato',   color: '#22C55E' },
+  ANNULLATO:    { label: 'Annullato',    color: '#EF4444' },
+};
 
-const alerts = [
-  { tipo: 'PO in ritardo', messaggio: '5 ordini oltre la data prevista', color: 'text-[#EF4444]', bg: 'bg-[#FEE2E2]' },
-  { tipo: 'Ricezione parziale', messaggio: '3 ordini ricevuti parzialmente', color: 'text-[#F59E0B]', bg: 'bg-[#FEF3C7]' },
-  { tipo: 'Consegna imminente', messaggio: '8 ordini previsti domani', color: 'text-[#3B82F6]', bg: 'bg-[#DBEAFE]' },
-];
+const sameDay = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+const giorniRitardo = (dataPrevista: string, oggi: Date) =>
+  Math.max(1, Math.ceil((oggi.getTime() - new Date(dataPrevista).getTime()) / (1000 * 60 * 60 * 24)));
 
 export function PurchaseWidgets() {
+  const [ordini, setOrdini] = useState<OrdineAcquistoLista[] | null>(null);
+  const [leadTimeByFornitore, setLeadTimeByFornitore] = useState<Map<number, number>>(new Map());
+
+  useEffect(() => {
+    acquistiApi.list().then(setOrdini).catch(() => setOrdini([]));
+    fornitoriApi.list()
+      .then((fornitori) => setLeadTimeByFornitore(new Map(
+        fornitori.filter((f) => f.lead_time_giorni != null).map((f) => [f.id, f.lead_time_giorni as number])
+      )))
+      .catch(() => {});
+  }, []);
+
+  if (!ordini) {
+    return <div className="text-center py-12 text-sm text-[#6B7280]">Caricamento widget acquisti…</div>;
+  }
+
+  const oggi = new Date();
+  const domani = new Date(oggi.getTime() + 24 * 60 * 60 * 1000);
+
+  const ordiniInRitardo = ordini
+    .filter((o) => ATTIVI.has(o.stato) && o.data_prevista && new Date(o.data_prevista) < oggi)
+    .sort((a, b) => giorniRitardo(b.data_prevista!, oggi) - giorniRitardo(a.data_prevista!, oggi));
+
+  const statusData = (Object.keys(STATO_CONFIG) as StatoOrdineAcquisto[])
+    .map((stato) => ({ name: STATO_CONFIG[stato].label, value: ordini.filter((o) => o.stato === stato).length, color: STATO_CONFIG[stato].color }))
+    .filter((s) => s.value > 0);
+
+  const fornitoriMap = new Map<number, { nome: string; ordini: number; importo: number; fornitoreId: number }>();
+  for (const o of ordini) {
+    const entry = fornitoriMap.get(o.fornitore_id) ?? { nome: o.fornitore, ordini: 0, importo: 0, fornitoreId: o.fornitore_id };
+    entry.ordini += 1;
+    entry.importo += Number(o.importo_totale ?? 0);
+    fornitoriMap.set(o.fornitore_id, entry);
+  }
+  const topSuppliers = Array.from(fornitoriMap.values())
+    .sort((a, b) => b.importo - a.importo)
+    .slice(0, 3);
+
+  const ricezioniParziali = ordini.filter((o) => o.stato === 'IN_RICEZIONE').length;
+  const consegneImminenti = ordini.filter((o) => ATTIVI.has(o.stato) && o.data_prevista && sameDay(new Date(o.data_prevista), domani)).length;
+
+  const alerts = [
+    ordiniInRitardo.length > 0 && { tipo: 'PO in ritardo', messaggio: `${ordiniInRitardo.length} ordini oltre la data prevista`, color: 'text-[#EF4444]', bg: 'bg-[#FEE2E2]' },
+    ricezioniParziali > 0 && { tipo: 'In ricezione', messaggio: `${ricezioniParziali} ordini in fase di ricezione`, color: 'text-[#F59E0B]', bg: 'bg-[#FEF3C7]' },
+    consegneImminenti > 0 && { tipo: 'Consegna imminente', messaggio: `${consegneImminenti} ordini previsti domani`, color: 'text-[#3B82F6]', bg: 'bg-[#DBEAFE]' },
+  ].filter((a): a is { tipo: string; messaggio: string; color: string; bg: string } => Boolean(a));
+
   return (
     <div className="space-y-6">
       {/* Ordini in Ritardo */}
@@ -44,18 +88,21 @@ export function PurchaseWidgets() {
         </div>
 
         <div className="space-y-3">
-          {lateOrders.map((order, index) => (
+          {ordiniInRitardo.length === 0 && (
+            <div className="text-xs text-[#92400E]/60 text-center py-2">Nessun ordine in ritardo</div>
+          )}
+          {ordiniInRitardo.slice(0, 4).map((order) => (
             <div
-              key={index}
+              key={order.id}
               className="bg-white/80 backdrop-blur-sm rounded-xl p-3 hover:bg-white transition-all cursor-pointer"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="font-medium text-sm text-[#92400E] font-mono">{order.numero}</div>
+                  <div className="font-medium text-sm text-[#92400E] font-mono">OA-{String(order.id).padStart(4, '0')}</div>
                   <div className="text-xs text-[#92400E]/70 mt-0.5">{order.fornitore}</div>
                 </div>
                 <div className="px-2 py-1 bg-[#EF4444] text-white rounded-lg text-xs font-medium">
-                  {order.ritardo}gg
+                  {giorniRitardo(order.data_prevista!, oggi)}gg
                 </div>
               </div>
             </div>
@@ -67,35 +114,41 @@ export function PurchaseWidgets() {
       <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
         <h3 className="font-semibold text-[#2D2D2D] mb-6">Stato Approvvigionamenti</h3>
 
-        <ResponsiveContainer width="100%" height={220}>
-          <PieChart>
-            <Pie
-              data={statusData}
-              cx="50%"
-              cy="50%"
-              innerRadius={50}
-              outerRadius={80}
-              paddingAngle={4}
-              dataKey="value"
-            >
-              {statusData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
-              ))}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
+        {statusData.length === 0 ? (
+          <div className="text-center py-8 text-sm text-[#6B7280]">Nessun ordine registrato</div>
+        ) : (
+          <>
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={statusData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={80}
+                  paddingAngle={4}
+                  dataKey="value"
+                >
+                  {statusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
 
-        <div className="mt-4 space-y-2">
-          {statusData.map((item, index) => (
-            <div key={index} className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                <span className="text-sm text-[#6B7280]">{item.name}</span>
-              </div>
-              <div className="text-sm font-medium text-[#2D2D2D]">{item.value}</div>
+            <div className="mt-4 space-y-2">
+              {statusData.map((item, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                    <span className="text-sm text-[#6B7280]">{item.name}</span>
+                  </div>
+                  <div className="text-sm font-medium text-[#2D2D2D]">{item.value}</div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </>
+        )}
       </div>
 
       {/* Top Fornitori */}
@@ -106,38 +159,44 @@ export function PurchaseWidgets() {
           </div>
           <div>
             <h3 className="font-semibold text-[#2D2D2D]">Top Fornitori</h3>
-            <p className="text-xs text-[#6B7280]">Performance migliori</p>
+            <p className="text-xs text-[#6B7280]">Per importo ordinato</p>
           </div>
         </div>
 
         <div className="space-y-3">
-          {topSuppliers.map((supplier, index) => (
-            <div
-              key={index}
-              className="p-3 bg-[#F7F9FC] rounded-xl hover:bg-[#F0FDF7] transition-all cursor-pointer"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-6 h-6 bg-[#17E88F] text-white rounded-lg flex items-center justify-center text-xs font-medium">
-                  {index + 1}
+          {topSuppliers.length === 0 && (
+            <div className="text-center py-4 text-sm text-[#6B7280]">Nessun ordine registrato</div>
+          )}
+          {topSuppliers.map((supplier, index) => {
+            const leadTime = leadTimeByFornitore.get(supplier.fornitoreId);
+            return (
+              <div
+                key={supplier.fornitoreId}
+                className="p-3 bg-[#F7F9FC] rounded-xl hover:bg-[#F0FDF7] transition-all cursor-pointer"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 bg-[#17E88F] text-white rounded-lg flex items-center justify-center text-xs font-medium">
+                    {index + 1}
+                  </div>
+                  <div className="font-medium text-sm text-[#2D2D2D]">{supplier.nome}</div>
                 </div>
-                <div className="font-medium text-sm text-[#2D2D2D]">{supplier.nome}</div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <div className="text-[#6B7280]">Ordini</div>
+                    <div className="font-medium text-[#2D2D2D]">{supplier.ordini}</div>
+                  </div>
+                  <div>
+                    <div className="text-[#6B7280]">Importo</div>
+                    <div className="font-medium text-[#2D2D2D]">{formatCurrency(supplier.importo)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[#6B7280]">Lead Time</div>
+                    <div className="font-medium text-[#2D2D2D]">{leadTime != null ? `${leadTime} gg` : '—'}</div>
+                  </div>
+                </div>
               </div>
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                <div>
-                  <div className="text-[#6B7280]">Ordini</div>
-                  <div className="font-medium text-[#2D2D2D]">{supplier.ordini}</div>
-                </div>
-                <div>
-                  <div className="text-[#6B7280]">Importo</div>
-                  <div className="font-medium text-[#2D2D2D]">{supplier.importo}</div>
-                </div>
-                <div>
-                  <div className="text-[#6B7280]">Lead Time</div>
-                  <div className="font-medium text-[#2D2D2D]">{supplier.leadTime}</div>
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -154,10 +213,13 @@ export function PurchaseWidgets() {
         </div>
 
         <div className="space-y-3">
+          {alerts.length === 0 && (
+            <div className="text-center py-4 text-sm text-[#6B7280]">Nessun alert operativo</div>
+          )}
           {alerts.map((alert, index) => (
             <div
               key={index}
-              className={`p-3 ${alert.bg} rounded-xl border border-${alert.color}/20`}
+              className={`p-3 ${alert.bg} rounded-xl`}
             >
               <div className="flex items-start gap-2">
                 <Bell className={`w-4 h-4 ${alert.color} mt-0.5`} />

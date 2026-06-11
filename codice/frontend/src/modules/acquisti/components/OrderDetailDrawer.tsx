@@ -2,13 +2,33 @@ import { useEffect, useState } from 'react';
 import { X, FileText, Package, Clock, User, Building2, Calendar, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { acquistiApi } from '../../../api/acquistiApi';
-import type { OrdineAcquistoDettaglio } from '../../../types/acquisti';
+import type { OrdineAcquistoDettaglio, StatoOrdineAcquisto } from '../../../types/acquisti';
 
 interface OrderDetailDrawerProps {
   orderId: number | null;
   isOpen: boolean;
   onClose: () => void;
+  onStatusChange?: () => void;
 }
+
+// Riflette la state machine definita lato backend (ordiniAcquistoService.canTransition)
+const TRANSIZIONI_CONSENTITE: Record<StatoOrdineAcquisto, StatoOrdineAcquisto[]> = {
+  BOZZA: ['INVIATO', 'ANNULLATO'],
+  INVIATO: ['CONFERMATO', 'ANNULLATO'],
+  CONFERMATO: ['IN_RICEZIONE', 'ANNULLATO'],
+  IN_RICEZIONE: ['COMPLETATO', 'ANNULLATO'],
+  COMPLETATO: [],
+  ANNULLATO: [],
+};
+
+const STATO_AZIONE_LABEL: Record<StatoOrdineAcquisto, string> = {
+  BOZZA: 'Riporta a Bozza',
+  INVIATO: 'Invia Ordine',
+  CONFERMATO: 'Conferma Ordine',
+  IN_RICEZIONE: 'Avvia Ricezione',
+  COMPLETATO: 'Completa Ordine',
+  ANNULLATO: 'Annulla Ordine',
+};
 
 const fmtData = (iso: string | null): string =>
   iso ? new Date(iso).toLocaleDateString('it-IT') : '—';
@@ -38,9 +58,10 @@ const getStatusBadge = (status: string) => {
   }
 };
 
-export function OrderDetailDrawer({ orderId, isOpen, onClose }: OrderDetailDrawerProps) {
+export function OrderDetailDrawer({ orderId, isOpen, onClose, onStatusChange }: OrderDetailDrawerProps) {
   const [data, setData] = useState<OrdineAcquistoDettaglio | null>(null);
   const [loading, setLoading] = useState(false);
+  const [updatingStato, setUpdatingStato] = useState(false);
 
   useEffect(() => {
     if (!isOpen || orderId == null) { setData(null); return; }
@@ -55,6 +76,20 @@ export function OrderDetailDrawer({ orderId, isOpen, onClose }: OrderDetailDrawe
   }, [orderId, isOpen]);
 
   if (!isOpen || orderId == null) return null;
+
+  const handleTransition = async (nuovoStato: StatoOrdineAcquisto) => {
+    setUpdatingStato(true);
+    try {
+      const updated = await acquistiApi.updateStato(orderId, nuovoStato);
+      setData((prev) => (prev ? { ...prev, ordine: updated } : prev));
+      toast.success(`Stato ordine aggiornato a "${updated.stato}"`);
+      onStatusChange?.();
+    } catch (err: any) {
+      toast.error('Errore aggiornamento stato', { description: err?.message });
+    } finally {
+      setUpdatingStato(false);
+    }
+  };
 
   const ordine = data?.ordine;
   const righe = data?.righe ?? [];
@@ -84,6 +119,24 @@ export function OrderDetailDrawer({ orderId, isOpen, onClose }: OrderDetailDrawe
               <X className="w-5 h-5 text-[#6B7280]" />
             </button>
           </div>
+          {ordine && TRANSIZIONI_CONSENTITE[ordine.stato].length > 0 && (
+            <div className="flex items-center gap-2 mt-4">
+              {TRANSIZIONI_CONSENTITE[ordine.stato].map((stato) => (
+                <button
+                  key={stato}
+                  onClick={() => handleTransition(stato)}
+                  disabled={updatingStato}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                    stato === 'ANNULLATO'
+                      ? 'bg-[#FEE2E2] text-[#EF4444] hover:bg-[#FECACA]'
+                      : 'bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white hover:shadow-lg'
+                  }`}
+                >
+                  {STATO_AZIONE_LABEL[stato]}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {loading || !ordine ? (

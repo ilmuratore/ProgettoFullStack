@@ -23,7 +23,8 @@ const updateBlueprint = {
     email: { required: false, type: "string" },
     telefono: { required: false, type: "string" },
     sito_web: { required: false, type: "string" },
-    descrizione_aziendale: { required: false, type: "string" }
+    descrizione_aziendale: { required: false, type: "string" },
+    attivo: { required: false, type: "boolean" }
 };
 
 

@@ -15,6 +15,7 @@ interface FormState {
   piva_cf: string;
   email: string;
   telefono: string;
+  attivo: boolean;
 }
 
 const EMPTY: FormState = {
@@ -22,6 +23,7 @@ const EMPTY: FormState = {
   piva_cf: '',
   email: '',
   telefono: '',
+  attivo: true,
 };
 
 export function ClientFormModal({ open, onClose, onSave, initialData, mode }: ClientFormModalProps) {
@@ -37,6 +39,7 @@ export function ClientFormModal({ open, onClose, onSave, initialData, mode }: Cl
           piva_cf: initialData.piva_cf ?? '',
           email: initialData.email ?? '',
           telefono: initialData.telefono ?? '',
+          attivo: initialData.attivo,
         });
       } else {
         setForm(EMPTY);
@@ -67,6 +70,7 @@ export function ClientFormModal({ open, onClose, onSave, initialData, mode }: Cl
         ...(form.piva_cf.trim() && { piva_cf: form.piva_cf.trim() }),
         ...(form.email.trim() && { email: form.email.trim() }),
         ...(form.telefono.trim() && { telefono: form.telefono.trim() }),
+        ...(mode === 'edit' && { attivo: form.attivo }),
       };
       await onSave(payload, initialData?.id);
       onClose();
@@ -79,6 +83,10 @@ export function ClientFormModal({ open, onClose, onSave, initialData, mode }: Cl
   const set = (field: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm(prev => ({ ...prev, [field]: e.target.value }));
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: undefined }));
+  };
+
+  const toggleAttivo = () => {
+    setForm(prev => ({ ...prev, attivo: !prev.attivo }));
   };
 
   const inputClass = (field: keyof FormState) =>
@@ -152,6 +160,31 @@ export function ClientFormModal({ open, onClose, onSave, initialData, mode }: Cl
                 className={inputClass('telefono')}
               />
             </div>
+
+            {mode === 'edit' && (
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-[#2D2D2D] mb-2">Stato cliente</label>
+                <div className="flex items-center justify-between gap-4 px-4 py-3 border border-[#E5EAF2] rounded-2xl bg-[#F7F9FC]">
+                  <div>
+                    <p className="text-sm font-medium text-[#2D2D2D]">
+                      {form.attivo ? 'Cliente attivo' : 'Cliente disattivato'}
+                    </p>
+                    <p className="text-xs text-[#6B7280] mt-1">
+                      {form.attivo
+                        ? 'Il cliente sara visibile come attivo in anagrafica.'
+                        : 'Il cliente verra salvato come disattivato.'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleAttivo}
+                    className={`w-11 h-6 rounded-full transition-colors flex items-center ${form.attivo ? 'bg-[#17E88F]' : 'bg-[#D1D5DB]'}`}
+                  >
+                    <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform mx-1 ${form.attivo ? 'translate-x-5' : ''}`} />
+                  </button>
+                </div>
+              </div>
+            )}
 
           </div>
 

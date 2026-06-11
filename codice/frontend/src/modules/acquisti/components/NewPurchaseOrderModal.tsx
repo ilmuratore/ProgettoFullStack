@@ -100,7 +100,7 @@ export function NewPurchaseOrderModal({ isOpen, onClose, onCreated }: NewPurchas
         if (field === 'prodotto_id') {
           const product = products.find(p => p.id === Number(value));
           if (product) {
-            return { ...line, prodotto_id: product.id, sku: product.sku, prodotto: product.nome, prezzoUnitario: product.prezzo };
+            return { ...line, prodotto_id: product.id, sku: product.sku, prodotto: product.nome, prezzoUnitario: Number(product.prezzo) };
           }
         }
         return { ...line, [field]: value };

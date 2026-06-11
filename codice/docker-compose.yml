@@ -82,7 +82,8 @@ services:
     container_name: dev_frontend
     restart: unless-stopped
     environment:
-      VITE_API_URL: ${VITE_API_URL:-http://backend:3000}
+      VITE_API_URL: ${VITE_API_URL:-http://backend:3000}
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000/api/v1}
     ports:
       - "5173:5173"
     volumes:

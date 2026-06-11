@@ -8,6 +8,7 @@ import { GoodsReceiptsTimeline } from './components/GoodsReceiptsTimeline';
 import { SuppliersPerformance } from './components/SuppliersPerformance';
 import { OrderDetailDrawer } from './components/OrderDetailDrawer';
 import { NewPurchaseOrderModal } from './components/NewPurchaseOrderModal';
+import { NewGoodsReceiptModal } from './components/NewGoodsReceiptModal';
 import { PageTabBar, type TabConfig } from '../../components/ui/PageTabBar';
 import { ricezioniApi } from '../../api/ricezioniApi';
 import type { Ricezione, StatoOrdineAcquisto } from '../../types/acquisti';
@@ -34,6 +35,7 @@ const statoLabel: Record<StatoOrdineAcquisto, { bg: string; text: string; label:
 
 export function PurchasesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRicezioneModalOpen, setIsRicezioneModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<PurchaseTab>('ordini');
   const [reloadKey, setReloadKey] = useState(0);
@@ -68,7 +70,7 @@ export function PurchasesPage() {
         </div>
         {activeTab !== 'kpi' && (
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => activeTab === 'ricezioni' ? setIsRicezioneModalOpen(true) : setIsModalOpen(true)}
             className="px-4 py-2 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2 font-medium"
           >
             <Plus className="w-4 h-4" />
@@ -129,7 +131,7 @@ export function PurchasesPage() {
                   </tbody>
                 </table>
               </div>
-              <GoodsReceiptsTimeline />
+              <GoodsReceiptsTimeline ricezioni={ricezioni} loading={loadingRic} />
             </div>
           )}
 
@@ -146,11 +148,18 @@ export function PurchasesPage() {
         orderId={selectedOrderId}
         isOpen={selectedOrderId !== null}
         onClose={() => setSelectedOrderId(null)}
+        onStatusChange={() => setReloadKey((k) => k + 1)}
       />
 
       <NewPurchaseOrderModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        onCreated={() => setReloadKey((k) => k + 1)}
+      />
+
+      <NewGoodsReceiptModal
+        isOpen={isRicezioneModalOpen}
+        onClose={() => setIsRicezioneModalOpen(false)}
         onCreated={() => setReloadKey((k) => k + 1)}
       />
     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { Search, Filter, ArrowUpDown, Eye } from 'lucide-react';
+import { Search, Filter, ArrowUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { acquistiApi } from '../../../api/acquistiApi';
 import type { OrdineAcquistoLista, StatoOrdineAcquisto } from '../../../types/acquisti';
@@ -106,20 +106,20 @@ export function PurchaseOrdersTable({ onOrderClick, reloadKey }: PurchaseOrdersT
               <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Stato</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Prodotti</th>
               <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Responsabile</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Azioni</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={9} className="py-8 text-center text-sm text-[#6B7280]">Caricamento ordini...</td></tr>
+              <tr><td colSpan={8} className="py-8 text-center text-sm text-[#6B7280]">Caricamento ordini...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={9} className="py-8 text-center text-sm text-[#6B7280]">Nessun ordine di acquisto.</td></tr>
+              <tr><td colSpan={8} className="py-8 text-center text-sm text-[#6B7280]">Nessun ordine di acquisto.</td></tr>
             ) : filtered.map((order, index) => {
               const badge = getStatusBadge(order.stato);
               return (
                 <tr
                   key={order.id}
-                  className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${
+                  onClick={() => onOrderClick(order.id)}
+                  className={`cursor-pointer border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${
                     index % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'
                   }`}
                 >
@@ -135,14 +135,6 @@ export function PurchaseOrdersTable({ onOrderClick, reloadKey }: PurchaseOrdersT
                   </td>
                   <td className="py-3 px-4 text-sm text-[#6B7280]">{order.numero_righe} items</td>
                   <td className="py-3 px-4 text-sm text-[#6B7280]">{order.utente ?? '—'}</td>
-                  <td className="py-3 px-4">
-                    <button
-                      onClick={() => onOrderClick(order.id)}
-                      className="p-1.5 hover:bg-[#DBEAFE] text-[#3B82F6] rounded-lg transition-all"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                  </td>
                 </tr>
               );
             })}

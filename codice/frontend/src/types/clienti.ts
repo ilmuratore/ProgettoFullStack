@@ -22,4 +22,5 @@ export interface ClienteUpdateRequest {
   piva_cf?: string;
   email?: string;
   telefono?: string;
+  attivo?: boolean;
 }
