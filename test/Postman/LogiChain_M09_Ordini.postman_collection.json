@@ -1,91 +1,29 @@
 {
   "info": {
-    "name": "LogiChain M09 - Ordini di Vendita",
-    "description": "Collection self-bootstrapping M09. PRIMA DI ESEGUIRE: imposta le variabili admin_email e admin_password con le credenziali del seed admin (ADMIN_EMAIL/ADMIN_PASSWORD del .env). Il Setup crea cliente, destinazione, prodotto, magazzino, ubicazione e carico stock con valori timestamp-based. I test coprono disponibilita (totale-impegnato), conferma con blocco FIFO, picking con scarico, e le validazioni. Richiede backend su {{base_url}} con M09 e modulo destinazioni montati.",
+    "_postman_id": "86f2f7d6-2b29-4c0e-9d5f-0d79ec6c9a01",
+    "name": "LogiChain V2 — M09 Ordini di Vendita",
+    "description": "Suite di verifica backend M09 (Ordini di Vendita).\n\nCOME USARLA:\n1) Avvia il backend (npm run dev) con tutte le migration applicate.\n2) Nel .env imposta ADMIN_EMAIL e ADMIN_PASSWORD, poi:\n   npm run seed_ruoli_permessi && npm run seed_admin\n3) Allinea le variabili admin_email/admin_password al .env.\n4) Apri Runner -> seleziona questa collection -> Run (eseguire in ordine).\n\nIl Setup crea utenti (Resp. Vendite ruolo 6, Corriere ruolo 10), cliente, destinazione, prodotto, magazzino e ubicazione con nomi univoci timestamp-based (ri-eseguibile).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "00 Setup",
+      "name": "Setup — Autenticazione & Dati M09",
       "item": [
         {
-          "name": "00 - Login Admin (da variabili admin_email/admin_password)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/auth/login",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const j = pm.response.json();",
-                  "pm.test(\"login ok\", () => pm.response.to.have.status(200));",
-                  "if (j.data && j.data.token) { pm.collectionVariables.set(\"token\", j.data.token); }",
-                  ""
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "01 - Init Timestamp",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/auth/me",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "me"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
+          "name": "Login Admin",
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.collectionVariables.set(\"ts\", Date.now().toString());"
+                  "var run = Date.now().toString();",
+                  "pm.collectionVariables.set('runId', run);",
+                  "pm.collectionVariables.set('vendite_email', 'test.m09.vend.' + run + '@logichain.it');",
+                  "pm.collectionVariables.set('corriere_email', 'test.m09.corr.' + run + '@logichain.it');",
+                  "pm.collectionVariables.set('cliente_piva_cf', ('701' + run).slice(0, 11));",
+                  "pm.collectionVariables.set('prodotto_sku', 'M09-SKU-' + run);",
+                  "pm.collectionVariables.set('magazzino_codice', 'MAG-M09-' + run);"
                 ]
               }
             },
@@ -94,14 +32,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"me ok\", () => pm.response.to.have.status(200));"
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Login Admin -> 200', () => pm.response.to.have.status(200));",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_admin', b.data.token); }"
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "02 - Crea Cliente",
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -110,47 +47,107 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{base_url}}/clienti",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "clienti"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
+            "url": "{{base_url}}/api/v1/auth/login",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"ragione_sociale\": \"Cliente M09 {{ts}}\",\n  \"piva_cf\": \"PIVA{{ts}}\",\n  \"email\": \"cli{{ts}}@test.it\",\n  \"telefono\": \"000\"\n}"
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
-          },
+          }
+        },
+        {
+          "name": "Register Resp. Vendite (ruolo_id 6)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const j=pm.response.json();",
-                  "pm.test(\"cliente creato\",()=>pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set(\"cliente_id\", j.data.id);",
-                  ""
+                  "pm.test('Setup: Register Resp. Vendite -> 201', () => pm.response.to.have.status(201));"
                 ]
               }
             }
-          ]
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Vendite\",\n  \"email\": \"{{vendite_email}}\",\n  \"password\": \"{{vendite_password}}\",\n  \"ruolo_id\": 6\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
         },
         {
-          "name": "03 - Crea Destinazione",
+          "name": "Register Corriere (ruolo_id 10, no ordini)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Setup: Register Corriere -> 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Corr\",\n  \"cognome\": \"Iere\",\n  \"email\": \"{{corriere_email}}\",\n  \"password\": \"{{corriere_password}}\",\n  \"ruolo_id\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Login Resp. Vendite (token_vendite)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Login Resp. Vendite -> 200', () => pm.response.to.have.status(200));",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_vendite', b.data.token); }"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -159,49 +156,33 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{base_url}}/clienti/{{cliente_id}}/destinazioni",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "clienti",
-                "{{cliente_id}}",
-                "destinazioni"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
+            "url": "{{base_url}}/api/v1/auth/login",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"etichetta\": \"Sede {{ts}}\",\n  \"indirizzo\": \"Via Test 1\",\n  \"cap\": \"20100\",\n  \"citta\": \"Milano\",\n  \"provincia\": \"MI\",\n  \"paese\": \"Italia\",\n  \"predefinita\": true\n}"
+              "raw": "{\n  \"email\": \"{{vendite_email}}\",\n  \"password\": \"{{vendite_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
-          },
+          }
+        },
+        {
+          "name": "Login Corriere (token_no_access)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const j=pm.response.json();",
-                  "pm.test(\"destinazione creata\",()=>pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set(\"destinazione_id\", j.data.id);",
-                  ""
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Login Corriere -> 200', () => pm.response.to.have.status(200));",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_no_access', b.data.token); }"
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "04 - Crea Prodotto",
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -210,758 +191,828 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{base_url}}/prodotti",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "prodotti"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
+            "url": "{{base_url}}/api/v1/auth/login",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Prodotto M09 {{ts}}\",\n  \"sku\": \"M09-{{ts}}\",\n  \"prezzo\": 12.5\n}"
+              "raw": "{\n  \"email\": \"{{corriere_email}}\",\n  \"password\": \"{{corriere_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
-          },
+          }
+        },
+        {
+          "name": "Crea cliente test (admin)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const j=pm.response.json();",
-                  "pm.test(\"prodotto creato\",()=>pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set(\"prodotto_id\", j.data.id);",
-                  ""
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Crea cliente -> 201', () => pm.response.to.have.status(201));",
+                  "if (b.data && b.data.id) { pm.collectionVariables.set('cliente_id', b.data.id); }"
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "05 - Crea Magazzino",
+          ],
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": {
-              "raw": "{{base_url}}/magazzini",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "magazzini"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
+            "url": "{{base_url}}/api/v1/clienti",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"codice\": \"MAGM09{{ts}}\",\n  \"nome\": \"Mag M09 {{ts}}\",\n  \"citta\": \"Milano\"\n}"
+              "raw": "{\n  \"ragione_sociale\": \"Cliente Test M09\",\n  \"piva_cf\": \"{{cliente_piva_cf}}\",\n  \"email\": \"info.m09@cliente.it\",\n  \"telefono\": \"000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
-          },
+          }
+        },
+        {
+          "name": "Crea destinazione cliente (admin)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const j=pm.response.json();",
-                  "pm.test(\"magazzino creato\",()=>pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set(\"magazzino_id\", j.data.id);",
-                  ""
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Crea destinazione -> 201', () => pm.response.to.have.status(201));",
+                  "if (b.data && b.data.id) { pm.collectionVariables.set('destinazione_id', b.data.id); }"
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "06 - Crea Ubicazione",
+          ],
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": {
-              "raw": "{{base_url}}/magazzini/{{magazzino_id}}/ubicazioni",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "magazzini",
-                "{{magazzino_id}}",
-                "ubicazioni"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
+            "url": "{{base_url}}/api/v1/clienti/{{cliente_id}}/destinazioni",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"corsia\": 1,\n  \"scaffale\": 1\n}"
+              "raw": "{\n  \"etichetta\": \"Sede M09\",\n  \"indirizzo\": \"Via Test 9\",\n  \"cap\": \"20100\",\n  \"citta\": \"Milano\",\n  \"provincia\": \"MI\",\n  \"paese\": \"Italia\",\n  \"predefinita\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
-          },
+          }
+        },
+        {
+          "name": "Crea prodotto test (admin)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const j=pm.response.json();",
-                  "pm.test(\"ubicazione creata\",()=>pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set(\"ubicazione_id\", j.data.id);",
-                  ""
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Crea prodotto -> 201', () => pm.response.to.have.status(201));",
+                  "if (b.data && b.data.id) { pm.collectionVariables.set('prodotto_id', b.data.id); }"
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "07 - Carico Stock Iniziale (100)",
+          ],
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": {
-              "raw": "{{base_url}}/movimenti-stock",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "movimenti-stock"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
+            "url": "{{base_url}}/api/v1/prodotti",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"prodotto_id\": \"{{prodotto_id}}\",\n  \"ubicazione_id\": \"{{ubicazione_id}}\",\n  \"quantita\": 100,\n  \"movimento_tipo\": \"CARICO_ACQUISTO\",\n  \"riferimento\": \"setup:m09\"\n}"
+              "raw": "{\n  \"nome\": \"Prodotto Test M09\",\n  \"sku\": \"{{prodotto_sku}}\",\n  \"prezzo\": 12.50\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
-          },
+          }
+        },
+        {
+          "name": "Crea magazzino test (admin)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"carico ok\",()=>pm.expect(pm.response.code).to.be.oneOf([200,201]));"
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Crea magazzino -> 201', () => pm.response.to.have.status(201));",
+                  "if (b.data && b.data.id) { pm.collectionVariables.set('magazzino_id', b.data.id); }"
                 ]
               }
             }
-          ]
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/magazzini",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codice\": \"{{magazzino_codice}}\",\n  \"nome\": \"Magazzino Test M09\",\n  \"indirizzo\": \"Via Test 9\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crea ubicazione (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Crea ubicazione -> 201', () => pm.response.to.have.status(201));",
+                  "if (b.data && b.data.id) { pm.collectionVariables.set('ubicazione_id', b.data.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"corsia\": 1,\n  \"scaffale\": 1,\n  \"temperatura_controllata\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Carico stock iniziale (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Setup: Carico stock -> 200/201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prodotto_id\": {{prodotto_id}},\n  \"ubicazione_id\": {{ubicazione_id}},\n  \"quantita\": 100,\n  \"movimento_tipo\": \"CARICO_ACQUISTO\",\n  \"riferimento\": \"setup:m09\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
         }
       ]
     },
     {
-      "name": "01 Ordini M09",
+      "name": "Ordini Vendita — 14 test",
       "item": [
         {
-          "name": "01 - Disponibilita iniziale (100/0/100)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/ordini/disponibilita/{{prodotto_id}}",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
+          "name": "01 POST /ordini — manca cliente_id → 400",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const j=pm.response.json();",
-                  "pm.test(\"200\",()=>pm.response.to.have.status(200));",
-                  "pm.test(\"totale 100\",()=>pm.expect(j.data.totale).to.eql(100));",
-                  "pm.test(\"impegnato 0\",()=>pm.expect(j.data.impegnato).to.eql(0));",
-                  "pm.test(\"disponibile 100\",()=>pm.expect(j.data.disponibile).to.eql(100));",
-                  ""
+                  "pm.test('400 Validation', () => pm.response.to.have.status(400));",
+                  "pm.test('code VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "02 - Crea Ordine (BOZZA, qta 50)",
+          ],
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/ordini",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
+            "url": "{{base_url}}/api/v1/ordini",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"cliente_id\": \"{{cliente_id}}\",\n  \"destinazione_id\": \"{{destinazione_id}}\",\n  \"data_consegna_richiesta\": \"2026-07-01\",\n  \"righe\": [\n    {\n      \"prodotto_id\": \"{{prodotto_id}}\",\n      \"quantita\": 50,\n      \"prezzo_unitario\": 12.5\n    }\n  ]\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const j=pm.response.json();",
-                  "pm.test(\"201\",()=>pm.response.to.have.status(201));",
-                  "pm.test(\"stato BOZZA\",()=>pm.expect(j.data.ordine.stato).to.eql(\"BOZZA\"));",
-                  "pm.collectionVariables.set(\"ordine_id\", j.data.ordine.id);",
-                  "pm.collectionVariables.set(\"riga_id\", j.data.righe[0].id);",
-                  ""
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "03 - Disponibilita dopo BOZZA (ancora 100 disp)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/ordini/disponibilita/{{prodotto_id}}",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
+              "raw": "{\n  \"destinazione_id\": {{destinazione_id}},\n  \"righe\": [ { \"prodotto_id\": {{prodotto_id}}, \"quantita\": 10, \"prezzo_unitario\": 5 } ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
+              }
             }
-          },
+          }
+        },
+        {
+          "name": "02 POST /ordini — righe vuote → 400",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const j=pm.response.json();",
-                  "pm.test(\"impegnato ancora 0 (bozza non impegna)\",()=>pm.expect(j.data.impegnato).to.eql(0));",
-                  "pm.test(\"disponibile 100\",()=>pm.expect(j.data.disponibile).to.eql(100));",
-                  ""
+                  "pm.test('400 Validation', () => pm.response.to.have.status(400));",
+                  "pm.test('code VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "04 - Conferma Ordine",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/ordini/{{ordine_id}}/stato",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"stato\": \"CONFERMATO\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const j=pm.response.json();",
-                  "pm.test(\"200\",()=>pm.response.to.have.status(200));",
-                  "pm.test(\"CONFERMATO\",()=>pm.expect(j.data.stato).to.eql(\"CONFERMATO\"));",
-                  ""
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "05 - Disponibilita dopo CONFERMA (impegnato 50, disp 50)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/ordini/disponibilita/{{prodotto_id}}",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const j=pm.response.json();",
-                  "pm.test(\"impegnato 50\",()=>pm.expect(j.data.impegnato).to.eql(50));",
-                  "pm.test(\"disponibile 50\",()=>pm.expect(j.data.disponibile).to.eql(50));",
-                  "pm.test(\"totale ancora 100 (non scaricato)\",()=>pm.expect(j.data.totale).to.eql(100));",
-                  ""
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "06 - Conferma con disponibilita insufficiente (qta 200) -> 422",
+          ],
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/ordini",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
+            "url": "{{base_url}}/api/v1/ordini",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"cliente_id\": \"{{cliente_id}}\",\n  \"destinazione_id\": \"{{destinazione_id}}\",\n  \"righe\": [\n    {\n      \"prodotto_id\": \"{{prodotto_id}}\",\n      \"quantita\": 200,\n      \"prezzo_unitario\": 1\n    }\n  ]\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const j=pm.response.json();",
-                  "pm.test(\"ordine grande creato in bozza\",()=>pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set(\"ordine_big\", j.data.ordine.id);",
-                  ""
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "07 - Conferma ordine grande -> 422 INSUFFICIENT_STOCK",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/ordini/{{ordine_big}}/stato",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
+              "raw": "{\n  \"cliente_id\": {{cliente_id}},\n  \"destinazione_id\": {{destinazione_id}},\n  \"righe\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"stato\": \"CONFERMATO\"\n}"
+              }
             }
-          },
+          }
+        },
+        {
+          "name": "03 POST /ordini — ordine vecchio BOZZA → 201",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"422\",()=>pm.response.to.have.status(422));",
-                  "const j=pm.response.json();",
-                  "pm.test(\"codice INSUFFICIENT_STOCK\",()=>pm.expect(j.code).to.eql(\"INSUFFICIENT_STOCK\"));",
-                  ""
+                  "var d = pm.response.json();",
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('stato BOZZA', () => pm.expect(d.data.ordine.stato).to.eql('BOZZA'));",
+                  "pm.collectionVariables.set('ordine_old_id', d.data.ordine.id);",
+                  "pm.collectionVariables.set('riga_old_id', d.data.righe[0].id);"
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "08 - Avvia Picking (IN_PICKING)",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/ordini/{{ordine_id}}/picking",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"stato_picking\": \"IN_PICKING\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const j=pm.response.json();",
-                  "pm.test(\"200\",()=>pm.response.to.have.status(200));",
-                  "pm.test(\"IN_PICKING\",()=>pm.expect(j.data.ordine.stato_picking).to.eql(\"IN_PICKING\"));",
-                  ""
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "09 - Completa Picking con prelievi (scarico 50) ",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/ordini/{{ordine_id}}/picking",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"stato_picking\": \"PICKING_COMPLETATO\",\n  \"prelievi\": [\n    {\n      \"riga_id\": \"{{riga_id}}\",\n      \"ubicazioni\": [\n        {\n          \"ubicazione_id\": \"{{ubicazione_id}}\",\n          \"quantita\": 50\n        }\n      ]\n    }\n  ]\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const j=pm.response.json();",
-                  "pm.test(\"200\",()=>pm.response.to.have.status(200));",
-                  "pm.test(\"PICKING_COMPLETATO\",()=>pm.expect(j.data.ordine.stato_picking).to.eql(\"PICKING_COMPLETATO\"));",
-                  "pm.test(\"1 movimento scarico\",()=>pm.expect(j.data.movimenti.length).to.eql(1));",
-                  ""
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "10 - Disponibilita dopo scarico (totale 50, impegnato 0, disp 50)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/ordini/disponibilita/{{prodotto_id}}",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const j=pm.response.json();",
-                  "pm.test(\"totale 50 (scaricato)\",()=>pm.expect(j.data.totale).to.eql(50));",
-                  "pm.test(\"impegnato 0 (picking completato libera impegno)\",()=>pm.expect(j.data.impegnato).to.eql(0));",
-                  "pm.test(\"disponibile 50\",()=>pm.expect(j.data.disponibile).to.eql(50));",
-                  ""
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "11 - Spedisci ordine (CONFERMATO->SPEDITO)",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{base_url}}/ordini/{{ordine_id}}/stato",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"stato\": \"SPEDITO\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const j=pm.response.json();",
-                  "pm.test(\"200\",()=>pm.response.to.have.status(200));",
-                  "pm.test(\"SPEDITO\",()=>pm.expect(j.data.stato).to.eql(\"SPEDITO\"));",
-                  ""
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "12 - Picking su prelievi non quadrati -> 400",
+          ],
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/ordini",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
+            "url": "{{base_url}}/api/v1/ordini",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"cliente_id\": \"{{cliente_id}}\",\n  \"destinazione_id\": \"{{destinazione_id}}\",\n  \"righe\": [\n    {\n      \"prodotto_id\": \"{{prodotto_id}}\",\n      \"quantita\": 10,\n      \"prezzo_unitario\": 1\n    }\n  ]\n}"
+              "raw": "{\n  \"cliente_id\": {{cliente_id}},\n  \"destinazione_id\": {{destinazione_id}},\n  \"data_consegna_richiesta\": \"2026-07-01\",\n  \"righe\": [ { \"prodotto_id\": {{prodotto_id}}, \"quantita\": 40, \"prezzo_unitario\": 12.50 } ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
-          },
+          }
+        },
+        {
+          "name": "04 POST /ordini — ordine nuovo BOZZA → 201",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const j=pm.response.json();",
-                  "pm.collectionVariables.set(\"ordine_q\", j.data.ordine.id);",
-                  "pm.collectionVariables.set(\"riga_q\", j.data.righe[0].id);",
-                  "pm.test(\"creato\",()=>pm.response.to.have.status(201));",
-                  ""
+                  "var d = pm.response.json();",
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('stato BOZZA', () => pm.expect(d.data.ordine.stato).to.eql('BOZZA'));",
+                  "pm.collectionVariables.set('ordine_new_id', d.data.ordine.id);",
+                  "pm.collectionVariables.set('riga_new_id', d.data.righe[0].id);"
                 ]
               }
             }
-          ]
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_vendite}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/ordini",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente_id\": {{cliente_id}},\n  \"destinazione_id\": {{destinazione_id}},\n  \"data_consegna_richiesta\": \"2026-07-02\",\n  \"righe\": [ { \"prodotto_id\": {{prodotto_id}}, \"quantita\": 10, \"prezzo_unitario\": 12.50 } ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
         },
         {
-          "name": "13 - Conferma ordine_q",
+          "name": "05 PATCH /ordini/:id/stato — ordine nuovo prima del vecchio → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('code STATE_TRANSITION_INVALID', () => pm.expect(pm.response.json().code).to.eql('STATE_TRANSITION_INVALID'));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "PATCH",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/ordini/{{ordine_q}}/stato",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
+            "url": "{{base_url}}/api/v1/ordini/{{ordine_new_id}}/stato",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"stato\": \"CONFERMATO\"\n}"
+              "raw": "{\n  \"stato\": \"CONFERMATO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
-          },
+          }
+        },
+        {
+          "name": "06 PATCH /ordini/:id/stato — ordine vecchio CONFERMATO → 200",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"200\",()=>pm.response.to.have.status(200));"
+                  "var d = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('stato CONFERMATO', () => pm.expect(d.data.stato).to.eql('CONFERMATO'));"
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "14 - Picking prelievi sbagliati (5 invece di 10) -> 400",
+          ],
           "request": {
             "method": "PATCH",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/ordini/{{ordine_q}}/picking",
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token}}",
-                  "type": "string"
-                }
-              ]
-            },
+            "url": "{{base_url}}/api/v1/ordini/{{ordine_old_id}}/stato",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"stato_picking\": \"PICKING_COMPLETATO\",\n  \"prelievi\": [\n    {\n      \"riga_id\": \"{{riga_q}}\",\n      \"ubicazioni\": [\n        {\n          \"ubicazione_id\": \"{{ubicazione_id}}\",\n          \"quantita\": 5\n        }\n      ]\n    }\n  ]\n}"
+              "raw": "{\n  \"stato\": \"CONFERMATO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
-          },
+          }
+        },
+        {
+          "name": "07 PATCH /ordini/:id/stato — ordine nuovo CONFERMATO → 200",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"400 validazione\",()=>pm.response.to.have.status(400));",
-                  "const j=pm.response.json();",
-                  "pm.test(\"VALIDATION_ERROR\",()=>pm.expect(j.code).to.eql(\"VALIDATION_ERROR\"));",
-                  ""
+                  "var d = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('stato CONFERMATO', () => pm.expect(d.data.stato).to.eql('CONFERMATO'));"
                 ]
               }
             }
-          ]
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_vendite}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/ordini/{{ordine_new_id}}/stato",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato\": \"CONFERMATO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "08 GET /ordini/disponibilita/:prodotto_id — impegnato 50, disp 50 → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('totale 100', () => pm.expect(d.data.totale).to.eql(100));",
+                  "pm.test('impegnato 50', () => pm.expect(d.data.impegnato).to.eql(50));",
+                  "pm.test('disponibile 50', () => pm.expect(d.data.disponibile).to.eql(50));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_vendite}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/ordini/disponibilita/{{prodotto_id}}"
+          }
+        },
+        {
+          "name": "09 POST /ordini — ordine grande BOZZA → 201",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ordine_big_id', d.data.ordine.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_vendite}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/ordini",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente_id\": {{cliente_id}},\n  \"destinazione_id\": {{destinazione_id}},\n  \"righe\": [ { \"prodotto_id\": {{prodotto_id}}, \"quantita\": 60, \"prezzo_unitario\": 1 } ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "10 PATCH /ordini/:id/stato — disponibilità insufficiente → 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422 Unprocessable Entity', () => pm.response.to.have.status(422));",
+                  "pm.test('code INSUFFICIENT_STOCK', () => pm.expect(pm.response.json().code).to.eql('INSUFFICIENT_STOCK'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_vendite}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/ordini/{{ordine_big_id}}/stato",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato\": \"CONFERMATO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "11 PATCH /ordini/:id/picking — IN_PICKING → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('stato_picking IN_PICKING', () => pm.expect(d.data.ordine.stato_picking).to.eql('IN_PICKING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_vendite}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/ordini/{{ordine_old_id}}/picking",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato_picking\": \"IN_PICKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "12 PATCH /ordini/:id/picking — completa prelievo → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('stato_picking PICKING_COMPLETATO', () => pm.expect(d.data.ordine.stato_picking).to.eql('PICKING_COMPLETATO'));",
+                  "pm.test('1 movimento scarico', () => pm.expect(d.data.movimenti.length).to.eql(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_vendite}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/ordini/{{ordine_old_id}}/picking",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato_picking\": \"PICKING_COMPLETATO\",\n  \"prelievi\": [\n    {\n      \"riga_id\": {{riga_old_id}},\n      \"ubicazioni\": [\n        { \"ubicazione_id\": {{ubicazione_id}}, \"quantita\": 40 }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "13 PATCH /ordini/:id/stato — SPEDITO dopo picking → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('stato SPEDITO', () => pm.expect(d.data.stato).to.eql('SPEDITO'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_vendite}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/ordini/{{ordine_old_id}}/stato",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato\": \"SPEDITO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "14 PATCH /ordini/:id/picking — ordine nuovo IN_PICKING → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('stato_picking IN_PICKING', () => pm.expect(d.data.ordine.stato_picking).to.eql('IN_PICKING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_vendite}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/ordini/{{ordine_new_id}}/picking",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato_picking\": \"IN_PICKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "15 PATCH /ordini/:id/picking — prelievi non quadrati → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Validation', () => pm.response.to.have.status(400));",
+                  "pm.test('code VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_vendite}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/ordini/{{ordine_new_id}}/picking",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato_picking\": \"PICKING_COMPLETATO\",\n  \"prelievi\": [\n    {\n      \"riga_id\": {{riga_new_id}},\n      \"ubicazioni\": [\n        { \"ubicazione_id\": {{ubicazione_id}}, \"quantita\": 5 }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
         }
       ]
     }
@@ -969,26 +1020,54 @@
   "variable": [
     {
       "key": "base_url",
-      "value": "http://localhost:3000/api/v1"
-    },
-    {
-      "key": "token",
-      "value": ""
+      "value": "http://localhost:3000"
     },
     {
       "key": "admin_email",
-      "value": "CAMBIAMI@logichain.local"
+      "value": "admin@logichain.it"
     },
     {
       "key": "admin_password",
-      "value": "CAMBIAMI"
+      "value": "Admin123!"
     },
     {
-      "key": "ts",
+      "key": "vendite_email",
+      "value": ""
+    },
+    {
+      "key": "vendite_password",
+      "value": "Test1234!"
+    },
+    {
+      "key": "corriere_email",
+      "value": ""
+    },
+    {
+      "key": "corriere_password",
+      "value": "Test1234!"
+    },
+    {
+      "key": "token_admin",
+      "value": ""
+    },
+    {
+      "key": "token_vendite",
+      "value": ""
+    },
+    {
+      "key": "token_no_access",
+      "value": ""
+    },
+    {
+      "key": "runId",
       "value": ""
     },
     {
       "key": "cliente_id",
+      "value": ""
+    },
+    {
+      "key": "cliente_piva_cf",
       "value": ""
     },
     {
@@ -1000,7 +1079,15 @@
       "value": ""
     },
     {
+      "key": "prodotto_sku",
+      "value": ""
+    },
+    {
       "key": "magazzino_id",
+      "value": ""
+    },
+    {
+      "key": "magazzino_codice",
       "value": ""
     },
     {
@@ -1008,23 +1095,23 @@
       "value": ""
     },
     {
-      "key": "ordine_id",
+      "key": "ordine_old_id",
       "value": ""
     },
     {
-      "key": "riga_id",
+      "key": "riga_old_id",
       "value": ""
     },
     {
-      "key": "ordine_big",
+      "key": "ordine_new_id",
       "value": ""
     },
     {
-      "key": "ordine_q",
+      "key": "riga_new_id",
       "value": ""
     },
     {
-      "key": "riga_q",
+      "key": "ordine_big_id",
       "value": ""
     }
   ]

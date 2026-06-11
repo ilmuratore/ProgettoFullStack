@@ -52,6 +52,17 @@ const findById = (id, client) =>
         [id]
     );
 
+const findByIdForUpdate = (id, client) =>
+    (client || pool).query(
+        `
+        SELECT *
+        FROM ordini
+        WHERE id = $1
+        FOR UPDATE
+        `,
+        [id]
+    );
+
 const update = (id, { data_consegna_richiesta, importo_totale }, client) =>
     (client || pool).query(
         `
@@ -102,6 +113,38 @@ const getImpegnatoByProdotto = (prodotto_id, client) =>
         [prodotto_id]
     );
 
+const lockGiacenzeByProdottoIds = (prodotto_ids, client) =>
+    (client || pool).query(
+        `
+        SELECT id, prodotto_id, ubicazione_id, quantita
+        FROM giacenze
+        WHERE prodotto_id = ANY($1::int[])
+        ORDER BY prodotto_id, ubicazione_id
+        FOR UPDATE
+        `,
+        [prodotto_ids]
+    );
+
+const findOrdiniBozzaPrecedentiConStessiProdotti = (ordine_id, prodotto_ids, data_ordine, client) =>
+    (client || pool).query(
+        `
+        SELECT o.id, o.data_ordine
+        FROM ordini o
+        WHERE o.id <> $1
+          AND o.stato = 'BOZZA'
+          AND o.data_ordine < $2
+          AND EXISTS (
+              SELECT 1
+              FROM righe_ordine r
+              WHERE r.ordine_id = o.id
+                AND r.prodotto_id = ANY($3::int[])
+          )
+        ORDER BY o.data_ordine, o.id
+        FOR UPDATE OF o
+        `,
+        [ordine_id, data_ordine, prodotto_ids]
+    );
+
 const remove = (id) =>
     pool.query(
         `DELETE FROM ordini WHERE id = $1 RETURNING id;`,
@@ -114,9 +157,12 @@ module.exports = {
     findByStato,
     findByClienteId,
     findById,
+    findByIdForUpdate,
     update,
     updateStato,
     updateStatoPicking,
     getImpegnatoByProdotto,
+    lockGiacenzeByProdottoIds,
+    findOrdiniBozzaPrecedentiConStessiProdotti,
     remove
 };

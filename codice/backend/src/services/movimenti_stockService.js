@@ -71,7 +71,7 @@ const getByRiferimento = async (riferimento) => {
     return result.rows;
 };
 
-const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione_a_id, quantita, movimento_tipo, riferimento, note }) => {
+const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione_a_id, quantita, movimento_tipo, riferimento, note }, externalClient = null) => {
     const prodottoResult = await prodottiModel.findById(prodotto_id);
     if (prodottoResult.rowCount === 0 || prodottoResult.rows[0].attivo === false) {
         throwError('RESOURCE_NOT_FOUND', 'Prodotto non trovato');
@@ -106,10 +106,13 @@ const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione
             throwError('RESOURCE_NOT_FOUND', 'Ubicazione di arrivo non trovata');
         }
 
-        const client = await pool.connect();
+        const client = externalClient || await pool.connect();
+        const shouldManageTransaction = !externalClient;
 
         try {
-            await client.query('BEGIN');
+            if (shouldManageTransaction) {
+                await client.query('BEGIN');
+            }
 
             const firstUbicazioneId = ubicazione_da_id < ubicazione_a_id ? ubicazione_da_id : ubicazione_a_id;
             const secondUbicazioneId = ubicazione_da_id < ubicazione_a_id ? ubicazione_a_id : ubicazione_da_id;
@@ -149,17 +152,23 @@ const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione
                 note
             }, client);
 
-            await client.query('COMMIT');
+            if (shouldManageTransaction) {
+                await client.query('COMMIT');
+            }
 
             return {
                 scarico: movimentoScaricoResult.rows[0],
                 carico: movimentoCaricoResult.rows[0]
             };
         } catch (err) {
-            await client.query('ROLLBACK');
+            if (shouldManageTransaction) {
+                await client.query('ROLLBACK');
+            }
             throw err;
         } finally {
-            client.release();
+            if (shouldManageTransaction) {
+                client.release();
+            }
         }
     }
 
@@ -184,10 +193,13 @@ const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione
         throwError('VALIDATION_ERROR', 'Tipo movimento non valido');
     }
 
-    const client = await pool.connect();
+    const client = externalClient || await pool.connect();
+    const shouldManageTransaction = !externalClient;
 
     try {
-        await client.query('BEGIN');
+        if (shouldManageTransaction) {
+            await client.query('BEGIN');
+        }
 
         const giacenza = await giacenzeModel.findByProdottoIdAndUbicazioneId(prodotto_id, ubicazione_id, client);
         if (giacenza.rowCount > 0) {
@@ -208,14 +220,20 @@ const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione
             note
         }, client);
 
-        await client.query('COMMIT');
+        if (shouldManageTransaction) {
+            await client.query('COMMIT');
+        }
 
         return result.rows[0];
     } catch (err) {
-        await client.query('ROLLBACK');
+        if (shouldManageTransaction) {
+            await client.query('ROLLBACK');
+        }
         throw err;
     } finally {
-        client.release();
+        if (shouldManageTransaction) {
+            client.release();
+        }
     }
 };
 

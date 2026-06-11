@@ -19,7 +19,7 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(rateLimit({
-    windowMs: 15 * 60 * 1000, 
+    windowMs: 15 * 60 * 1000,
     max: 10000,
     message: { status: 'error', code: 'RATE_LIMIT', message: 'Troppe richieste' }
 }));
@@ -69,7 +69,7 @@ app.use('/api/v1/ordini-acquisto', require('./src/routes/ordini_acquistoRoutes')
 app.use('/api/v1/ricezioni', require('./src/routes/ricezioniRoutes'));
 
 // M09 — Ordini in Uscita (Sales Orders)
-// app.use('/api/v1/ordini',           require('./src/routes/ordiniRoutes'));
+app.use('/api/v1/ordini', require('./src/routes/ordiniRoutes'));
 
 // M10 — Spedizioni & DDT
 // app.use('/api/v1/spedizioni',       require('./src/routes/spedizioniRoutes'));

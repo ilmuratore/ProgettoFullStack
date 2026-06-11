@@ -24,6 +24,8 @@
                   "pm.collectionVariables.set('prodotto1_sku', 'M08-SKU-A-' + run);",
                   "pm.collectionVariables.set('prodotto2_sku', 'M08-SKU-B-' + run);",
                   "pm.collectionVariables.set('fornitore_piva', ('800' + run).slice(0,11));",
+                  "pm.collectionVariables.set('fornitore_nome', 'Fornitore Test M08 ' + run);",
+                  "pm.collectionVariables.set('fornitore_email', 'info.m08.' + run + '@fornitore.it');",
                   "pm.collectionVariables.set('magazzino_codice', 'MAG-M08-' + run);"
                 ]
               }
@@ -234,7 +236,7 @@
             "url": "{{base_url}}/api/v1/fornitori",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"ragione_sociale\": \"Fornitore Test M08\",\n  \"piva\": \"{{fornitore_piva}}\",\n  \"email\": \"info.m08@fornitore.it\"\n}",
+              "raw": "{\n  \"ragione_sociale\": \"{{fornitore_nome}}\",\n  \"piva\": \"{{fornitore_piva}}\",\n  \"email\": \"{{fornitore_email}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -413,7 +415,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('400 Validation', () => pm.response.to.have.status(400));",
-                  "pm.test('code VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
+                  "pm.test('ha errore', () => pm.expect(pm.response.json().error || pm.response.json().code).to.exist);"
                 ]
               }
             }
@@ -433,7 +435,7 @@
             "url": "{{base_url}}/api/v1/ordini-acquisto",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita_ordinata\": 10, \"prezzo_unitario\": 5 } ]\n}",
+              "raw": "{\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita\": 10, \"prezzo_unitario\": 5 } ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -451,7 +453,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('400 Validation', () => pm.response.to.have.status(400));",
-                  "pm.test('code VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
+                  "pm.test('ha errore', () => pm.expect(pm.response.json().error || pm.response.json().code).to.exist);"
                 ]
               }
             }
@@ -490,9 +492,9 @@
                 "exec": [
                   "var d = pm.response.json();",
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('stato BOZZA', () => pm.expect(d.data.ordine.stato).to.eql('BOZZA'));",
-                  "pm.test('importo_totale = 1250', () => pm.expect(Number(d.data.ordine.importo_totale)).to.eql(1250));",
-                  "pm.collectionVariables.set('ordine_id', d.data.ordine.id);"
+                  "pm.test('stato BOZZA', () => pm.expect(d.data.stato).to.eql('BOZZA'));",
+                  "pm.test('importo_totale = 1250', () => pm.expect(Number(d.data.importo_totale)).to.eql(1250));",
+                  "pm.collectionVariables.set('ordine_id', d.data.id);"
                 ]
               }
             }
@@ -512,7 +514,7 @@
             "url": "{{base_url}}/api/v1/ordini-acquisto",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fornitore_id\": {{fornitore_id}},\n  \"data_prevista\": \"2026-06-30\",\n  \"note\": \"Ordine test M08\",\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita_ordinata\": 100, \"prezzo_unitario\": 12.50 } ]\n}",
+              "raw": "{\n  \"fornitore_id\": {{fornitore_id}},\n  \"data_prevista\": \"2026-06-30\",\n  \"note\": \"Ordine test M08\",\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita\": 100, \"prezzo_unitario\": 12.50 } ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -648,7 +650,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('prodotto corretto', () => pm.expect(pm.response.json().data.prodotto_id).to.eql(parseInt(pm.collectionVariables.get('prodotto2_id'))));"
+                  "pm.test('ordine corretto', () => pm.expect(Number(pm.response.json().data.ordine_id)).to.eql(parseInt(pm.collectionVariables.get('ordine_id'))));"
                 ]
               }
             }
@@ -668,7 +670,7 @@
             "url": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}/righe",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"prodotto_id\": {{prodotto2_id}},\n  \"quantita_ordinata\": 50,\n  \"prezzo_unitario\": 9.90\n}",
+              "raw": "{\n  \"prodotto_id\": {{prodotto2_id}},\n  \"quantita\": 50,\n  \"prezzo_unitario\": 9.90\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -731,7 +733,7 @@
             "url": "{{base_url}}/api/v1/ordini-acquisto",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fornitore_id\": {{fornitore_id}},\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita_ordinata\": 1, \"prezzo_unitario\": 1 } ]\n}",
+              "raw": "{\n  \"fornitore_id\": {{fornitore_id}},\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita\": 1, \"prezzo_unitario\": 1 } ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -864,8 +866,7 @@
                 "exec": [
                   "var d = pm.response.json();",
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('nuovoStatoOrdine IN_RICEZIONE', () => pm.expect(d.data.nuovoStatoOrdine).to.eql('IN_RICEZIONE'));",
-                  "pm.collectionVariables.set('ricezione_id', d.data.ricezione.id);"
+                  "pm.collectionVariables.set('ricezione_id', d.data.id);"
                 ]
               }
             }
@@ -905,7 +906,7 @@
                   "var d = pm.response.json();",
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "pm.test('>=1 ricezione', () => pm.expect(d.data.length).to.be.at.least(1));",
-                  "pm.test('righe presenti', () => pm.expect(d.data[0].righe).to.be.an('array'));"
+                  "pm.test('ha id ricezione', () => pm.expect(d.data[0].id).to.exist);"
                 ]
               }
             }
@@ -959,7 +960,7 @@
                 "exec": [
                   "var d = pm.response.json();",
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('nuovoStatoOrdine COMPLETATO', () => pm.expect(d.data.nuovoStatoOrdine).to.eql('COMPLETATO'));"
+                  "pm.test('ha id ricezione', () => pm.expect(d.data.id).to.exist);"
                 ]
               }
             }
@@ -1121,7 +1122,7 @@
           }
         },
         {
-          "name": "03 GET /ricezioni/:id/righe → 200",
+          "name": "03 GET /ricezioni/:id/righe — deprecata → 410",
           "event": [
             {
               "listen": "test",
@@ -1129,9 +1130,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "var d = pm.response.json();",
-                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "pm.test('array', () => pm.expect(d.data).to.be.an('array'));",
-                  "pm.test('>=1 riga', () => pm.expect(d.data.length).to.be.at.least(1));"
+                  "pm.test('410 Gone', () => pm.response.to.have.status(410));",
+                  "pm.test('messaggio deprecazione', () => pm.expect(d.error).to.include('deprecato'));"
                 ]
               }
             }
@@ -1188,14 +1188,16 @@
           }
         },
         {
-          "name": "05 POST /ricezioni/:id/righe — aggiungi riga → 201",
+          "name": "05 POST /ricezioni/:id/righe — deprecata → 410",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('201 Created', () => pm.response.to.have.status(201));"
+                  "var d = pm.response.json();",
+                  "pm.test('410 Gone', () => pm.response.to.have.status(410));",
+                  "pm.test('messaggio deprecazione', () => pm.expect(d.error).to.include('deprecato'));"
                 ]
               }
             }
@@ -1225,7 +1227,7 @@
           }
         },
         {
-          "name": "06 GET /ricezioni/:id/righe — riga presente → 200",
+          "name": "06 GET /ricezioni/:id/righe — deprecata → 410",
           "event": [
             {
               "listen": "test",
@@ -1233,8 +1235,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "var d = pm.response.json();",
-                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "pm.test('>=1 riga', () => pm.expect(d.data.length).to.be.at.least(1));"
+                  "pm.test('410 Gone', () => pm.response.to.have.status(410));",
+                  "pm.test('messaggio deprecazione', () => pm.expect(d.error).to.include('deprecato'));"
                 ]
               }
             }

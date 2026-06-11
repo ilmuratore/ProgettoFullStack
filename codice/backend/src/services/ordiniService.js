@@ -162,39 +162,73 @@ const updateStato = async (id, nuovoStato) => {
         throwError('VALIDATION_ERROR', `Stato non valido. Valori ammessi: ${VALID_STATES.join(', ')}`);
     }
 
-    const ordineRes = await ordiniModel.findById(id);
-    if (ordineRes.rowCount === 0) {
-        throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato');
-    }
+    const client = await pool.connect();
 
-    const ordine = ordineRes.rows[0];
-    if (!canTransitionStato(ordine.stato, nuovoStato)) {
-        throwError('STATE_TRANSITION_INVALID', `Transizione ${ordine.stato} -> ${nuovoStato} non consentita`);
-    }
+    try {
+        await client.query('BEGIN');
 
-    if (nuovoStato === 'CONFERMATO') {
-        const righeRes = await righeOrdineModel.findByOrdine(id);
-
-        const fabbisogno = new Map();
-        for (const r of righeRes.rows) {
-            fabbisogno.set(r.prodotto_id, (fabbisogno.get(r.prodotto_id) || 0) + Number(r.quantita));
+        const ordineRes = await ordiniModel.findByIdForUpdate(id, client);
+        if (ordineRes.rowCount === 0) {
+            throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato');
         }
 
-        for (const [prodotto_id, richiesto] of fabbisogno.entries()) {
-            const disp = await getDisponibilita(prodotto_id);
-            if (richiesto > disp.disponibile) {
-                throwError('INSUFFICIENT_STOCK',
-                    `Disponibilita insufficiente per il prodotto ${prodotto_id}: richiesti ${richiesto}, disponibili ${disp.disponibile}`);
+        const ordine = ordineRes.rows[0];
+        if (!canTransitionStato(ordine.stato, nuovoStato)) {
+            throwError('STATE_TRANSITION_INVALID', `Transizione ${ordine.stato} -> ${nuovoStato} non consentita`);
+        }
+
+        if (nuovoStato === 'CONFERMATO') {
+            const righeRes = await righeOrdineModel.findByOrdine(id, client);
+
+            const fabbisogno = new Map();
+            for (const r of righeRes.rows) {
+                fabbisogno.set(r.prodotto_id, (fabbisogno.get(r.prodotto_id) || 0) + Number(r.quantita));
+            }
+
+            const prodottoIds = Array.from(fabbisogno.keys()).sort((a, b) => a - b);
+            if (prodottoIds.length > 0) {
+                await ordiniModel.lockGiacenzeByProdottoIds(prodottoIds, client);
+
+                const precedentiRes = await ordiniModel.findOrdiniBozzaPrecedentiConStessiProdotti(
+                    ordine.id,
+                    prodottoIds,
+                    ordine.data_ordine,
+                    client
+                );
+
+                if (precedentiRes.rowCount > 0) {
+                    throwError(
+                        'STATE_TRANSITION_INVALID',
+                        'Esistono ordini più vecchi sugli stessi prodotti da processare prima'
+                    );
+                }
+            }
+
+            for (const [prodotto_id, richiesto] of fabbisogno.entries()) {
+                const disp = await getDisponibilita(prodotto_id, client);
+                if (richiesto > disp.disponibile) {
+                    throwError(
+                        'INSUFFICIENT_STOCK',
+                        `Disponibilita insufficiente per il prodotto ${prodotto_id}: richiesti ${richiesto}, disponibili ${disp.disponibile}`
+                    );
+                }
             }
         }
-    }
 
-    if (nuovoStato === 'SPEDITO' && ordine.stato_picking !== 'PICKING_COMPLETATO') {
-        throwError('STATE_TRANSITION_INVALID', 'Impossibile spedire: il picking non e completato');
-    }
+        if (nuovoStato === 'SPEDITO' && ordine.stato_picking !== 'PICKING_COMPLETATO') {
+            throwError('STATE_TRANSITION_INVALID', 'Impossibile spedire: il picking non e completato');
+        }
 
-    const res = await ordiniModel.updateStato(id, nuovoStato);
-    return res.rows[0];
+        const res = await ordiniModel.updateStato(id, nuovoStato, client);
+
+        await client.query('COMMIT');
+        return res.rows[0];
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
 };
 
 const updateStatoPicking = async (id, nuovoStatoPicking, prelievi) => {
@@ -202,67 +236,85 @@ const updateStatoPicking = async (id, nuovoStatoPicking, prelievi) => {
         throwError('VALIDATION_ERROR', `Stato picking non valido. Valori ammessi: ${VALID_PICKING.join(', ')}`);
     }
 
-    const ordineRes = await ordiniModel.findById(id);
-    if (ordineRes.rowCount === 0) {
-        throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato');
-    }
+    const client = await pool.connect();
 
-    const ordine = ordineRes.rows[0];
+    try {
+        await client.query('BEGIN');
 
-    if (ordine.stato !== 'CONFERMATO') {
-        throwError('STATE_TRANSITION_INVALID', 'Il picking e gestibile solo su ordini CONFERMATO');
-    }
-
-    if (!canTransitionPicking(ordine.stato_picking, nuovoStatoPicking)) {
-        throwError('STATE_TRANSITION_INVALID',
-            `Transizione picking ${ordine.stato_picking} -> ${nuovoStatoPicking} non consentita`);
-    }
-
-    if (nuovoStatoPicking !== 'PICKING_COMPLETATO') {
-        const res = await ordiniModel.updateStatoPicking(id, nuovoStatoPicking);
-        return { ordine: res.rows[0], movimenti: [] };
-    }
-
-    if (!Array.isArray(prelievi) || prelievi.length === 0) {
-        throwError('VALIDATION_ERROR', 'Per completare il picking serve la lista prelievi per ogni riga');
-    }
-
-    const righeRes = await righeOrdineModel.findByOrdine(id);
-    const righeById = new Map(righeRes.rows.map(r => [r.id, r]));
-
-    for (const p of prelievi) {
-        const riga = righeById.get(p.riga_id);
-        if (!riga) {
-            throwError('VALIDATION_ERROR', `Riga ordine ${p.riga_id} non trovata in questo ordine`);
+        const ordineRes = await ordiniModel.findById(id, client);
+        if (ordineRes.rowCount === 0) {
+            throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato');
         }
-        if (!Array.isArray(p.ubicazioni) || p.ubicazioni.length === 0) {
-            throwError('VALIDATION_ERROR', `La riga ${p.riga_id} non ha ubicazioni di prelievo`);
-        }
-        const sommaPrelievi = p.ubicazioni.reduce((s, u) => s + Number(u.quantita || 0), 0);
-        if (sommaPrelievi !== Number(riga.quantita)) {
-            throwError('VALIDATION_ERROR',
-                `La somma dei prelievi (${sommaPrelievi}) per la riga ${p.riga_id} non corrisponde alla quantita ordinata (${riga.quantita})`);
-        }
-    }
 
-    const movimenti = [];
-    for (const p of prelievi) {
-        const riga = righeById.get(p.riga_id);
-        for (const u of p.ubicazioni) {
-            const movimento = await movimentiStockService.create({
-                prodotto_id: riga.prodotto_id,
-                ubicazione_id: u.ubicazione_id,
-                quantita: u.quantita,
-                movimento_tipo: 'SCARICO_VENDITA',
-                riferimento: `ordine:${id}`,
-                note: null
-            });
-            movimenti.push(movimento);
-        }
-    }
+        const ordine = ordineRes.rows[0];
 
-    const res = await ordiniModel.updateStatoPicking(id, 'PICKING_COMPLETATO');
-    return { ordine: res.rows[0], movimenti };
+        if (ordine.stato !== 'CONFERMATO') {
+            throwError('STATE_TRANSITION_INVALID', 'Il picking e gestibile solo su ordini CONFERMATO');
+        }
+
+        if (!canTransitionPicking(ordine.stato_picking, nuovoStatoPicking)) {
+            throwError(
+                'STATE_TRANSITION_INVALID',
+                `Transizione picking ${ordine.stato_picking} -> ${nuovoStatoPicking} non consentita`
+            );
+        }
+
+        if (nuovoStatoPicking !== 'PICKING_COMPLETATO') {
+            const res = await ordiniModel.updateStatoPicking(id, nuovoStatoPicking, client);
+            await client.query('COMMIT');
+            return { ordine: res.rows[0], movimenti: [] };
+        }
+
+        if (!Array.isArray(prelievi) || prelievi.length === 0) {
+            throwError('VALIDATION_ERROR', 'Per completare il picking serve la lista prelievi per ogni riga');
+        }
+
+        const righeRes = await righeOrdineModel.findByOrdine(id, client);
+        const righeById = new Map(righeRes.rows.map(r => [r.id, r]));
+
+        for (const p of prelievi) {
+            const riga = righeById.get(Number(p.riga_id));
+            if (!riga) {
+                throwError('VALIDATION_ERROR', `Riga ordine ${p.riga_id} non trovata in questo ordine`);
+            }
+            if (!Array.isArray(p.ubicazioni) || p.ubicazioni.length === 0) {
+                throwError('VALIDATION_ERROR', `La riga ${p.riga_id} non ha ubicazioni di prelievo`);
+            }
+            const sommaPrelievi = p.ubicazioni.reduce((s, u) => s + Number(u.quantita || 0), 0);
+            if (sommaPrelievi !== Number(riga.quantita)) {
+                throwError(
+                    'VALIDATION_ERROR',
+                    `La somma dei prelievi (${sommaPrelievi}) per la riga ${p.riga_id} non corrisponde alla quantita ordinata (${riga.quantita})`
+                );
+            }
+        }
+
+        const movimenti = [];
+        for (const p of prelievi) {
+            const riga = righeById.get(Number(p.riga_id));
+            for (const u of p.ubicazioni) {
+                const movimento = await movimentiStockService.create({
+                    prodotto_id: riga.prodotto_id,
+                    ubicazione_id: Number(u.ubicazione_id),
+                    quantita: Number(u.quantita),
+                    movimento_tipo: 'SCARICO_VENDITA',
+                    riferimento: `ordine:${id}`,
+                    note: null
+                }, client);
+                movimenti.push(movimento);
+            }
+        }
+
+        const res = await ordiniModel.updateStatoPicking(id, 'PICKING_COMPLETATO', client);
+
+        await client.query('COMMIT');
+        return { ordine: res.rows[0], movimenti };
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
 };
 
 module.exports = {
