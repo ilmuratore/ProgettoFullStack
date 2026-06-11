@@ -1,14 +1,32 @@
 const pool = require('../config/db');
 
+const LIST_SELECT = `
+    o.id,
+    o.fornitore_id,
+    f.ragione_sociale AS fornitore,
+    o.stato,
+    o.data_prevista,
+    COALESCE(o.importo_totale, SUM(r.quantita_ordinata * r.prezzo_unitario), 0)::numeric AS importo_totale,
+    o.note,
+    o.utente_id,
+    CONCAT(u.nome, ' ', u.cognome) AS utente,
+    o.created_at,
+    o.updated_at,
+    COALESCE(SUM(r.quantita_ordinata * r.prezzo_unitario), 0)::numeric AS totale_calcolato,
+    COUNT(r.id)::int AS numero_righe,
+    COALESCE(SUM(r.quantita_ricevuta), 0)::int AS totale_ricevuto
+`;
+
 const findAll = async (client = pool) => {
     const executor = client || pool;
     const query = `
         SELECT
-            o.*,
-            COALESCE(SUM(r.quantita_ordinata * r.prezzo_unitario), 0) AS importo_calcolato
+            ${LIST_SELECT}
         FROM ordini_acquisto o
+        JOIN fornitori f ON f.id = o.fornitore_id
+        LEFT JOIN utenti u ON u.id = o.utente_id
         LEFT JOIN righe_po r ON r.ordine_acquisto_id = o.id
-        GROUP BY o.id
+        GROUP BY o.id, f.ragione_sociale, u.nome, u.cognome
         ORDER BY o.id DESC
     `;
     return executor.query(query);
@@ -35,12 +53,13 @@ const findAllFiltered = async ({ stato, fornitore_id }, client = pool) => {
 
     const query = `
         SELECT
-            o.*,
-            COALESCE(SUM(r.quantita_ordinata * r.prezzo_unitario), 0) AS importo_calcolato
+            ${LIST_SELECT}
         FROM ordini_acquisto o
+        JOIN fornitori f ON f.id = o.fornitore_id
+        LEFT JOIN utenti u ON u.id = o.utente_id
         LEFT JOIN righe_po r ON r.ordine_acquisto_id = o.id
         ${whereClause}
-        GROUP BY o.id
+        GROUP BY o.id, f.ragione_sociale, u.nome, u.cognome
         ORDER BY o.id DESC
     `;
 
@@ -50,7 +69,16 @@ const findAllFiltered = async ({ stato, fornitore_id }, client = pool) => {
 const findDettaglioCompleto = async (id, client = pool) => {
     const executor = client || pool;
     const ordineRes = await executor.query(
-        'SELECT * FROM ordini_acquisto WHERE id = $1',
+        `
+        SELECT
+            o.*,
+            f.ragione_sociale AS fornitore,
+            CONCAT(u.nome, ' ', u.cognome) AS utente
+        FROM ordini_acquisto o
+        JOIN fornitori f ON f.id = o.fornitore_id
+        LEFT JOIN utenti u ON u.id = o.utente_id
+        WHERE o.id = $1
+        `,
         [id]
     );
 
@@ -72,7 +100,16 @@ const findDettaglioCompleto = async (id, client = pool) => {
 const findById = async (id, client = pool) => {
     const executor = client || pool;
     return executor.query(
-        'SELECT * FROM ordini_acquisto WHERE id = $1',
+        `
+        SELECT
+            o.*,
+            f.ragione_sociale AS fornitore,
+            CONCAT(u.nome, ' ', u.cognome) AS utente
+        FROM ordini_acquisto o
+        JOIN fornitori f ON f.id = o.fornitore_id
+        LEFT JOIN utenti u ON u.id = o.utente_id
+        WHERE o.id = $1
+        `,
         [id]
     );
 };
@@ -82,20 +119,22 @@ const create = async (data, client = pool) => {
     const {
         fornitore_id,
         data_prevista,
+        importo_totale,
         note,
         utente_id
     } = data;
 
     const query = `
         INSERT INTO ordini_acquisto
-            (fornitore_id, data_prevista, note, utente_id, stato)
-        VALUES ($1, $2, $3, $4, 'BOZZA')
+            (fornitore_id, data_prevista, importo_totale, note, utente_id, stato)
+        VALUES ($1, $2, $3, $4, $5, 'BOZZA')
         RETURNING *
     `;
 
     return executor.query(query, [
         fornitore_id,
         data_prevista || null,
+        importo_totale ?? 0,
         note || null,
         utente_id
     ]);
@@ -105,7 +144,7 @@ const create = async (data, client = pool) => {
 const update = async (id, data, client = pool) => {
     const executor = client || pool;
 
-    const allowed = ['data_prevista', 'note'];
+    const allowed = ['data_prevista', 'importo_totale', 'note'];
     const fields = [];
     const values = [];
     let idx = 1;

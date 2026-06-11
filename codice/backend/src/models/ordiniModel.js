@@ -1,5 +1,22 @@
 const pool = require('../config/db');
 
+const LIST_SELECT = `
+       ordini.id,
+       ordini.cliente_id,
+       ordini.destinazione_id,
+       ordini.data_ordine,
+       ordini.data_consegna_richiesta,
+       COALESCE(ordini.importo_totale, SUM(righe_ordine.quantita * righe_ordine.prezzo_unitario), 0)::numeric AS importo_totale,
+       ordini.stato,
+       ordini.stato_picking,
+       ordini.utente_id,
+       ordini.created_at,
+       ordini.updated_at,
+       clienti.ragione_sociale AS cliente,
+       destinazioni_clienti.etichetta AS destinazione,
+       CONCAT(utenti.nome, ' ', utenti.cognome) AS utente
+`;
+
 const create = ({ cliente_id, destinazione_id, data_consegna_richiesta, importo_totale, utente_id }, client) =>
     (client || pool).query(
         `
@@ -13,29 +30,27 @@ const create = ({ cliente_id, destinazione_id, data_consegna_richiesta, importo_
 
 const findAll = () =>
     pool.query(`
-        SELECT ordini.*,
-               clienti.ragione_sociale AS cliente,
-               destinazioni_clienti.etichetta AS destinazione,
-               CONCAT(utenti.nome, ' ', utenti.cognome) AS utente
+        SELECT ${LIST_SELECT}
         FROM ordini
         JOIN clienti ON ordini.cliente_id = clienti.id
         LEFT JOIN destinazioni_clienti ON ordini.destinazione_id = destinazioni_clienti.id
         LEFT JOIN utenti ON ordini.utente_id = utenti.id
+        LEFT JOIN righe_ordine ON righe_ordine.ordine_id = ordini.id
+        GROUP BY ordini.id, clienti.ragione_sociale, destinazioni_clienti.etichetta, utenti.nome, utenti.cognome
         ORDER BY ordini.data_ordine DESC;
     `);
 
 const findByStato = (stato) =>
     pool.query(
         `
-        SELECT ordini.*,
-               clienti.ragione_sociale AS cliente,
-               destinazioni_clienti.etichetta AS destinazione,
-               CONCAT(utenti.nome, ' ', utenti.cognome) AS utente
+        SELECT ${LIST_SELECT}
         FROM ordini
         JOIN clienti ON ordini.cliente_id = clienti.id
         LEFT JOIN destinazioni_clienti ON ordini.destinazione_id = destinazioni_clienti.id
         LEFT JOIN utenti ON ordini.utente_id = utenti.id
+        LEFT JOIN righe_ordine ON righe_ordine.ordine_id = ordini.id
         WHERE ordini.stato = $1::sales_order_state
+        GROUP BY ordini.id, clienti.ragione_sociale, destinazioni_clienti.etichetta, utenti.nome, utenti.cognome
         ORDER BY ordini.data_ordine DESC;
         `,
         [stato]
@@ -44,15 +59,14 @@ const findByStato = (stato) =>
 const findByClienteId = (cliente_id) =>
     pool.query(
         `
-        SELECT ordini.*,
-               clienti.ragione_sociale AS cliente,
-               destinazioni_clienti.etichetta AS destinazione,
-               CONCAT(utenti.nome, ' ', utenti.cognome) AS utente
+        SELECT ${LIST_SELECT}
         FROM ordini
         JOIN clienti ON ordini.cliente_id = clienti.id
         LEFT JOIN destinazioni_clienti ON ordini.destinazione_id = destinazioni_clienti.id
         LEFT JOIN utenti ON ordini.utente_id = utenti.id
+        LEFT JOIN righe_ordine ON righe_ordine.ordine_id = ordini.id
         WHERE ordini.cliente_id = $1
+        GROUP BY ordini.id, clienti.ragione_sociale, destinazioni_clienti.etichetta, utenti.nome, utenti.cognome
         ORDER BY ordini.data_ordine DESC;
         `,
         [cliente_id]
@@ -61,15 +75,14 @@ const findByClienteId = (cliente_id) =>
 const findByStatoPicking = (stato_picking) =>
     pool.query(
         `
-        SELECT ordini.*,
-               clienti.ragione_sociale AS cliente,
-               destinazioni_clienti.etichetta AS destinazione,
-               CONCAT(utenti.nome, ' ', utenti.cognome) AS utente
+        SELECT ${LIST_SELECT}
         FROM ordini
         JOIN clienti ON ordini.cliente_id = clienti.id
         LEFT JOIN destinazioni_clienti ON ordini.destinazione_id = destinazioni_clienti.id
         LEFT JOIN utenti ON ordini.utente_id = utenti.id
+        LEFT JOIN righe_ordine ON righe_ordine.ordine_id = ordini.id
         WHERE ordini.stato_picking = $1::sales_order_picking_state
+        GROUP BY ordini.id, clienti.ragione_sociale, destinazioni_clienti.etichetta, utenti.nome, utenti.cognome
         ORDER BY ordini.data_ordine DESC;
         `,
         [stato_picking]
@@ -78,15 +91,14 @@ const findByStatoPicking = (stato_picking) =>
 const findById = (id, client) =>
     (client || pool).query(
         `
-        SELECT ordini.*,
-               clienti.ragione_sociale AS cliente,
-               destinazioni_clienti.etichetta AS destinazione,
-               CONCAT(utenti.nome, ' ', utenti.cognome) AS utente
+        SELECT ${LIST_SELECT}
         FROM ordini
         JOIN clienti ON ordini.cliente_id = clienti.id
         LEFT JOIN destinazioni_clienti ON ordini.destinazione_id = destinazioni_clienti.id
         LEFT JOIN utenti ON ordini.utente_id = utenti.id
-        WHERE ordini.id = $1;
+        LEFT JOIN righe_ordine ON righe_ordine.ordine_id = ordini.id
+        WHERE ordini.id = $1
+        GROUP BY ordini.id, clienti.ragione_sociale, destinazioni_clienti.etichetta, utenti.nome, utenti.cognome
         `,
         [id]
     );
