@@ -380,7 +380,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"prodotto_id\": \"{{prodotto_id}}\",\n  \"ubicazione_id\": \"{{ubicazione_id}}\",\n  \"quantita\": 100,\n  \"movimento_tipo\": \"CARICO_ACQUISTO\",\n  \"riferimento\": \"setup:m09\"\n}"
+              "raw": "{\n  \"prodotto_id\": {{prodotto_id}},\n  \"ubicazione_id\": {{ubicazione_id}},\n  \"quantita\": 100,\n  \"movimento_tipo\": \"CARICO_ACQUISTO\",\n  \"riferimento\": \"setup:m09\"\n}"
             }
           },
           "event": [
@@ -462,7 +462,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"cliente_id\": \"{{cliente_id}}\",\n  \"destinazione_id\": \"{{destinazione_id}}\",\n  \"data_consegna_richiesta\": \"2026-07-01\",\n  \"righe\": [\n    {\n      \"prodotto_id\": \"{{prodotto_id}}\",\n      \"quantita\": 50,\n      \"prezzo_unitario\": 12.5\n    }\n  ]\n}"
+              "raw": "{\n  \"cliente_id\": {{cliente_id}},\n  \"destinazione_id\": {{destinazione_id}},\n  \"data_consegna_richiesta\": \"2026-07-01\",\n  \"righe\": [\n    {\n      \"prodotto_id\": {{prodotto_id}},\n      \"quantita\": 50,\n      \"prezzo_unitario\": 12.5\n    }\n  ]\n}"
             }
           },
           "event": [
@@ -621,7 +621,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"cliente_id\": \"{{cliente_id}}\",\n  \"destinazione_id\": \"{{destinazione_id}}\",\n  \"righe\": [\n    {\n      \"prodotto_id\": \"{{prodotto_id}}\",\n      \"quantita\": 200,\n      \"prezzo_unitario\": 1\n    }\n  ]\n}"
+              "raw": "{\n  \"cliente_id\": {{cliente_id}},\n  \"destinazione_id\": {{destinazione_id}},\n  \"righe\": [\n    {\n      \"prodotto_id\": {{prodotto_id}},\n      \"quantita\": 200,\n      \"prezzo_unitario\": 1\n    }\n  ]\n}"
             }
           },
           "event": [
@@ -744,7 +744,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"stato_picking\": \"PICKING_COMPLETATO\",\n  \"prelievi\": [\n    {\n      \"riga_id\": \"{{riga_id}}\",\n      \"ubicazioni\": [\n        {\n          \"ubicazione_id\": \"{{ubicazione_id}}\",\n          \"quantita\": 50\n        }\n      ]\n    }\n  ]\n}"
+              "raw": "{\n  \"stato_picking\": \"PICKING_COMPLETATO\",\n  \"prelievi\": [\n    {\n      \"riga_id\": {{riga_id}},\n      \"ubicazioni\": [\n        {\n          \"ubicazione_id\": {{ubicazione_id}},\n          \"quantita\": 50\n        }\n      ]\n    }\n  ]\n}"
             }
           },
           "event": [
@@ -865,7 +865,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"cliente_id\": \"{{cliente_id}}\",\n  \"destinazione_id\": \"{{destinazione_id}}\",\n  \"righe\": [\n    {\n      \"prodotto_id\": \"{{prodotto_id}}\",\n      \"quantita\": 10,\n      \"prezzo_unitario\": 1\n    }\n  ]\n}"
+              "raw": "{\n  \"cliente_id\": {{cliente_id}},\n  \"destinazione_id\": {{destinazione_id}},\n  \"righe\": [\n    {\n      \"prodotto_id\": {{prodotto_id}},\n      \"quantita\": 10,\n      \"prezzo_unitario\": 1\n    }\n  ]\n}"
             }
           },
           "event": [
@@ -945,7 +945,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"stato_picking\": \"PICKING_COMPLETATO\",\n  \"prelievi\": [\n    {\n      \"riga_id\": \"{{riga_q}}\",\n      \"ubicazioni\": [\n        {\n          \"ubicazione_id\": \"{{ubicazione_id}}\",\n          \"quantita\": 5\n        }\n      ]\n    }\n  ]\n}"
+              "raw": "{\n  \"stato_picking\": \"PICKING_COMPLETATO\",\n  \"prelievi\": [\n    {\n      \"riga_id\": {{riga_q}},\n      \"ubicazioni\": [\n        {\n          \"ubicazione_id\": {{ubicazione_id}},\n          \"quantita\": 5\n        }\n      ]\n    }\n  ]\n}"
             }
           },
           "event": [
