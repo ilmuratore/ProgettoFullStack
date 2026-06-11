@@ -82,40 +82,39 @@ const create = async (data, client = pool) => {
     const {
         fornitore_id,
         data_prevista,
-        importo_totale,
         note,
         utente_id
     } = data;
 
     const query = `
         INSERT INTO ordini_acquisto
-            (fornitore_id, data_prevista, importo_totale, note, utente_id, stato)
-        VALUES ($1, $2, $3, $4, $5, 'BOZZA')
+            (fornitore_id, data_prevista, note, utente_id, stato)
+        VALUES ($1, $2, $3, $4, 'BOZZA')
         RETURNING *
     `;
 
-    const values = [
+    return executor.query(query, [
         fornitore_id,
         data_prevista || null,
-        importo_totale,
         note || null,
         utente_id
-    ];
-
-    return executor.query(query, values);
+    ]);
 };
+
 
 const update = async (id, data, client = pool) => {
     const executor = client || pool;
 
+    const allowed = ['data_prevista', 'note'];
     const fields = [];
     const values = [];
     let idx = 1;
 
     for (const [key, value] of Object.entries(data)) {
+        if (!allowed.includes(key)) continue;
         fields.push(`${key} = $${idx}`);
         values.push(value);
-        idx += 1;
+        idx++;
     }
 
     if (fields.length === 0) {
@@ -124,15 +123,15 @@ const update = async (id, data, client = pool) => {
 
     values.push(id);
 
-    const query = `
-        UPDATE ordini_acquisto
-        SET ${fields.join(', ')}
-        WHERE id = $${values.length}
-        RETURNING *
-    `;
-
-    return executor.query(query, values);
+    return executor.query(
+        `UPDATE ordini_acquisto
+         SET ${fields.join(', ')}, updated_at = NOW()
+         WHERE id = $${values.length}
+         RETURNING *`,
+        values
+    );
 };
+
 
 const updateStato = async (id, stato, client = pool) => {
     const executor = client || pool;
