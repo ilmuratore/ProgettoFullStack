@@ -54,7 +54,7 @@ const update = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
 
-        const { ragione_sociale, piva_cf, email, telefono } = req.body;
+        const { ragione_sociale, piva_cf, email, telefono, attivo } = req.body;
         const fields = {};
         if (ragione_sociale !== undefined) fields.ragione_sociale = ragione_sociale;
         if (piva_cf          !== undefined) fields.piva_cf         = piva_cf;

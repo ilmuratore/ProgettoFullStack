@@ -57,7 +57,7 @@ const create = async (req, res, next) => {
 const update = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
-        const { ragione_sociale, piva, indirizzo, email, telefono, sito_web, descrizione_aziendale } = req.body;
+        const { ragione_sociale, piva, indirizzo, email, telefono, sito_web, descrizione_aziendale, attivo } = req.body;
         const fields = {};
         if (ragione_sociale !== undefined) fields.ragione_sociale = ragione_sociale;
         if (piva !== undefined) fields.piva = piva;
