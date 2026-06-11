@@ -157,3 +157,25 @@ export interface RigaRicezioneCreateRequest {
   quantita: number;
   ubicazione_id: number;
 }
+
+// Risposta di POST /ricezioni (riga grezza tabella ricezioni, senza join)
+export interface RicezioneRow {
+  id: number;
+  ordine_acquisto_id: number;
+  data_ricezione: string;
+  note: string | null;
+  utente_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Risposta di POST /ricezioni/:id/righe (riga grezza tabella righe_ricezione, senza join)
+export interface RigaRicezioneRow {
+  id: number;
+  ricezione_id: number;
+  prodotto_id: number;
+  quantita_ricevuta: number;
+  ubicazione_id: number;
+  created_at: string;
+  updated_at: string;
+}
