@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Package, ClipboardList, AlertTriangle, Truck,
   Bell, BellDot, Check, Filter, RotateCcw
@@ -18,6 +18,14 @@ import { PageTabBar } from '../components/ui/PageTabBar';
 
 // Store
 import { useAuthStore, RUOLO_ID_TO_NOME } from '../store/authStore';
+
+// API
+import { giacenzeApi } from '../api/giacenzeApi';
+import { prodottiApi } from '../api/prodottiApi';
+import { acquistiApi } from '../api/acquistiApi';
+
+const formatCurrency = (n: number) =>
+  new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 
 type DashboardTab = 'dashboard' | 'alert';
 type NotifType    = 'SOTTO_SCORTA' | 'RICEZIONE_PARZIALE' | 'PO_IN_RITARDO' | 'CAMBIO_STATO_SPEDIZIONE';
@@ -52,6 +60,28 @@ export function DashboardPage() {
   const [notificheState, setNotificheState] = useState<Notifica[]>(notificheIniziali);
   const [filterTipo,     setFilterTipo]     = useState<NotifType | 'tutti'>('tutti');
   const [filterLetta,    setFilterLetta]    = useState<'tutti' | 'lette' | 'non_lette'>('tutti');
+
+  const [valoreStock, setValoreStock]   = useState<number | null>(null);
+  const [ordiniAperti, setOrdiniAperti] = useState<number | null>(null);
+  const [sottoScorta, setSottoScorta]   = useState<number | null>(null);
+
+  useEffect(() => {
+    Promise.all([giacenzeApi.list(), prodottiApi.list()])
+      .then(([giacenze, prodotti]) => {
+        const prezzoByProdotto = new Map(prodotti.map((p) => [p.id, Number(p.prezzo ?? 0)]));
+        const totale = giacenze.reduce((sum, g) => sum + g.quantita * (prezzoByProdotto.get(g.prodotto_id) ?? 0), 0);
+        setValoreStock(totale);
+      })
+      .catch(() => {});
+
+    giacenzeApi.list({ scorta: 'sotto' })
+      .then((data) => setSottoScorta(data.length))
+      .catch(() => {});
+
+    acquistiApi.list()
+      .then((ordini) => setOrdiniAperti(ordini.filter((o) => o.stato !== 'COMPLETATO' && o.stato !== 'ANNULLATO').length))
+      .catch(() => {});
+  }, []);
 
   if (!utente) return null;
 
@@ -100,9 +130,9 @@ export function DashboardPage() {
           {dashboardTab === 'dashboard' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <KPICard icon={Package}       title="Valore Totale Stock"  value="€ 2.540.000" trend={12.4}  iconBgColor="bg-gradient-to-br from-[#3B82F6] to-[#2563EB]" iconColor="text-white" />
-                <KPICard icon={ClipboardList} title="Ordini da Evadere"    value="128"         trend={8.2}   iconBgColor="bg-gradient-to-br from-[#F59E0B] to-[#D97706]" iconColor="text-white" />
-                <KPICard icon={AlertTriangle} title="Prodotti Sottoscorta" value="23"          trend={-5.1}  iconBgColor="bg-gradient-to-br from-[#EF4444] to-[#DC2626]" iconColor="text-white" />
+                <KPICard icon={Package}       title="Valore Totale Stock"  value={valoreStock !== null ? formatCurrency(valoreStock) : '…'}  iconBgColor="bg-gradient-to-br from-[#3B82F6] to-[#2563EB]" iconColor="text-white" />
+                <KPICard icon={ClipboardList} title="Ordini da Evadere"    value={ordiniAperti !== null ? String(ordiniAperti) : '…'}        iconBgColor="bg-gradient-to-br from-[#F59E0B] to-[#D97706]" iconColor="text-white" />
+                <KPICard icon={AlertTriangle} title="Prodotti Sottoscorta" value={sottoScorta !== null ? String(sottoScorta) : '…'}          iconBgColor="bg-gradient-to-br from-[#EF4444] to-[#DC2626]" iconColor="text-white" />
                 <KPICard icon={Truck}         title="Spedizioni Odierne"   value="87"          trend={15.7}  iconBgColor="bg-gradient-to-br from-[#17E88F] to-[#0FA67A]" iconColor="text-white" />
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
