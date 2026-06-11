@@ -174,11 +174,11 @@ export function NewSalesOrderModal({ isOpen, onClose, onCreated }: NewSalesOrder
         destinazione_id: selectedDest.id,
         righe,
       });
-      setConfirmed(true);
       toast.success(`Ordine SO-${String(result.ordine.id).padStart(4, '0')} creato`);
       onCreated?.();
+      handleClose();
     } catch (err: any) {
-      if (err?.code === 'INSUFFICIENT_STOCK') {
+      if (err?.code === 'INSUFFICIENT_STOCK' || err?.status === 422) {
         toast.error('Stock insufficiente', { description: err?.message });
       } else if (err?.status === 409) {
         toast.error('Conflitto dati', { description: err?.message });

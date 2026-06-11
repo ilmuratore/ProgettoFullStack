@@ -3,6 +3,7 @@ import { X, Package, MapPin, User, Calendar, Receipt, Boxes, Loader2 } from 'luc
 import { toast } from 'sonner';
 import { ordiniApi } from '../../../api/ordiniApi';
 import type { OrdineVenditaDettaglio, RigaOrdineVendita, StatoOrdineVendita } from '../../../types/ordini';
+import { useAuthStore } from '../../../store/authStore';
 
 interface SalesOrderDrawerProps {
   orderId: number | null;
@@ -28,9 +29,20 @@ const getStatoBadge = (stato: StatoOrdineVendita) => {
   }
 };
 
+const getPickingBadge = (stato: string) => {
+  switch (stato) {
+    case 'NON_AVVIATO': return { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', label: 'Non Avviato' };
+    case 'IN_PICKING': return { bg: 'bg-[#FEF3C7]', text: 'text-[#F59E0B]', label: 'In Picking' };
+    case 'PICKING_COMPLETATO': return { bg: 'bg-[#DCFCE7]', text: 'text-[#22C55E]', label: 'Completato' };
+    default: return { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', label: stato };
+  }
+};
+
 export function SalesOrderDrawer({ orderId, isOpen, onClose }: SalesOrderDrawerProps) {
+  const hasPermesso = useAuthStore((state) => state.hasPermesso);
   const [detail, setDetail] = useState<OrdineVenditaDettaglio | null>(null);
   const [loading, setLoading] = useState(false);
+  const [updatingStato, setUpdatingStato] = useState(false);
 
   useEffect(() => {
     if (!isOpen || orderId == null) return;
@@ -57,7 +69,23 @@ export function SalesOrderDrawer({ orderId, isOpen, onClose }: SalesOrderDrawerP
   const order = detail?.ordine;
   const righe = detail?.righe ?? [];
   const badge = order ? getStatoBadge(order.stato) : getStatoBadge('BOZZA');
+  const pickingBadge = order ? getPickingBadge(order.stato_picking) : getPickingBadge('NON_AVVIATO');
   const orderLabel = order ? `SO-${String(order.id).padStart(4, '0')}` : '-';
+  const canApprove = !!order && order.stato === 'BOZZA' && hasPermesso('ordini:approve');
+
+  const handleConferma = async () => {
+    if (!order) return;
+    setUpdatingStato(true);
+    try {
+      const updated = await ordiniApi.updateStato(order.id, 'CONFERMATO');
+      setDetail((prev) => prev ? { ...prev, ordine: { ...prev.ordine, ...updated } } : prev);
+      toast.success(`Ordine ${orderLabel} confermato`);
+    } catch (err: any) {
+      toast.error('Errore aggiornamento stato', { description: err?.message });
+    } finally {
+      setUpdatingStato(false);
+    }
+  };
 
   const infoCards = order ? [
     { icon: Package, label: 'Numero Ordine', value: orderLabel },
@@ -128,11 +156,15 @@ export function SalesOrderDrawer({ orderId, isOpen, onClose }: SalesOrderDrawerP
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-white rounded-xl p-3">
                     <div className="text-xs text-[#9CA3AF] mb-1">Stato Ordine</div>
-                    <div className="text-sm font-medium text-[#2D2D2D]">{badge.label}</div>
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${badge.bg} ${badge.text}`}>
+                      {badge.label}
+                    </span>
                   </div>
                   <div className="bg-white rounded-xl p-3">
                     <div className="text-xs text-[#9CA3AF] mb-1">Stato Picking</div>
-                    <div className="text-sm font-medium text-[#2D2D2D]">{order.stato_picking.replaceAll('_', ' ')}</div>
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${pickingBadge.bg} ${pickingBadge.text}`}>
+                      {pickingBadge.label}
+                    </span>
                   </div>
                   <div className="bg-white rounded-xl p-3">
                     <div className="text-xs text-[#9CA3AF] mb-1">Creato</div>
@@ -177,9 +209,19 @@ export function SalesOrderDrawer({ orderId, isOpen, onClose }: SalesOrderDrawerP
         </div>
 
         <div className="p-6 border-t border-[#E5EAF2] flex gap-3">
-          <button className="flex-1 px-4 py-2.5 bg-[#F7F9FC] border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-white transition-all text-sm font-medium">
-            Modifica Ordine
-          </button>
+          {canApprove ? (
+            <button
+              onClick={handleConferma}
+              disabled={updatingStato}
+              className="flex-1 px-4 py-2.5 bg-[#F7F9FC] border border-[#E5EAF2] text-[#2D2D2D] rounded-xl hover:bg-white transition-all text-sm font-medium disabled:opacity-40"
+            >
+              {updatingStato ? 'Conferma...' : 'Conferma Ordine'}
+            </button>
+          ) : (
+            <button className="flex-1 px-4 py-2.5 bg-[#F7F9FC] border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-white transition-all text-sm font-medium">
+              Modifica Ordine
+            </button>
+          )}
           <button className="flex-1 px-4 py-2.5 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all text-sm font-medium flex items-center justify-center gap-2">
             <Boxes className="w-4 h-4" />
             Crea Spedizione
