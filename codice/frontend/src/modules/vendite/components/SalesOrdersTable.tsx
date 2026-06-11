@@ -39,6 +39,7 @@ interface SalesOrdersTableProps {
 export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTableProps) {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('tutti');
+  const [filterPicking, setFilterPicking] = useState<string>('tutti');
   const [searchParams] = useSearchParams();
   const [orders, setOrders] = useState<OrdineVendita[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,12 +53,15 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
     let alive = true;
     setLoading(true);
     ordiniApi
-      .list(filterStatus === 'tutti' ? undefined : { stato: filterStatus as StatoOrdineVendita })
+      .list({
+        ...(filterStatus !== 'tutti' ? { stato: filterStatus as StatoOrdineVendita } : {}),
+        ...(filterPicking !== 'tutti' ? { stato_picking: filterPicking as StatoPickingVendita } : {}),
+      })
       .then((data) => { if (alive) setOrders(Array.isArray(data) ? data : []); })
       .catch((err: any) => toast.error('Errore caricamento ordini', { description: err?.message }))
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [filterStatus, reloadKey]);
+  }, [filterStatus, filterPicking, reloadKey]);
 
   const filtered = orders.filter((o) => {
     const term = search.toLowerCase();
@@ -96,10 +100,23 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
             </select>
             <ChevronDown className="w-3 h-3 text-[#6B7280] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
-          <button className="px-3 py-2 bg-[#F7F9FC] border border-[#E5EAF2] text-[#6B7280] rounded-lg hover:bg-white transition-all flex items-center gap-2 text-sm">
+          <div className="relative">
+            <select
+              value={filterPicking}
+              onChange={(e) => setFilterPicking(e.target.value)}
+              className="h-9 pl-3 pr-8 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 text-sm text-[#6B7280] appearance-none cursor-pointer"
+            >
+              <option value="tutti">Tutti i picking</option>
+              <option value="NON_AVVIATO">Non Avviato</option>
+              <option value="IN_PICKING">In Picking</option>
+              <option value="PICKING_COMPLETATO">Completato</option>
+            </select>
+            <ChevronDown className="w-3 h-3 text-[#6B7280] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+          <div className="px-3 py-2 bg-[#F7F9FC] border border-[#E5EAF2] text-[#6B7280] rounded-lg flex items-center gap-2 text-sm">
             <Filter className="w-4 h-4" />
             Filtri
-          </button>
+          </div>
         </div>
       </div>
 
