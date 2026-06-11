@@ -28,7 +28,7 @@ const canTransitionStato = (from, to) => {
 const getAll = async (query) => {
     const { stato, fornitore_id } = query || {};
     const result = await ordiniAcquistoModel.findAllFiltered({ stato, fornitore_id });
-    return result;
+    return result.rows;
 };
 
 const getOrdineAcquistoById = async (id) => {

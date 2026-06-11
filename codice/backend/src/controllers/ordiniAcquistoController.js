@@ -3,7 +3,7 @@ const ordiniAcquistoService = require('../services/ordiniAcquistoService');
 const getAll = async (req, res, next) => {
     try {
         const result = await ordiniAcquistoService.getAll(req.query);
-        res.json({ status: 'success', data: result.rows || result });
+        res.json({ status: 'success', data: result });
     } catch (err) {
         next(err);
     }

@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { Cliente, ClienteCreateRequest, ClienteUpdateRequest } from '../types/clienti';
+import type { Cliente, ClienteCreateRequest, ClienteUpdateRequest, DestinazioneCliente } from '../types/clienti';
 
 export const clientiApi = {
   list: (): Promise<Cliente[]> =>
@@ -7,6 +7,9 @@ export const clientiApi = {
 
   getById: (id: number): Promise<Cliente> =>
     api.get<Cliente>(`/clienti/${id}`),
+
+  listDestinazioni: (id: number): Promise<DestinazioneCliente[]> =>
+    api.get<DestinazioneCliente[]>(`/clienti/${id}/destinazioni`),
 
   create: (body: ClienteCreateRequest): Promise<Cliente> =>
     api.post<Cliente>('/clienti', body),

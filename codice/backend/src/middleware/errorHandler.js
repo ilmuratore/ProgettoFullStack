@@ -12,6 +12,7 @@ const errorMessages = {
     STATE_TRANSITION_INVALID: 'Transizione di stato non consentita',
     DUPLICATE_ENTRY: 'Record già esistente (valore duplicato)',
     INSUFFICIENT_STOCK: 'Giacenza insufficiente per completare il movimento',
+    ENDPOINT_DEPRECATED: 'Endpoint deprecato',
     CORRIERE_CON_SPEDIZIONI: 'Impossibile eliminare: il corriere ha spedizioni associate',
     CATEGORIA_CON_PRODOTTI: 'Impossibile eliminare: la categoria ha prodotti associati',
     CATEGORIA_CON_SOTTOCATEGORIE: 'Impossibile eliminare: la categoria ha sottocategorie',
@@ -34,6 +35,7 @@ const errorStatusCodes = {
     CORRIERE_CON_SPEDIZIONI: 409,
     CATEGORIA_CON_PRODOTTI: 409,
     CATEGORIA_CON_SOTTOCATEGORIE: 409,
+    ENDPOINT_DEPRECATED: 410,
     RUOLO_NON_VALIDO: 422,
     INSUFFICIENT_STOCK: 422,
     RATE_LIMIT: 429,
@@ -52,7 +54,7 @@ const errorHandler = (err, _req, res, _next) => {
     }
 
     const statusCode = err.status || errorStatusCodes[code] || 500;
-    const message = errorMessages[code] || errorMessages.INTERNAL_SERVER_ERROR;
+    const message = err.message || errorMessages[code] || errorMessages.INTERNAL_SERVER_ERROR;
 
     if (process.env.NODE_ENV !== 'production') {
         console.error(`[${new Date().toISOString()}] ${statusCode} - ${code}: ${message}`);

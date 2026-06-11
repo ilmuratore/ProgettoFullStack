@@ -21,9 +21,10 @@ const pickingData: {id:string;ordine:string;cliente:string;dataConsegna:string;r
 
 export function SalesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<SalesTab>('ordini');
   const [expandedPicking, setExpandedPicking] = useState<string | null>('PCK-001');
+  const [reloadKey, setReloadKey] = useState(0);
 
   const getActionLabel = () => {
     switch (activeTab) {
@@ -58,7 +59,7 @@ export function SalesPage() {
           {activeTab === 'ordini' && (
             <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
               <div className="lg:col-span-7">
-                <SalesOrdersTable onOrderClick={setSelectedOrderId} />
+                <SalesOrdersTable onOrderClick={setSelectedOrderId} reloadKey={reloadKey} />
               </div>
               <div className="lg:col-span-3">
                 <SalesWidgets />
@@ -169,6 +170,7 @@ export function SalesPage() {
       <NewSalesOrderModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        onCreated={() => setReloadKey((k) => k + 1)}
       />
     </div>
   );

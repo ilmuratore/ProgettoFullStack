@@ -1,90 +1,57 @@
 import { useState, useEffect, useRef } from 'react';
 import { Bell, X, Check, CheckCheck, Package, AlertTriangle, Truck, FileText, ChevronRight } from 'lucide-react';
-
-interface Notification {
-  id: string;
-  type: 'sotto_scorta' | 'po_ritardo' | 'ricezione_parziale' | 'cambio_stato_spedizione' | 'altro';
-  title: string;
-  description: string;
-  timestamp: Date;
-  read: boolean;
-  resourceId?: string;
-  resourcePage?: string;
-}
+import { notificheApi } from '../../api/notificheApi';
+import type { Notifica, NotifType } from '../../types/notifiche';
 
 interface NotificationsPanelProps {
   onNavigate?: (page: string) => void;
 }
 
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'sotto_scorta',
-    title: 'Prodotto Sotto Scorta',
-    description: 'Film Estensibile Trasparente 50cm (PLT-EUR-001) è sotto la scorta minima',
-    timestamp: new Date(Date.now() - 5 * 60000),
-    read: false,
-    resourceId: 'PLT-EUR-001',
-    resourcePage: 'prodotti',
-  },
-  {
-    id: '2',
-    type: 'cambio_stato_spedizione',
-    title: 'Spedizione In Consegna',
-    description: 'Spedizione SHIP-2024-456 è ora in stato "In Consegna"',
-    timestamp: new Date(Date.now() - 15 * 60000),
-    read: false,
-    resourceId: 'SHIP-2024-456',
-    resourcePage: 'logistica',
-  },
-  {
-    id: '3',
-    type: 'po_ritardo',
-    title: 'Ordine in Ritardo',
-    description: 'PO-2024-001 previsto per oggi non è ancora arrivato',
-    timestamp: new Date(Date.now() - 45 * 60000),
-    read: false,
-    resourceId: 'PO-2024-001',
-    resourcePage: 'acquisti',
-  },
-  {
-    id: '4',
-    type: 'ricezione_parziale',
-    title: 'Ricezione Parziale',
-    description: 'Ricevute 450 unità su 500 previste per PO-2024-002',
-    timestamp: new Date(Date.now() - 2 * 3600000),
-    read: true,
-    resourceId: 'PO-2024-002',
-    resourcePage: 'acquisti',
-  },
-  {
-    id: '5',
-    type: 'altro',
-    title: 'Nuovo Cliente Registrato',
-    description: 'Nuovo cliente "ABC Logistics" aggiunto al sistema',
-    timestamp: new Date(Date.now() - 4 * 3600000),
-    read: true,
-    resourcePage: 'clienti',
-  },
-];
-
-const notificationIcons = {
-  sotto_scorta: AlertTriangle,
-  po_ritardo: Package,
-  ricezione_parziale: Package,
-  cambio_stato_spedizione: Truck,
-  altro: FileText,
+const notificationIcons: Record<NotifType, typeof AlertTriangle> = {
+  SOTTO_SCORTA: AlertTriangle,
+  PO_IN_RITARDO: Package,
+  RICEZIONE_PARZIALE: Package,
+  CAMBIO_STATO_SPEDIZIONE: Truck,
+  RICHIESTA_ACCETTATA: FileText,
+  RICHIESTA_RIFIUTATA: FileText,
+  MESSAGGIO_FORNITORE: FileText,
+  ALTRO: FileText,
 };
 
-const notificationColors = {
-  sotto_scorta: { bg: 'bg-[#FEE2E2]', text: 'text-[#EF4444]' },
-  po_ritardo: { bg: 'bg-[#FEF3C7]', text: 'text-[#F59E0B]' },
-  ricezione_parziale: { bg: 'bg-[#DBEAFE]', text: 'text-[#3B82F6]' },
-  cambio_stato_spedizione: { bg: 'bg-[#DCFCE7]', text: 'text-[#22C55E]' },
-  altro: { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]' },
+const notificationColors: Record<NotifType, { bg: string; text: string }> = {
+  SOTTO_SCORTA: { bg: 'bg-[#FEE2E2]', text: 'text-[#EF4444]' },
+  PO_IN_RITARDO: { bg: 'bg-[#FEF3C7]', text: 'text-[#F59E0B]' },
+  RICEZIONE_PARZIALE: { bg: 'bg-[#DBEAFE]', text: 'text-[#3B82F6]' },
+  CAMBIO_STATO_SPEDIZIONE: { bg: 'bg-[#DCFCE7]', text: 'text-[#22C55E]' },
+  RICHIESTA_ACCETTATA: { bg: 'bg-[#DCFCE7]', text: 'text-[#16A34A]' },
+  RICHIESTA_RIFIUTATA: { bg: 'bg-[#FEE2E2]', text: 'text-[#DC2626]' },
+  MESSAGGIO_FORNITORE: { bg: 'bg-[#EDE9FE]', text: 'text-[#8B5CF6]' },
+  ALTRO: { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]' },
 };
 
-function formatTimestamp(date: Date): string {
+const notificationTitles: Record<NotifType, string> = {
+  SOTTO_SCORTA: 'Prodotto Sotto Scorta',
+  PO_IN_RITARDO: 'Ordine in Ritardo',
+  RICEZIONE_PARZIALE: 'Ricezione Parziale',
+  CAMBIO_STATO_SPEDIZIONE: 'Cambio Stato Spedizione',
+  RICHIESTA_ACCETTATA: 'Richiesta Accettata',
+  RICHIESTA_RIFIUTATA: 'Richiesta Rifiutata',
+  MESSAGGIO_FORNITORE: 'Messaggio Fornitore',
+  ALTRO: 'Notifica',
+};
+
+const notificationPages: Partial<Record<NotifType, string>> = {
+  SOTTO_SCORTA: 'magazzino',
+  PO_IN_RITARDO: 'acquisti',
+  RICEZIONE_PARZIALE: 'acquisti',
+  CAMBIO_STATO_SPEDIZIONE: 'logistica',
+  RICHIESTA_ACCETTATA: 'acquisti',
+  RICHIESTA_RIFIUTATA: 'acquisti',
+  MESSAGGIO_FORNITORE: 'acquisti',
+};
+
+function formatTimestamp(value: string): string {
+  const date = new Date(value);
   const diff = Date.now() - date.getTime();
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
@@ -98,7 +65,7 @@ function formatTimestamp(date: Date): string {
 
 export function NotificationsPanel({ onNavigate }: NotificationsPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notifica[]>([]);
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -112,29 +79,30 @@ export function NotificationsPanel({ onNavigate }: NotificationsPanelProps) {
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      console.log('[Notifications] Polling server for updates...');
-    }, 30000);
-
-    return () => clearInterval(interval);
+    notificheApi.list()
+      .then((data) => setNotifications(Array.isArray(data) ? data : []))
+      .catch(() => setNotifications([]));
   }, []);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.letto).length;
 
-  const handleMarkAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => n.id === id ? { ...n, read: true } : n)
+  const handleMarkAsRead = (id: number) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, letto: true } : n))
     );
+    notificheApi.markAsRead(id).catch(() => {});
   };
 
   const handleMarkAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setNotifications((prev) => prev.map((n) => ({ ...n, letto: true })));
+    notificheApi.markAllAsRead().catch(() => {});
   };
 
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = (notification: Notifica) => {
     handleMarkAsRead(notification.id);
-    if (notification.resourcePage) {
-      onNavigate?.(notification.resourcePage);
+    const targetPage = notificationPages[notification.tipo];
+    if (targetPage) {
+      onNavigate?.(targetPage);
       setIsOpen(false);
     }
   };
@@ -188,14 +156,16 @@ export function NotificationsPanel({ onNavigate }: NotificationsPanelProps) {
             ) : (
               <div className="divide-y divide-[#E5EAF2]">
                 {notifications.map((notification) => {
-                  const Icon = notificationIcons[notification.type];
-                  const colors = notificationColors[notification.type];
+                  const Icon = notificationIcons[notification.tipo];
+                  const colors = notificationColors[notification.tipo];
+                  const title = notificationTitles[notification.tipo];
+
                   return (
                     <button
                       key={notification.id}
                       onClick={() => handleNotificationClick(notification)}
                       className={`w-full flex items-start gap-3 px-4 py-3 hover:bg-[#F7F9FC] transition-all text-left group ${
-                        !notification.read ? 'bg-[#F0FDF7]/50' : ''
+                        !notification.letto ? 'bg-[#F0FDF7]/50' : ''
                       }`}
                     >
                       <div className={`w-10 h-10 ${colors.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
@@ -203,10 +173,10 @@ export function NotificationsPanel({ onNavigate }: NotificationsPanelProps) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <p className={`text-sm font-medium ${!notification.read ? 'text-[#2D2D2D]' : 'text-[#6B7280]'}`}>
-                            {notification.title}
+                          <p className={`text-sm font-medium ${!notification.letto ? 'text-[#2D2D2D]' : 'text-[#6B7280]'}`}>
+                            {title}
                           </p>
-                          {!notification.read && (
+                          {!notification.letto && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -219,13 +189,13 @@ export function NotificationsPanel({ onNavigate }: NotificationsPanelProps) {
                           )}
                         </div>
                         <p className="text-xs text-[#6B7280] mt-1 line-clamp-2">
-                          {notification.description}
+                          {notification.messaggio}
                         </p>
                         <div className="flex items-center justify-between mt-2">
                           <span className="text-xs text-[#9CA3AF]">
-                            {formatTimestamp(notification.timestamp)}
+                            {formatTimestamp(notification.created_at)}
                           </span>
-                          {notification.resourcePage && (
+                          {notificationPages[notification.tipo] && (
                             <ChevronRight className="w-3.5 h-3.5 text-[#9CA3AF] opacity-0 group-hover:opacity-100 transition-opacity" />
                           )}
                         </div>

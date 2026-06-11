@@ -99,18 +99,26 @@ const create = async (payload) => {
         throwError('VALIDATION_ERROR', 'La destinazione non appartiene al cliente indicato');
     }
 
+    const righeConPrezzo = [];
+
     for (const r of righe) {
         const prodottoRes = await prodottiModel.findById(r.prodotto_id);
         if (prodottoRes.rowCount === 0 || prodottoRes.rows[0].attivo === false) {
             throwError('RESOURCE_NOT_FOUND', `Prodotto ${r.prodotto_id} non trovato`);
         }
+
+        righeConPrezzo.push({
+            prodotto_id: r.prodotto_id,
+            quantita: r.quantita,
+            prezzo_unitario: Number(prodottoRes.rows[0].prezzo || 0)
+        });
     }
 
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
-        const importo_totale = righe.reduce((sum, r) =>
+        const importo_totale = righeConPrezzo.reduce((sum, r) =>
             sum + Number(r.quantita || 0) * Number(r.prezzo_unitario || 0), 0);
 
         const ordineRes = await ordiniModel.create({
@@ -124,7 +132,7 @@ const create = async (payload) => {
         const ordine = ordineRes.rows[0];
         const righeCreated = [];
 
-        for (const r of righe) {
+        for (const r of righeConPrezzo) {
             const rowRes = await righeOrdineModel.create({
                 ordine_id: ordine.id,
                 prodotto_id: r.prodotto_id,

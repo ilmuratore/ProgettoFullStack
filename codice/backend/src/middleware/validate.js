@@ -1,10 +1,22 @@
 const validate = (blueprint) => {
     return (req, res, next) => {
         const errors = [];
+        const body = req.body && typeof req.body === 'object' ? req.body : {};
+        const fields = Object.keys(blueprint);
+        const hasRequiredFields = fields.some((field) => blueprint[field].required);
+        const isEmptyBody = Object.keys(body).length === 0;
+
+        if (!hasRequiredFields && isEmptyBody) {
+            const err = new Error('Nessun campo da aggiornare');
+            err.code = 'VALIDATION_ERROR';
+            err.status = 400;
+            err.details = [{ field: 'body', message: 'Nessun campo da aggiornare' }];
+            return next(err);
+        }
 
         for (const field in blueprint) {
             const rules = blueprint[field];
-            const value = req.body[field];
+            const value = body[field];
 
             if (rules.required && (value === undefined || value === null || value === '')) {
                 errors.push({ field, message: `${field} è obbligatorio` });

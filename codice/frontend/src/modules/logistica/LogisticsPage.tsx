@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Truck, FileText, BarChart2, Download, Eye } from 'lucide-react';
+import { toast } from 'sonner';
 import { LogisticsKPIs } from '../logistica/components/LogisticsKPIs';
 import { ShipmentsTable } from '../logistica/components/ShipmentsTable';
 import { LogisticsWidgets } from '../logistica/components/LogisticsWidgets';
@@ -8,6 +9,8 @@ import { AdvancedKPIs } from '../logistica/components/AdvancedKPIs';
 import { ShipmentDrawer } from '../logistica/components/ShipmentDrawer';
 import { NewShipmentModal } from '../logistica/components/NewShipmentModal';
 import { PageTabBar, type TabConfig } from '../../components/ui/PageTabBar';
+import { spedizioniApi } from '../../api/spedizioniApi';
+import type { Spedizione } from '../../types/spedizioni';
 
 type LogisticsTab = 'spedizioni' | 'ddt' | 'kpi';
 
@@ -33,6 +36,28 @@ export function LogisticsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<LogisticsTab>('spedizioni');
+  const [shipments, setShipments] = useState<Spedizione[]>([]);
+  const [loadingShipments, setLoadingShipments] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    setLoadingShipments(true);
+    spedizioniApi
+      .list()
+      .then((data) => {
+        if (alive) setShipments(Array.isArray(data) ? data : []);
+      })
+      .catch((err: any) => {
+        if (alive) setShipments([]);
+        if (err?.status !== 404) {
+          toast.error('Errore caricamento spedizioni', { description: err?.message });
+        }
+      })
+      .finally(() => {
+        if (alive) setLoadingShipments(false);
+      });
+    return () => { alive = false; };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -59,7 +84,11 @@ export function LogisticsPage() {
           {activeTab === 'spedizioni' && (
             <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
               <div className="lg:col-span-7">
-                <ShipmentsTable onShipmentClick={setSelectedShipmentId} />
+                <ShipmentsTable
+                  onShipmentClick={setSelectedShipmentId}
+                  shipments={shipments}
+                  loading={loadingShipments}
+                />
               </div>
               <div className="lg:col-span-3">
                 <LogisticsWidgets />

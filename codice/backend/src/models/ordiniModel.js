@@ -1,22 +1,26 @@
 const pool = require('../config/db');
 
-const create = ({ cliente_id, destinazione_id, data_consegna_richiesta, utente_id }, client) =>
+const create = ({ cliente_id, destinazione_id, data_consegna_richiesta, importo_totale, utente_id }, client) =>
     (client || pool).query(
         `
         INSERT INTO ordini
-        (cliente_id, destinazione_id, data_consegna_richiesta, utente_id)
-        VALUES ($1, $2, $3, $4)
+        (cliente_id, destinazione_id, data_consegna_richiesta, importo_totale, utente_id)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *;
         `,
-        [cliente_id, destinazione_id, data_consegna_richiesta, utente_id]
+        [cliente_id, destinazione_id, data_consegna_richiesta, importo_totale, utente_id]
     );
 
 const findAll = () =>
     pool.query(`
         SELECT ordini.*,
-               clienti.ragione_sociale AS cliente
+               clienti.ragione_sociale AS cliente,
+               destinazioni_clienti.etichetta AS destinazione,
+               CONCAT(utenti.nome, ' ', utenti.cognome) AS utente
         FROM ordini
         JOIN clienti ON ordini.cliente_id = clienti.id
+        LEFT JOIN destinazioni_clienti ON ordini.destinazione_id = destinazioni_clienti.id
+        LEFT JOIN utenti ON ordini.utente_id = utenti.id
         ORDER BY ordini.data_ordine DESC;
     `);
 
@@ -24,9 +28,13 @@ const findByStato = (stato) =>
     pool.query(
         `
         SELECT ordini.*,
-               clienti.ragione_sociale AS cliente
+               clienti.ragione_sociale AS cliente,
+               destinazioni_clienti.etichetta AS destinazione,
+               CONCAT(utenti.nome, ' ', utenti.cognome) AS utente
         FROM ordini
         JOIN clienti ON ordini.cliente_id = clienti.id
+        LEFT JOIN destinazioni_clienti ON ordini.destinazione_id = destinazioni_clienti.id
+        LEFT JOIN utenti ON ordini.utente_id = utenti.id
         WHERE ordini.stato = $1::sales_order_state
         ORDER BY ordini.data_ordine DESC;
         `,
@@ -37,9 +45,13 @@ const findByClienteId = (cliente_id) =>
     pool.query(
         `
         SELECT ordini.*,
-               clienti.ragione_sociale AS cliente
+               clienti.ragione_sociale AS cliente,
+               destinazioni_clienti.etichetta AS destinazione,
+               CONCAT(utenti.nome, ' ', utenti.cognome) AS utente
         FROM ordini
         JOIN clienti ON ordini.cliente_id = clienti.id
+        LEFT JOIN destinazioni_clienti ON ordini.destinazione_id = destinazioni_clienti.id
+        LEFT JOIN utenti ON ordini.utente_id = utenti.id
         WHERE ordini.cliente_id = $1
         ORDER BY ordini.data_ordine DESC;
         `,
@@ -48,7 +60,17 @@ const findByClienteId = (cliente_id) =>
 
 const findById = (id, client) =>
     (client || pool).query(
-        `SELECT * FROM ordini WHERE id = $1;`,
+        `
+        SELECT ordini.*,
+               clienti.ragione_sociale AS cliente,
+               destinazioni_clienti.etichetta AS destinazione,
+               CONCAT(utenti.nome, ' ', utenti.cognome) AS utente
+        FROM ordini
+        JOIN clienti ON ordini.cliente_id = clienti.id
+        LEFT JOIN destinazioni_clienti ON ordini.destinazione_id = destinazioni_clienti.id
+        LEFT JOIN utenti ON ordini.utente_id = utenti.id
+        WHERE ordini.id = $1;
+        `,
         [id]
     );
 

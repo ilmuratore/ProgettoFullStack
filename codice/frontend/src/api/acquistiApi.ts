@@ -10,6 +10,7 @@ import type {
   RigaPoCreateRequest,
   RicezioneTestata,
   RicezioneOrdineCreateRequest,
+  RicezioneRow,
 } from '../types/acquisti';
 
 interface ListFilters {
@@ -52,8 +53,8 @@ export const acquistiApi = {
     api.post<RigaPo>(`/ordini-acquisto/${id}/righe`, body),
 
   /** POST /api/v1/ordini-acquisto/ricezioni */
-  createRicezione: (body: RicezioneOrdineCreateRequest): Promise<unknown> =>
-    api.post<unknown>('/ordini-acquisto/ricezioni', body),
+  createRicezione: (body: RicezioneOrdineCreateRequest): Promise<RicezioneRow> =>
+    api.post<RicezioneRow>('/ordini-acquisto/ricezioni', body),
 
   /** GET /api/v1/ordini-acquisto/:id/ricezioni */
   listRicezioni: (id: number): Promise<RicezioneTestata[]> =>
