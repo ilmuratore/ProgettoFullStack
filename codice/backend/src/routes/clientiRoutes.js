@@ -17,7 +17,8 @@ const updateBlueprint = {
     ragione_sociale: { required: false, type: 'string' },
     piva_cf: { required: false, type: 'string' },
     email: { required: false, type: 'string' },
-    telefono: { required: false, type: 'string' }
+    telefono: { required: false, type: 'string' },
+    attivo: { required: false, type: 'boolean' }
 };
 
 router.get(

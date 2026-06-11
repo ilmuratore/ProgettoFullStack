@@ -191,7 +191,8 @@ export function ProductsTab({
       }
 
       return sortByProductFilter(left, right, filters.ordinamento);
-    });
+    })
+    .sort((left, right) => Number(left.attivo === false) - Number(right.attivo === false));
 
   const resetFilters = () => {
     setFilters(EMPTY_PRODUCT_FILTERS);

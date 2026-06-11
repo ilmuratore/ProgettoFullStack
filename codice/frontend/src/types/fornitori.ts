@@ -32,4 +32,5 @@ export interface FornitoreUpdateRequest {
   telefono?: string;
   sito_web?: string;
   descrizione_aziendale?: string;
+  attivo?: boolean;
 }

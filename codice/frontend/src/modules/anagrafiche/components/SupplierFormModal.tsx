@@ -18,6 +18,7 @@ interface FormState {
   telefono: string;
   sito_web: string;
   descrizione_aziendale: string;
+  attivo: boolean;
 }
 
 const EMPTY: FormState = {
@@ -28,6 +29,7 @@ const EMPTY: FormState = {
   telefono: '',
   sito_web: '',
   descrizione_aziendale: '',
+  attivo: true,
 };
 
 export function SupplierFormModal({ open, onClose, onSave, initialData, mode }: SupplierFormModalProps) {
@@ -46,6 +48,7 @@ export function SupplierFormModal({ open, onClose, onSave, initialData, mode }: 
           telefono: initialData.telefono ?? '',
           sito_web: initialData.sito_web ?? '',
           descrizione_aziendale: initialData.descrizione_aziendale ?? '',
+          attivo: initialData.attivo,
         });
       } else {
         setForm(EMPTY);
@@ -86,6 +89,7 @@ export function SupplierFormModal({ open, onClose, onSave, initialData, mode }: 
         ...(form.telefono.trim() && { telefono: form.telefono.trim() }),
         ...(form.sito_web.trim() && { sito_web: normalizeUrl(form.sito_web) }),
         ...(form.descrizione_aziendale.trim() && { descrizione_aziendale: form.descrizione_aziendale.trim() }),
+        ...(mode === 'edit' && { attivo: form.attivo }),
       };
       await onSave(payload, initialData?.id);
       onClose();
@@ -100,6 +104,10 @@ export function SupplierFormModal({ open, onClose, onSave, initialData, mode }: 
   ) => {
     setForm(prev => ({ ...prev, [field]: e.target.value }));
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: undefined }));
+  };
+
+  const toggleAttivo = () => {
+    setForm(prev => ({ ...prev, attivo: !prev.attivo }));
   };
 
   const inputClass = (field: keyof FormState) =>
@@ -217,6 +225,31 @@ export function SupplierFormModal({ open, onClose, onSave, initialData, mode }: 
                 className={`${inputClass('descrizione_aziendale')} resize-none`}
               />
             </div>
+
+            {mode === 'edit' && (
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-[#2D2D2D] mb-2">Stato fornitore</label>
+                <div className="flex items-center justify-between gap-4 px-4 py-3 border border-[#E5EAF2] rounded-2xl bg-[#F7F9FC]">
+                  <div>
+                    <p className="text-sm font-medium text-[#2D2D2D]">
+                      {form.attivo ? 'Fornitore attivo' : 'Fornitore disattivato'}
+                    </p>
+                    <p className="text-xs text-[#6B7280] mt-1">
+                      {form.attivo
+                        ? 'Il fornitore sara visibile come attivo in anagrafica.'
+                        : 'Il fornitore verra salvato come disattivato.'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleAttivo}
+                    className={`w-11 h-6 rounded-full transition-colors flex items-center ${form.attivo ? 'bg-[#17E88F]' : 'bg-[#D1D5DB]'}`}
+                  >
+                    <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform mx-1 ${form.attivo ? 'translate-x-5' : ''}`} />
+                  </button>
+                </div>
+              </div>
+            )}
 
           </div>
 

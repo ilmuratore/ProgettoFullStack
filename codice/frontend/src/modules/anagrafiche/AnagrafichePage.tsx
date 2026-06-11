@@ -331,7 +331,7 @@ export function AnagrafichePage() {
         if (fornitoriFilters.ordinamento === 'alfabetico') {
           data = [...data].sort((a, b) => a.ragione_sociale.localeCompare(b.ragione_sociale, 'it'));
         }
-        return data;
+        return [...data].sort((a, b) => Number(a.attivo === false) - Number(b.attivo === false));
       }
       case 'clienti': {
         let data = clienti.filter(c =>
@@ -343,7 +343,7 @@ export function AnagrafichePage() {
         if (clientiFilters.ordinamento === 'alfabetico') {
           data = [...data].sort((a, b) => a.ragione_sociale.localeCompare(b.ragione_sociale, 'it'));
         }
-        return data;
+        return [...data].sort((a, b) => Number(a.attivo === false) - Number(b.attivo === false));
       }
       case 'corrieri':
         return corrieri.filter(c =>
@@ -378,28 +378,35 @@ export function AnagrafichePage() {
   const canWrite  = (entity: string) => hasPermesso(`${entity}:write`);
   const canDelete = (entity: string) => hasPermesso(`${entity}:delete`);
 
-  const KebabMenu = ({ item, hideEdit }: { item: any; hideEdit?: boolean }) => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button className="p-1.5 hover:bg-[#F7F9FC] text-[#6B7280] rounded-lg transition-all">
-          <MoreVertical className="w-4 h-4" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40">
-        {!hideEdit && canWrite(tabEntity) && (
-          <DropdownMenuItem onClick={() => handleEdit(item)} className="cursor-pointer">
-            <Edit className="w-4 h-4 mr-2" />Modifica
-          </DropdownMenuItem>
-        )}
-        {canDelete(tabEntity) && (
-          <DropdownMenuItem onClick={() => handleDelete(item)} className="cursor-pointer text-red-600">
-            <Trash2 className="w-4 h-4 mr-2" />
-            {activeTab === 'dipendenti' ? 'Elimina (definitivo)' : 'Elimina'}
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+  const KebabMenu = ({ item, hideEdit }: { item: any; hideEdit?: boolean }) => {
+    const showEdit = !hideEdit && canWrite(tabEntity);
+    const showDelete = canDelete(tabEntity) && tabEntity !== 'fornitori' && tabEntity !== 'clienti';
+
+    if (!showEdit && !showDelete) return null;
+
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="p-1.5 hover:bg-[#F7F9FC] text-[#6B7280] rounded-lg transition-all">
+            <MoreVertical className="w-4 h-4" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-40">
+          {showEdit && (
+            <DropdownMenuItem onClick={() => handleEdit(item)} className="cursor-pointer">
+              <Edit className="w-4 h-4 mr-2" />Modifica
+            </DropdownMenuItem>
+          )}
+          {showDelete && (
+            <DropdownMenuItem onClick={() => handleDelete(item)} className="cursor-pointer text-red-600">
+              <Trash2 className="w-4 h-4 mr-2" />
+              {activeTab === 'dipendenti' ? 'Elimina (definitivo)' : 'Elimina'}
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
 
   const SkeletonRows = ({ cols }: { cols: number }) => (
     <>
