@@ -938,7 +938,46 @@
           }
         },
         {
-          "name": "14 PATCH /ordini/:id/picking — prelievi non quadrati → 400",
+          "name": "14 PATCH /ordini/:id/picking — ordine nuovo IN_PICKING → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('stato_picking IN_PICKING', () => pm.expect(d.data.ordine.stato_picking).to.eql('IN_PICKING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_vendite}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/ordini/{{ordine_new_id}}/picking",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato_picking\": \"IN_PICKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "15 PATCH /ordini/:id/picking — prelievi non quadrati → 400",
           "event": [
             {
               "listen": "test",

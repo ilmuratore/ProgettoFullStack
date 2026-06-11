@@ -128,13 +128,17 @@ const lockGiacenzeByProdottoIds = (prodotto_ids, client) =>
 const findOrdiniBozzaPrecedentiConStessiProdotti = (ordine_id, prodotto_ids, data_ordine, client) =>
     (client || pool).query(
         `
-        SELECT DISTINCT o.id, o.data_ordine
+        SELECT o.id, o.data_ordine
         FROM ordini o
-        JOIN righe_ordine r ON r.ordine_id = o.id
         WHERE o.id <> $1
           AND o.stato = 'BOZZA'
           AND o.data_ordine < $2
-          AND r.prodotto_id = ANY($3::int[])
+          AND EXISTS (
+              SELECT 1
+              FROM righe_ordine r
+              WHERE r.ordine_id = o.id
+                AND r.prodotto_id = ANY($3::int[])
+          )
         ORDER BY o.data_ordine, o.id
         FOR UPDATE OF o
         `,
