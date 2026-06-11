@@ -24,6 +24,8 @@
                   "pm.collectionVariables.set('prodotto1_sku', 'M08-SKU-A-' + run);",
                   "pm.collectionVariables.set('prodotto2_sku', 'M08-SKU-B-' + run);",
                   "pm.collectionVariables.set('fornitore_piva', ('800' + run).slice(0,11));",
+                  "pm.collectionVariables.set('fornitore_nome', 'Fornitore Test M08 ' + run);",
+                  "pm.collectionVariables.set('fornitore_email', 'info.m08.' + run + '@fornitore.it');",
                   "pm.collectionVariables.set('magazzino_codice', 'MAG-M08-' + run);"
                 ]
               }
@@ -234,7 +236,7 @@
             "url": "{{base_url}}/api/v1/fornitori",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"ragione_sociale\": \"Fornitore Test M08\",\n  \"piva\": \"{{fornitore_piva}}\",\n  \"email\": \"info.m08@fornitore.it\"\n}",
+              "raw": "{\n  \"ragione_sociale\": \"{{fornitore_nome}}\",\n  \"piva\": \"{{fornitore_piva}}\",\n  \"email\": \"{{fornitore_email}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -648,7 +650,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('ordine corretto', () => pm.expect(pm.response.json().data.ordine_id).to.eql(parseInt(pm.collectionVariables.get('ordine_id'))));"
+                  "pm.test('ordine corretto', () => pm.expect(Number(pm.response.json().data.ordine_id)).to.eql(parseInt(pm.collectionVariables.get('ordine_id'))));"
                 ]
               }
             }

@@ -11,6 +11,20 @@ const throwError = (code, message) => {
     throw err;
 };
 
+const STATI_VALIDI = ['BOZZA', 'INVIATO', 'CONFERMATO', 'IN_RICEZIONE', 'COMPLETATO', 'ANNULLATO'];
+
+const canTransitionStato = (from, to) => {
+    switch (from) {
+        case 'BOZZA': return to === 'INVIATO' || to === 'ANNULLATO';
+        case 'INVIATO': return to === 'CONFERMATO' || to === 'ANNULLATO';
+        case 'CONFERMATO': return to === 'ANNULLATO';
+        case 'IN_RICEZIONE': return false;
+        case 'COMPLETATO': return false;
+        case 'ANNULLATO': return false;
+        default: return false;
+    }
+};
+
 const getAll = async (query) => {
     const { stato, fornitore_id } = query || {};
     const result = await ordiniAcquistoModel.findAllFiltered({ stato, fornitore_id });
@@ -105,6 +119,20 @@ const updateOrdineAcquisto = async (id, data) => {
 };
 
 const updateStatoOrdineAcquisto = async (id, stato) => {
+    if (!STATI_VALIDI.includes(stato)) {
+        throwError('VALIDATION_ERROR', 'Stato non valido');
+    }
+
+    const ordineRes = await ordiniAcquistoModel.findById(id);
+    if (ordineRes.rowCount === 0) {
+        throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato');
+    }
+
+    const ordine = ordineRes.rows[0];
+    if (!canTransitionStato(ordine.stato, stato)) {
+        throwError('STATE_TRANSITION_INVALID', `Transizione ${ordine.stato} -> ${stato} non consentita`);
+    }
+
     const result = await ordiniAcquistoModel.updateStato(id, stato);
     if (result.rowCount === 0) {
         throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato');
