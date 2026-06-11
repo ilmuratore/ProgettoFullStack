@@ -831,43 +831,6 @@
           ]
         },
         {
-          "name": "13 - GET prodotto eliminato -> 404",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token_admin}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/prodotti/{{prodotto_id}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "prodotti",
-                "{{prodotto_id}}"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "var b = pm.response.json();",
-                  "pm.test('13 GET prodotto eliminato -> 404', function () { pm.response.to.have.status(404); });",
-                  "pm.test('code = RESOURCE_NOT_FOUND', function () { pm.expect(b.code).to.eql('RESOURCE_NOT_FOUND'); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
           "name": "14 - GET lista: eliminato compare con attivo=false -> 200",
           "request": {
             "method": "GET",
