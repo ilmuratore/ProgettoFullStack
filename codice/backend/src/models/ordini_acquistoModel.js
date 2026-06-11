@@ -1,7 +1,7 @@
 const pool = require('../config/db');
 
-const findAll = () =>
-    pool.query(
+const findAll = (client = pool) =>
+    client.query(
         `
     SELECT 
       o.id,
@@ -37,8 +37,8 @@ const findAll = () =>
     `
     );
 
-const findById = (id) =>
-    pool.query(
+const findById = (id, client = pool) =>
+    client.query(
         `
     SELECT 
       o.id,
@@ -60,10 +60,10 @@ const findById = (id) =>
         [id]
     );
 
-const findDettaglioCompleto = async (id) => {
-    const ordine = await findById(id);
+const findDettaglioCompleto = async (id, client = pool) => {
+    const ordine = await findById(id, client);
 
-    const righe = await pool.query(
+    const righe = await client.query(
         `
     SELECT 
   rp.id,
@@ -85,7 +85,7 @@ ORDER BY rp.id
         [id]
     );
 
-    const ricezioni = await pool.query(
+    const ricezioni = await client.query(
         `
     SELECT 
       r.id,
@@ -110,8 +110,8 @@ ORDER BY rp.id
     };
 };
 
-const findByFornitoreId = (fornitore_id) =>
-    pool.query(
+const findByFornitoreId = (fornitore_id, client = pool) =>
+    client.query(
         `
     SELECT *
     FROM ordini_acquisto
@@ -121,8 +121,8 @@ const findByFornitoreId = (fornitore_id) =>
         [fornitore_id]
     );
 
-const findByStato = (stato) =>
-    pool.query(
+const findByStato = (stato, client = pool) =>
+    client.query(
         `
     SELECT *
     FROM ordini_acquisto
@@ -132,8 +132,8 @@ const findByStato = (stato) =>
         [stato]
     );
 
-const findInRitardo = () =>
-    pool.query(
+const findInRitardo = (client = pool) =>
+    client.query(
         `
     SELECT *
     FROM ordini_acquisto
@@ -143,8 +143,8 @@ const findInRitardo = () =>
     `
     );
 
-const create = ({ fornitore_id, data_prevista, importo_totale, note, utente_id }) =>
-    pool.query(
+const create = ({ fornitore_id, data_prevista, importo_totale, note, utente_id }, client = pool) =>
+    client.query(
         `
     INSERT INTO ordini_acquisto 
       (fornitore_id, data_prevista, importo_totale, note, utente_id)
@@ -154,8 +154,8 @@ const create = ({ fornitore_id, data_prevista, importo_totale, note, utente_id }
         [fornitore_id, data_prevista, importo_totale, note, utente_id]
     );
 
-const update = (id, { fornitore_id, data_prevista, importo_totale, note, utente_id }) =>
-    pool.query(
+const update = (id, { fornitore_id, data_prevista, importo_totale, note, utente_id }, client = pool) =>
+    client.query(
         `
     UPDATE ordini_acquisto
     SET 
@@ -171,8 +171,8 @@ const update = (id, { fornitore_id, data_prevista, importo_totale, note, utente_
         [fornitore_id, data_prevista, importo_totale, note, utente_id, id]
     );
 
-const updateStato = (id, stato) =>
-    pool.query(
+const updateStato = (id, stato, client = pool) =>
+    client.query(
         `
     UPDATE ordini_acquisto
     SET stato = $1::purchase_order_state,
@@ -183,8 +183,8 @@ const updateStato = (id, stato) =>
         [stato, id]
     );
 
-const remove = (id) =>
-    pool.query(
+const remove = (id, client = pool) =>
+    client.query(
         `
     UPDATE ordini_acquisto
     SET stato = 'ANNULLATO',
