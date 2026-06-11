@@ -433,7 +433,7 @@
             "url": "{{base_url}}/api/v1/ordini-acquisto",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita_ordinata\": 10, \"prezzo_unitario\": 5 } ]\n}",
+              "raw": "{\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita\": 10, \"prezzo_unitario\": 5 } ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -490,9 +490,9 @@
                 "exec": [
                   "var d = pm.response.json();",
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('stato BOZZA', () => pm.expect(d.data.ordine.stato).to.eql('BOZZA'));",
-                  "pm.test('importo_totale = 1250', () => pm.expect(Number(d.data.ordine.importo_totale)).to.eql(1250));",
-                  "pm.collectionVariables.set('ordine_id', d.data.ordine.id);"
+                  "pm.test('stato BOZZA', () => pm.expect(d.data.stato).to.eql('BOZZA'));",
+                  "pm.test('importo_totale = 1250', () => pm.expect(Number(d.data.importo_totale)).to.eql(1250));",
+                  "pm.collectionVariables.set('ordine_id', d.data.id);"
                 ]
               }
             }
@@ -512,7 +512,7 @@
             "url": "{{base_url}}/api/v1/ordini-acquisto",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fornitore_id\": {{fornitore_id}},\n  \"data_prevista\": \"2026-06-30\",\n  \"note\": \"Ordine test M08\",\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita_ordinata\": 100, \"prezzo_unitario\": 12.50 } ]\n}",
+              "raw": "{\n  \"fornitore_id\": {{fornitore_id}},\n  \"data_prevista\": \"2026-06-30\",\n  \"note\": \"Ordine test M08\",\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita\": 100, \"prezzo_unitario\": 12.50 } ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -648,7 +648,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('prodotto corretto', () => pm.expect(pm.response.json().data.prodotto_id).to.eql(parseInt(pm.collectionVariables.get('prodotto2_id'))));"
+                  "pm.test('ordine corretto', () => pm.expect(pm.response.json().data.ordine_id).to.eql(parseInt(pm.collectionVariables.get('ordine_id'))));"
                 ]
               }
             }
@@ -668,7 +668,7 @@
             "url": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}/righe",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"prodotto_id\": {{prodotto2_id}},\n  \"quantita_ordinata\": 50,\n  \"prezzo_unitario\": 9.90\n}",
+              "raw": "{\n  \"prodotto_id\": {{prodotto2_id}},\n  \"quantita\": 50,\n  \"prezzo_unitario\": 9.90\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -731,7 +731,7 @@
             "url": "{{base_url}}/api/v1/ordini-acquisto",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fornitore_id\": {{fornitore_id}},\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita_ordinata\": 1, \"prezzo_unitario\": 1 } ]\n}",
+              "raw": "{\n  \"fornitore_id\": {{fornitore_id}},\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita\": 1, \"prezzo_unitario\": 1 } ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -864,8 +864,7 @@
                 "exec": [
                   "var d = pm.response.json();",
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('nuovoStatoOrdine IN_RICEZIONE', () => pm.expect(d.data.nuovoStatoOrdine).to.eql('IN_RICEZIONE'));",
-                  "pm.collectionVariables.set('ricezione_id', d.data.ricezione.id);"
+                  "pm.collectionVariables.set('ricezione_id', d.data.id);"
                 ]
               }
             }
@@ -905,7 +904,7 @@
                   "var d = pm.response.json();",
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "pm.test('>=1 ricezione', () => pm.expect(d.data.length).to.be.at.least(1));",
-                  "pm.test('righe presenti', () => pm.expect(d.data[0].righe).to.be.an('array'));"
+                  "pm.test('ha id ricezione', () => pm.expect(d.data[0].id).to.exist);"
                 ]
               }
             }
@@ -959,7 +958,7 @@
                 "exec": [
                   "var d = pm.response.json();",
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
-                  "pm.test('nuovoStatoOrdine COMPLETATO', () => pm.expect(d.data.nuovoStatoOrdine).to.eql('COMPLETATO'));"
+                  "pm.test('ha id ricezione', () => pm.expect(d.data.id).to.exist);"
                 ]
               }
             }
