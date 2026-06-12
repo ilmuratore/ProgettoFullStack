@@ -7,6 +7,10 @@ const { validate } = require('../middleware/validate');
 
 const router = express.Router();
 
+// -----------------------------
+// BLUEPRINT VALIDAZIONE
+// -----------------------------
+
 const createBlueprint = {
     ragione_sociale: { required: true, type: "string" },
     piva: { required: true, type: "string" },
@@ -16,6 +20,7 @@ const createBlueprint = {
     sito_web: { required: false, type: "string" },
     descrizione_aziendale: { required: false, type: "string" }
 };
+
 const updateBlueprint = {
     ragione_sociale: { required: false, type: "string" },
     piva: { required: false, type: "string" },
@@ -27,11 +32,52 @@ const updateBlueprint = {
     attivo: { required: false, type: "boolean" }
 };
 
+// -----------------------------
+// ROUTES FORNITORI
+// -----------------------------
 
-router.get("/", auth, requirePermesso("fornitori:read"), fornitoriController.getAll);
-router.post("/", auth, requirePermesso("fornitori:write"), validate(createBlueprint), fornitoriController.create);
-router.get("/:id", auth, requirePermesso("fornitori:read"), fornitoriController.getById);
-router.patch("/:id", auth, requirePermesso("fornitori:write"), validate(updateBlueprint), fornitoriController.update);
-router.delete("/:id", auth, requirePermesso("fornitori:delete"), fornitoriController.elimina);
+router.get(
+    "/",
+    auth,
+    requirePermesso("fornitori:read"),
+    fornitoriController.getAll
+);
+
+router.post(
+    "/",
+    auth,
+    requirePermesso("fornitori:write"),
+    validate(createBlueprint),
+    fornitoriController.create
+);
+
+router.get(
+    "/:id",
+    auth,
+    requirePermesso("fornitori:read"),
+    fornitoriController.getById
+);
+
+router.patch(
+    "/:id",
+    auth,
+    requirePermesso("fornitori:write"),
+    validate(updateBlueprint),
+    fornitoriController.update
+);
+
+router.delete(
+    "/:id",
+    auth,
+    requirePermesso("fornitori:delete"),
+    fornitoriController.elimina
+);
+
+// -----------------------------
+// SUB-ROUTES: CONTATTI FORNITORI
+// -----------------------------
+
+const contattiFornitoriRoutes = require('./contattiFornitoriRoutes');
+router.use('/:id/contatti', contattiFornitoriRoutes);
 
 module.exports = router;
