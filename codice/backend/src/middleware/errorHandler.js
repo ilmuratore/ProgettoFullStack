@@ -17,6 +17,8 @@ const errorMessages = {
     CATEGORIA_CON_PRODOTTI: 'Impossibile eliminare: la categoria ha prodotti associati',
     CATEGORIA_CON_SOTTOCATEGORIE: 'Impossibile eliminare: la categoria ha sottocategorie',
     RATE_LIMIT: 'Troppe richieste',
+    EMAIL_CONFIG_MISSING: 'Configurazione email incompleta',
+    EMAIL_SEND_FAILED: 'Invio email non riuscito',
     INTERNAL_SERVER_ERROR: 'Errore interno del server'
 };
 
@@ -39,6 +41,8 @@ const errorStatusCodes = {
     RUOLO_NON_VALIDO: 422,
     INSUFFICIENT_STOCK: 422,
     RATE_LIMIT: 429,
+    EMAIL_CONFIG_MISSING: 500,
+    EMAIL_SEND_FAILED: 502,
     INTERNAL_SERVER_ERROR: 500
 };
 

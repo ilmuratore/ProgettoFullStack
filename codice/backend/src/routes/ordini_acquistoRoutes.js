@@ -7,6 +7,8 @@ const { validate } = require('../middleware/validate');
 const { validateRighe } = require('../middleware/validateRighe');
 
 const ordiniAcquistoController = require('../controllers/ordiniAcquistoController.js');
+const ordiniAcquistoEmailController = require('../controllers/ordiniAcquistoEmailController.js');
+const { uploadSingleContabile } = require('../middleware/uploadContabile');
 
 const STATI = ['BOZZA', 'INVIATO', 'CONFERMATO', 'IN_RICEZIONE', 'COMPLETATO', 'ANNULLATO'];
 
@@ -56,6 +58,24 @@ router.get(
     auth,
     requirePermesso('acquisti:read'),
     ordiniAcquistoController.getPdf
+);
+
+
+// POST /api/v1/ordini-acquisto/:id/invia-email
+router.post(
+    '/:id/invia-email',
+    auth,
+    requirePermesso('acquisti:write'),
+    uploadSingleContabile,
+    ordiniAcquistoEmailController.inviaEmail
+);
+
+// GET /api/v1/ordini-acquisto/:id/email-log
+router.get(
+    '/:id/email-log',
+    auth,
+    requirePermesso('acquisti:read'),
+    ordiniAcquistoEmailController.listInviiEmail
 );
 
 // GET /api/v1/ordini-acquisto

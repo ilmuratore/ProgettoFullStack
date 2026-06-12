@@ -4294,3 +4294,76 @@ paths:
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
         "404": { $ref: '#/components/responses/NotFound' }
+
+# Fragment da integrare in openapi.yaml sotto paths.
+
+/ordini-acquisto/{id}/invia-email:
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema: { type: integer }
+      example: 15
+  post:
+    tags: [OrdiniAcquisto]
+    summary: Invia via email ordine di acquisto
+    description: |
+      Genera il PDF dell'ordine di acquisto, allega opzionalmente la contabile del bonifico
+      e invia l'email al fornitore. Se l'ordine è in stato BOZZA e l'invio riesce,
+      lo stato viene portato a INVIATO. Richiede permesso acquisti:write.
+    x-required-permission: acquisti:write
+    requestBody:
+      required: false
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            properties:
+              to:
+                type: string
+                description: Destinatari separati da virgola. Se assente usa email del fornitore.
+                example: fornitore@example.com
+              cc:
+                type: string
+                example: acquisti@example.com
+              bcc:
+                type: string
+              subject:
+                type: string
+                example: Ordine di acquisto PO-15
+              message:
+                type: string
+                example: Buongiorno, in allegato trasmettiamo ordine e contabile.
+              contabile:
+                type: string
+                format: binary
+                description: PDF/JPG/PNG/WEBP della contabile del bonifico.
+    responses:
+      "200":
+        description: Email inviata
+      "400":
+        description: Dati non validi o destinatario mancante
+      "401":
+        description: Autenticazione richiesta
+      "403":
+        description: Permesso mancante
+      "404":
+        description: Ordine non trovato
+      "409":
+        description: Ordine annullato
+      "502":
+        description: Errore invio email/provider SMTP
+
+/ordini-acquisto/{id}/email-log:
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema: { type: integer }
+  get:
+    tags: [OrdiniAcquisto]
+    summary: Lista invii email ordine acquisto
+    x-required-permission: acquisti:read
+    responses:
+      "200":
+        description: Lista log invii email

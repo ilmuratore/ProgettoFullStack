@@ -67,23 +67,51 @@ const drawKeyValue = (doc, label, value, x, y, width = 220) => {
     doc.font('Helvetica').fontSize(10).text(safeText(value), x, y + 12, { width });
 };
 
-const drawHeader = (doc, ordine) => {
+const formatCompanyAddress = (azienda) => {
+    if (!azienda) return null;
+
+    const cityLine = [azienda.cap, azienda.citta, azienda.provincia ? `(${azienda.provincia})` : null]
+        .filter(Boolean)
+        .join(' ');
+
+    return [azienda.indirizzo, cityLine, azienda.nazione]
+        .filter(Boolean)
+        .join(' - ');
+};
+
+const drawHeader = (doc, ordine, azienda) => {
+    const companyName = azienda?.ragione_sociale || 'LogiChain ERP';
+    const companyAddress = formatCompanyAddress(azienda);
+    const companyFiscal = [
+        azienda?.piva ? `P.IVA ${azienda.piva}` : null,
+        azienda?.codice_fiscale ? `CF ${azienda.codice_fiscale}` : null,
+    ].filter(Boolean).join(' - ');
+
     doc.font('Helvetica-Bold').fontSize(20).text('Ordine di acquisto', PAGE_MARGIN, 45);
     doc.font('Helvetica').fontSize(10).text(`PO-${ordine.id}`, PAGE_MARGIN, 70);
 
+    let y = 45;
     doc.font('Helvetica-Bold')
         .fontSize(10)
-        .text('LogiChain', 390, 45, { width: 155, align: 'right' });
-    doc.font('Helvetica')
-        .fontSize(9)
-        .text(`Generato il ${formatDate(new Date())}`, 390, 62, { width: 155, align: 'right' });
+        .text(companyName, 340, y, { width: 205, align: 'right' });
 
-    drawLine(doc, 92);
+    y += 14;
+    doc.font('Helvetica').fontSize(8);
+
+    [companyFiscal, companyAddress, azienda?.email, azienda?.telefono].filter(Boolean).forEach((line) => {
+        doc.text(line, 340, y, { width: 205, align: 'right' });
+        y += 10;
+    });
+
+    doc.text(`Generato il ${formatDate(new Date())}`, 340, y, { width: 205, align: 'right' });
+
+    drawLine(doc, 102);
+    doc.y = 108;
     doc.moveDown(2);
 };
 
 const drawInfoSection = (doc, ordine) => {
-    const y = 110;
+    const y = 125;
 
     drawKeyValue(doc, 'Fornitore', ordine.fornitore, PAGE_MARGIN, y, 240);
     drawKeyValue(doc, 'Stato', ordine.stato, 330, y, 100);
@@ -204,11 +232,11 @@ const drawFooter = (doc) => {
     }
 };
 
-const buildOrdineAcquistoPdf = async ({ ordine, righe }) => {
+const buildOrdineAcquistoPdf = async ({ ordine, righe, azienda }) => {
     const filename = `ordine-acquisto-${ordine.id}.pdf`;
 
     const buffer = await buildPdfBuffer((doc) => {
-        drawHeader(doc, ordine);
+        drawHeader(doc, ordine, azienda);
         drawInfoSection(doc, ordine);
         drawRows(doc, righe);
         drawTotals(doc, righe);
@@ -217,7 +245,7 @@ const buildOrdineAcquistoPdf = async ({ ordine, righe }) => {
     }, {
         info: {
             Title: `Ordine di acquisto ${ordine.id}`,
-            Author: 'LogiChain',
+            Author: azienda?.ragione_sociale || 'LogiChain ERP',
             Subject: 'Ordine di acquisto',
         },
     });

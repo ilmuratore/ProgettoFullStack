@@ -7,6 +7,7 @@ const movimentiStockService = require('./movimenti_stockService');
 const prodottiModel = require('../models/prodottiModel');
 const notificheModel = require('../models/notificheModel');
 const utentiModel = require('../models/utentiModel');
+const aziendaSettingsModel = require('../models/aziendaSettingsModel');
 
 const throwError = (code, message) => {
     const err = new Error(message);
@@ -447,9 +448,10 @@ const listRicezioniByOrdine = async (ordineId) => {
 const { buildOrdineAcquistoPdf } = require('../pdf/ordiniAcquistoPdf');
 
 const generaPdfOrdineAcquisto = async (id) => {
-    const ordine = await getOrdineAcquistoById(id);
+    const dettaglio = await getOrdineAcquistoById(id);
     const righeRes = await righePoModel.findByOrdineAcquistoId(id);
-    return buildOrdineAcquistoPdf({ ordine, righe: righeRes.rows });
+    const azienda = await aziendaSettingsModel.getActive();
+    return buildOrdineAcquistoPdf({ ordine: dettaglio.ordine, righe: righeRes.rows, azienda });
 };
 
 module.exports = {
