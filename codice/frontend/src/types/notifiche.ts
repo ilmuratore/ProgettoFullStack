@@ -14,7 +14,7 @@ export interface Notifica {
   tipo: NotifType;
   messaggio: string;
   letto: boolean;
-  riferimento_tipo: string | null;
-  riferimento_id: number | null;
+  riferimento_tipo?: string | null;
+  riferimento_id?: number | null;
   created_at: string;
 }
