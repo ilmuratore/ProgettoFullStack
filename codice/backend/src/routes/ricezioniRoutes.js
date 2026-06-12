@@ -43,12 +43,7 @@ router.get(
     '/:id/righe',
     auth,
     requirePermesso('acquisti:read'),
-    (req, res) => {
-        res.status(410).json({
-            status: 'error',
-            error: 'Endpoint deprecato. Usare GET /api/v1/ordini-acquisto/:id/ricezioni'
-        });
-    }
+    ricezioniController.getRighe
 );
 
 // POST /api/v1/ricezioni/:id/righe
@@ -56,11 +51,11 @@ router.post(
     '/:id/righe',
     auth,
     requirePermesso('acquisti:approve'),
-    (req, res) => {
-        res.status(410).json({
-            status: 'error',
-            error: 'Endpoint deprecato. Usare POST /api/v1/ordini-acquisto/ricezioni'
-        });
+    (_req, _res, next) => {
+        const err = new Error('Endpoint deprecato. Usare POST /api/v1/ordini-acquisto/ricezioni');
+        err.code = 'ENDPOINT_DEPRECATED';
+        err.status = 410;
+        next(err);
     }
 );
 

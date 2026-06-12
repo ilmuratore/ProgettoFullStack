@@ -1,31 +1,28 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
-const data = [
-  { name: 'Bozza', value: 42, color: '#6B7280' },
-  { name: 'In Picking', value: 87, color: '#F59E0B' },
-  { name: 'In Preparazione', value: 128, color: '#3B82F6' },
-  { name: 'Spedito', value: 243, color: '#17E88F' },
-];
+export interface OrdersPieChartItem {
+  name: string;
+  value: number;
+  color: string;
+}
 
-export function OrdersPieChart() {
+interface OrdersPieChartProps {
+  data: OrdersPieChartItem[];
+}
+
+export function OrdersPieChart({ data }: OrdersPieChartProps) {
+  const total = data.reduce((acc, curr) => acc + curr.value, 0);
+
   return (
     <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2] h-full">
       <div className="flex items-center justify-between mb-6">
         <h3 className="font-semibold text-[#2D2D2D]">Ordini in Uscita</h3>
-        <div className="text-xs text-[#6B7280]">Oggi</div>
+        <div className="text-xs text-[#6B7280]">Situazione attuale</div>
       </div>
 
       <ResponsiveContainer width="100%" height={280}>
         <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            innerRadius={60}
-            outerRadius={90}
-            paddingAngle={4}
-            dataKey="value"
-          >
+          <Pie data={data} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={4} dataKey="value">
             {data.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.color} />
             ))}
@@ -52,7 +49,7 @@ export function OrdersPieChart() {
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-[#2D2D2D]">{item.value}</span>
               <span className="text-xs text-[#6B7280]">
-                ({((item.value / data.reduce((acc, curr) => acc + curr.value, 0)) * 100).toFixed(1)}%)
+                ({total > 0 ? ((item.value / total) * 100).toFixed(1) : '0.0'}%)
               </span>
             </div>
           </div>

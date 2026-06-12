@@ -3760,6 +3760,8 @@ paths:
       summary: Cambia stato ordine
       description: |
         Transizione di stato validata (vedi `StatoOrdineAcquisto`). Richiede permesso `acquisti:approve`.
+        Lo stato `IN_RICEZIONE` non è impostabile via PATCH: viene assegnato solo internamente
+        durante `POST /ordini-acquisto/ricezioni`.
       x-required-permission: acquisti:approve
       requestBody:
         required: true

@@ -1,22 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search, Filter, ArrowUpDown, Package, MapPin } from 'lucide-react';
+import { toast } from 'sonner';
+import { spedizioniApi } from '../../../api/spedizioniApi';
+import type { Spedizione, StatoSpedizione } from '../../../types/spedizioni';
 
 interface ShipmentsTableProps {
-  onShipmentClick: (id: string) => void;
+  onShipmentClick: (id: number) => void;
+  shipments?: Spedizione[];
+  loading?: boolean;
+  reloadKey?: number;
 }
 
-const shipments = [
-  { id: 'SH-2026-0842', tracking: 'TRK84529301847', ordine: 'SO-2026-0156', cliente: 'Ferrero S.p.A.', corriere: 'BRT', dataPartenza: '02/06/2026', dataPrevista: '04/06/2026', stato: 'SPEDITA', destinazione: 'Torino, TO', ultimoAgg: '3h fa' },
-  { id: 'SH-2026-0841', tracking: 'TRK84529301846', ordine: 'SO-2026-0155', cliente: 'Barilla Group', corriere: 'SDA', dataPartenza: '01/06/2026', dataPrevista: '04/06/2026', stato: 'SPEDITA', destinazione: 'Parma, PR', ultimoAgg: '5h fa' },
-  { id: 'SH-2026-0840', tracking: 'TRK84529301845', ordine: 'SO-2026-0154', cliente: 'Lavazza S.p.A.', corriere: 'GLS', dataPartenza: '03/06/2026', dataPrevista: '05/06/2026', stato: 'IN_PREPARAZIONE', destinazione: 'Milano, MI', ultimoAgg: '1h fa' },
-  { id: 'SH-2026-0839', tracking: 'TRK84529301844', ordine: 'SO-2026-0153', cliente: 'Mutti S.p.A.', corriere: 'TNT', dataPartenza: '01/06/2026', dataPrevista: '03/06/2026', stato: 'CONSEGNATA', destinazione: 'Parma, PR', ultimoAgg: '12h fa' },
-  { id: 'SH-2026-0838', tracking: 'TRK84529301843', ordine: 'SO-2026-0152', cliente: 'Illy Caffè', corriere: 'Bartolini', dataPartenza: '02/06/2026', dataPrevista: '04/06/2026', stato: 'PROBLEMA', destinazione: 'Trieste, TS', ultimoAgg: '30min fa' },
-  { id: 'SH-2026-0837', tracking: 'TRK84529301842', ordine: 'SO-2026-0151', cliente: 'Ferrero S.p.A.', corriere: 'BRT', dataPartenza: '03/06/2026', dataPrevista: '05/06/2026', stato: 'SPEDITA', destinazione: 'Roma, RM', ultimoAgg: '2h fa' },
-  { id: 'SH-2026-0836', tracking: 'TRK84529301841', ordine: 'SO-2026-0150', cliente: 'Campari Group', corriere: 'SDA', dataPartenza: '02/06/2026', dataPrevista: '04/06/2026', stato: 'SPEDITA', destinazione: 'Milano, MI', ultimoAgg: '4h fa' },
-  { id: 'SH-2026-0835', tracking: 'TRK84529301840', ordine: 'SO-2026-0149', cliente: 'Barilla Group', corriere: 'GLS', dataPartenza: '01/06/2026', dataPrevista: '03/06/2026', stato: 'CONSEGNATA', destinazione: 'Parma, PR', ultimoAgg: '8h fa' },
-];
-
-const getStatusBadge = (stato: string) => {
+const getStatusBadge = (stato: StatoSpedizione) => {
   const styles = {
     IN_PREPARAZIONE: 'bg-[#DBEAFE] text-[#2563EB] border-[#BFDBFE]',
     SPEDITA: 'bg-[#DBEAFE] text-[#3B82F6] border-[#93C5FD]',
@@ -30,18 +25,56 @@ const getStatusBadge = (stato: string) => {
     PROBLEMA: 'Problema',
   };
   return (
-    <span className={`px-3 py-1 rounded-lg text-xs font-medium border ${styles[stato as keyof typeof styles]}`}>
-      {labels[stato as keyof typeof labels]}
+    <span className={`px-3 py-1 rounded-lg text-xs font-medium border ${styles[stato]}`}>
+      {labels[stato]}
     </span>
   );
 };
 
-export function ShipmentsTable({ onShipmentClick }: ShipmentsTableProps) {
+const fmtDate = (iso: string | null | undefined): string =>
+  iso ? new Date(iso).toLocaleDateString('it-IT') : '—';
+
+const fmtDateTime = (iso: string | null | undefined): string =>
+  iso ? new Date(iso).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+
+export function ShipmentsTable({ onShipmentClick, shipments: shipmentsProp, loading: loadingProp, reloadKey }: ShipmentsTableProps) {
   const [search, setSearch] = useState('');
+  const [shipmentsState, setShipmentsState] = useState<Spedizione[]>([]);
+  const [loadingState, setLoadingState] = useState(true);
+  const useExternalData = shipmentsProp !== undefined && loadingProp !== undefined;
+
+  useEffect(() => {
+    if (useExternalData) return;
+    let alive = true;
+    setLoadingState(true);
+    spedizioniApi
+      .list()
+      .then((data) => { if (alive) setShipmentsState(Array.isArray(data) ? data : []); })
+      .catch((err: any) => {
+        if (alive) setShipmentsState([]);
+        if (err?.status !== 404) {
+          toast.error('Errore caricamento spedizioni', { description: err?.message });
+        }
+      })
+      .finally(() => { if (alive) setLoadingState(false); });
+    return () => { alive = false; };
+  }, [reloadKey, useExternalData]);
+
+  const shipments = shipmentsProp ?? shipmentsState;
+  const loading = loadingProp ?? loadingState;
+
+  const filtered = shipments.filter((ship) => {
+    const term = search.toLowerCase();
+    const label = `SH-${String(ship.id).padStart(4, '0')}`.toLowerCase();
+    return (
+      label.includes(term) ||
+      (ship.tracking_number ?? '').toLowerCase().includes(term) ||
+      (ship.cliente ?? '').toLowerCase().includes(term)
+    );
+  });
 
   return (
     <div className="bg-white rounded-2xl border border-[#E5EAF2] p-6">
-      {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <h3 className="font-semibold text-[#2D2D2D]">Monitoraggio Spedizioni</h3>
         <div className="flex items-center gap-2">
@@ -65,7 +98,6 @@ export function ShipmentsTable({ onShipmentClick }: ShipmentsTableProps) {
         </div>
       </div>
 
-      {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -83,48 +115,56 @@ export function ShipmentsTable({ onShipmentClick }: ShipmentsTableProps) {
             </tr>
           </thead>
           <tbody>
-            {shipments.map((ship) => (
-              <tr
-                key={ship.id}
-                className="border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors cursor-pointer"
-                onClick={() => onShipmentClick(ship.id)}
-              >
-                <td className="py-3 px-3">
-                  <div className="flex items-center gap-2">
-                    <Package className="w-4 h-4 text-[#3B82F6]" />
-                    <span className="text-sm font-medium text-[#2D2D2D]">{ship.id}</span>
-                  </div>
-                </td>
-                <td className="py-3 px-3">
-                  <span className="text-xs font-mono text-[#6B7280]">{ship.tracking}</span>
-                </td>
-                <td className="py-3 px-3">
-                  <span className="text-sm text-[#2D2D2D]">{ship.ordine}</span>
-                </td>
-                <td className="py-3 px-3">
-                  <span className="text-sm text-[#2D2D2D]">{ship.cliente}</span>
-                </td>
-                <td className="py-3 px-3">
-                  <span className="text-sm font-medium text-[#6B7280]">{ship.corriere}</span>
-                </td>
-                <td className="py-3 px-3">
-                  <span className="text-sm text-[#6B7280]">{ship.dataPartenza}</span>
-                </td>
-                <td className="py-3 px-3">
-                  <span className="text-sm text-[#6B7280]">{ship.dataPrevista}</span>
-                </td>
-                <td className="py-3 px-3">{getStatusBadge(ship.stato)}</td>
-                <td className="py-3 px-3">
-                  <div className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-[#9CA3AF]" />
-                    <span className="text-sm text-[#6B7280]">{ship.destinazione}</span>
-                  </div>
-                </td>
-                <td className="py-3 px-3">
-                  <span className="text-xs text-[#9CA3AF]">{ship.ultimoAgg}</span>
-                </td>
-              </tr>
-            ))}
+            {loading ? (
+              <tr><td colSpan={10} className="py-8 text-center text-sm text-[#6B7280]">Caricamento spedizioni...</td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={10} className="py-8 text-center text-sm text-[#6B7280]">Nessuna spedizione disponibile.</td></tr>
+            ) : filtered.map((ship) => {
+              const label = `SH-${String(ship.id).padStart(4, '0')}`;
+              const ordineLabel = `SO-${String(ship.ordine_id).padStart(4, '0')}`;
+              return (
+                <tr
+                  key={ship.id}
+                  className="border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors cursor-pointer"
+                  onClick={() => onShipmentClick(ship.id)}
+                >
+                  <td className="py-3 px-3">
+                    <div className="flex items-center gap-2">
+                      <Package className="w-4 h-4 text-[#3B82F6]" />
+                      <span className="text-sm font-medium text-[#2D2D2D]">{label}</span>
+                    </div>
+                  </td>
+                  <td className="py-3 px-3">
+                    <span className="text-xs font-mono text-[#6B7280]">{ship.tracking_number ?? '—'}</span>
+                  </td>
+                  <td className="py-3 px-3">
+                    <span className="text-sm text-[#2D2D2D]">{ordineLabel}</span>
+                  </td>
+                  <td className="py-3 px-3">
+                    <span className="text-sm text-[#2D2D2D]">{ship.cliente}</span>
+                  </td>
+                  <td className="py-3 px-3">
+                    <span className="text-sm font-medium text-[#6B7280]">{ship.corriere ?? '—'}</span>
+                  </td>
+                  <td className="py-3 px-3">
+                    <span className="text-sm text-[#6B7280]">{fmtDate(ship.created_at)}</span>
+                  </td>
+                  <td className="py-3 px-3">
+                    <span className="text-sm text-[#6B7280]">—</span>
+                  </td>
+                  <td className="py-3 px-3">{getStatusBadge(ship.stato)}</td>
+                  <td className="py-3 px-3">
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-[#9CA3AF]" />
+                      <span className="text-sm text-[#6B7280]">{ship.destinazione ?? '—'}</span>
+                    </div>
+                  </td>
+                  <td className="py-3 px-3">
+                    <span className="text-xs text-[#9CA3AF]">{fmtDateTime(ship.updated_at)}</span>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

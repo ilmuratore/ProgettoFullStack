@@ -28,7 +28,7 @@ const canTransitionStato = (from, to) => {
 const getAll = async (query) => {
     const { stato, fornitore_id } = query || {};
     const result = await ordiniAcquistoModel.findAllFiltered({ stato, fornitore_id });
-    return result;
+    return result.rows;
 };
 
 const getOrdineAcquistoById = async (id) => {
@@ -51,7 +51,7 @@ const createOrdineAcquisto = async (data) => {
         }
 
         const importo_totale = righe.reduce(
-            (acc, r) => acc + (Number(r.quantita) * Number(r.prezzo_unitario)),
+            (acc, r) => acc + (Number(r.quantita_ordinata ?? r.quantita) * Number(r.prezzo_unitario)),
             0
         );
 
@@ -66,7 +66,7 @@ const createOrdineAcquisto = async (data) => {
             await righePoModel.create({
                 ordine_acquisto_id: ordine.id,
                 prodotto_id: r.prodotto_id,
-                quantita_ordinata: r.quantita,
+                quantita_ordinata: r.quantita_ordinata ?? r.quantita,
                 prezzo_unitario: r.prezzo_unitario
             }, client);
         }
@@ -145,12 +145,12 @@ const addRigaOrdineAcquisto = async (ordineId, data) => {
     try {
         await client.query('BEGIN');
 
-        const { prodotto_id, quantita, prezzo_unitario } = data;
+        const { prodotto_id, quantita_ordinata, quantita, prezzo_unitario } = data;
 
         await righePoModel.create({
             ordine_acquisto_id: ordineId,
             prodotto_id,
-            quantita_ordinata: quantita,
+            quantita_ordinata: quantita_ordinata ?? quantita,
             prezzo_unitario
         }, client);
 

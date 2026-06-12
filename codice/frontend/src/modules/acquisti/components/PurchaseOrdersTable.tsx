@@ -51,7 +51,7 @@ export function PurchaseOrdersTable({ onOrderClick, reloadKey }: PurchaseOrdersT
     setLoading(true);
     acquistiApi
       .list()
-      .then((data) => { if (alive) setOrders(data); })
+      .then((data) => { if (alive) setOrders(Array.isArray(data) ? data : []); })
       .catch((err: any) => toast.error('Errore caricamento ordini', { description: err?.message }))
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };

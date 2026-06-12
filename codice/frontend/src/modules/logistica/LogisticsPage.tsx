@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Truck, FileText, BarChart2, Download, Eye } from 'lucide-react';
+import { toast } from 'sonner';
 import { LogisticsKPIs } from '../logistica/components/LogisticsKPIs';
 import { ShipmentsTable } from '../logistica/components/ShipmentsTable';
 import { LogisticsWidgets } from '../logistica/components/LogisticsWidgets';
@@ -8,6 +9,13 @@ import { AdvancedKPIs } from '../logistica/components/AdvancedKPIs';
 import { ShipmentDrawer } from '../logistica/components/ShipmentDrawer';
 import { NewShipmentModal } from '../logistica/components/NewShipmentModal';
 import { PageTabBar, type TabConfig } from '../../components/ui/PageTabBar';
+import { spedizioniApi } from '../../api/spedizioniApi';
+import { corrieriApi } from '../../api/corrieriApi';
+import type { Spedizione } from '../../types/spedizioni';
+import type { Corriere } from '../../types/corrieri';
+import type { LogisticsKpiItem } from './components/LogisticsKPIs';
+import type { CourierPerformanceItem } from './components/CourierPerformance';
+import type { AdvancedLogisticsData } from './components/AdvancedKPIs';
 
 type LogisticsTab = 'spedizioni' | 'ddt' | 'kpi';
 
@@ -31,8 +39,184 @@ const shippingStateBadge = (stato: string) => {
 
 export function LogisticsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null);
+  const [selectedShipmentId, setSelectedShipmentId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<LogisticsTab>('spedizioni');
+  const [shipments, setShipments] = useState<Spedizione[]>([]);
+  const [loadingShipments, setLoadingShipments] = useState(true);
+  const [couriers, setCouriers] = useState<Corriere[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    setLoadingShipments(true);
+    Promise.all([
+      spedizioniApi.list(),
+      corrieriApi.list(),
+    ])
+      .then(([shipmentsData, couriersData]) => {
+        if (!alive) return;
+        setShipments(Array.isArray(shipmentsData) ? shipmentsData : []);
+        setCouriers(Array.isArray(couriersData) ? couriersData : []);
+      })
+      .catch((err: any) => {
+        if (!alive) return;
+        setShipments([]);
+        setCouriers([]);
+        if (err?.status !== 404) {
+          toast.error('Errore caricamento logistica', { description: err?.message });
+        }
+      })
+      .finally(() => {
+        if (alive) setLoadingShipments(false);
+      });
+    return () => { alive = false; };
+  }, []);
+
+  const now = new Date();
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const previousMonthEnd = currentMonthStart;
+  const todayKey = now.toDateString();
+
+  const currentMonthShipments = shipments.filter((s) => new Date(s.created_at) >= currentMonthStart);
+  const previousMonthShipments = shipments.filter((s) => {
+    const date = new Date(s.created_at);
+    return date >= previousMonthStart && date < previousMonthEnd;
+  });
+
+  const calcTrend = (curr: number, prev: number): number => {
+    if (prev === 0) return curr === 0 ? 0 : 100;
+    return ((curr - prev) / prev) * 100;
+  };
+
+  const activeShipments = shipments.filter((s) => s.stato === 'IN_PREPARAZIONE' || s.stato === 'SPEDITA');
+  const deliveriesToday = shipments.filter((s) => s.stato === 'CONSEGNATA' && new Date(s.updated_at).toDateString() === todayKey);
+  const completedCurrentMonth = currentMonthShipments.filter((s) => s.stato === 'CONSEGNATA').length;
+  const issueCount = shipments.filter((s) => s.stato === 'PROBLEMA').length;
+  const activeCouriers = couriers.filter((c) => c.attivo);
+  const successRate = shipments.length > 0
+    ? (shipments.filter((s) => s.stato === 'CONSEGNATA').length / shipments.length) * 100
+    : 0;
+
+  const logisticsKpis: LogisticsKpiItem[] = [
+    {
+      title: 'Spedizioni Attive',
+      value: String(activeShipments.length),
+      subtitle: 'In preparazione o spedite',
+      trend: calcTrend(
+        currentMonthShipments.filter((s) => s.stato === 'IN_PREPARAZIONE' || s.stato === 'SPEDITA').length,
+        previousMonthShipments.filter((s) => s.stato === 'IN_PREPARAZIONE' || s.stato === 'SPEDITA').length
+      ),
+      iconBg: 'bg-gradient-to-br from-[#3B82F6] to-[#2563EB]',
+    },
+    {
+      title: 'Consegne Oggi',
+      value: String(deliveriesToday.length),
+      subtitle: 'Consegnate oggi',
+      iconBg: 'bg-gradient-to-br from-[#17E88F] to-[#0FA67A]',
+    },
+    {
+      title: 'Spedizioni Completate',
+      value: String(completedCurrentMonth),
+      subtitle: 'Mese corrente',
+      iconBg: 'bg-gradient-to-br from-[#22C55E] to-[#16A34A]',
+    },
+    {
+      title: 'Problemi di Consegna',
+      value: String(issueCount),
+      subtitle: 'Spedizioni in stato problema',
+      iconBg: 'bg-gradient-to-br from-[#F59E0B] to-[#D97706]',
+      alert: issueCount > 0,
+    },
+    {
+      title: 'Corrieri Operativi',
+      value: String(activeCouriers.length),
+      subtitle: `${couriers.length} totali`,
+      iconBg: 'bg-gradient-to-br from-[#8B5CF6] to-[#7C3AED]',
+    },
+    {
+      title: 'Delivery Success Rate',
+      value: `${successRate.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
+      subtitle: 'Consegne completate su totale',
+      iconBg: 'bg-gradient-to-br from-[#17E88F] to-[#0FA67A]',
+    },
+  ];
+
+  const shipmentDurationDays = (s: Spedizione): number =>
+    Math.max(0, (new Date(s.updated_at).getTime() - new Date(s.created_at).getTime()) / 86400000);
+
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(now);
+    date.setDate(now.getDate() - (6 - i));
+    return date;
+  });
+
+  const leadTimeData = last7Days.map((date, index) => {
+    const shippedDay = shipments.filter((s) => {
+      const updated = new Date(s.updated_at);
+      return updated.toDateString() === date.toDateString() && (s.stato === 'CONSEGNATA' || s.stato === 'SPEDITA');
+    });
+    const avg = shippedDay.length > 0
+      ? shippedDay.reduce((sum, s) => sum + shipmentDurationDays(s), 0) / shippedDay.length
+      : 0;
+    return { day: index + 1, value: Number(avg.toFixed(1)) };
+  });
+
+  const onTimeData = last7Days.map((date, index) => {
+    const dayShipments = shipments.filter((s) => new Date(s.updated_at).toDateString() === date.toDateString());
+    const good = dayShipments.filter((s) => s.stato !== 'PROBLEMA').length;
+    const rate = dayShipments.length > 0 ? (good / dayShipments.length) * 100 : 0;
+    return { day: index + 1, rate: Number(rate.toFixed(1)) };
+  });
+
+  const shipments30 = shipments.filter((s) => new Date(s.created_at) >= new Date(now.getTime() - 30 * 86400000));
+  const previous30 = shipments.filter((s) => {
+    const date = new Date(s.created_at);
+    return date >= new Date(now.getTime() - 60 * 86400000) && date < new Date(now.getTime() - 30 * 86400000);
+  });
+  const problemi30 = shipments30.filter((s) => s.stato === 'PROBLEMA').length;
+  const complete30 = shipments30.filter((s) => s.stato === 'CONSEGNATA').length;
+  const completePrev30 = previous30.filter((s) => s.stato === 'CONSEGNATA').length;
+  const avgLeadTime = shipments.length > 0
+    ? shipments.reduce((sum, s) => sum + shipmentDurationDays(s), 0) / shipments.length
+    : 0;
+  const onTimeRate = shipments.length > 0
+    ? (shipments.filter((s) => s.stato !== 'PROBLEMA').length / shipments.length) * 100
+    : 0;
+
+  const advancedData: AdvancedLogisticsData = {
+    leadTimeMedio: `${avgLeadTime.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} giorni`,
+    onTimeRate: `${onTimeRate.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
+    problemi30gg: problemi30,
+    problemiRate: `${shipments30.length > 0 ? ((problemi30 / shipments30.length) * 100).toFixed(1) : '0.0'}%`,
+    completate30gg: complete30,
+    completateTrend: `${calcTrend(complete30, completePrev30) >= 0 ? '+' : ''}${calcTrend(complete30, completePrev30).toFixed(1)}%`,
+    leadTimeData,
+    onTimeData,
+  };
+
+  const courierPerformance: CourierPerformanceItem[] = couriers
+    .map((courier) => {
+      const related = shipments.filter((s) => s.corriere_id === courier.id);
+      const completate = related.filter((s) => s.stato === 'CONSEGNATA').length;
+      const problemi = related.filter((s) => s.stato === 'PROBLEMA').length;
+      const avgTime = related.length > 0
+        ? related.reduce((sum, s) => sum + shipmentDurationDays(s), 0) / related.length
+        : 0;
+      const success = related.length > 0 ? (completate / related.length) * 100 : 0;
+      const valutazione = Math.max(1, Math.min(5, 5 - (problemi * 0.2) - (avgTime * 0.3)));
+
+      return {
+        nome: courier.nome,
+        totali: related.length,
+        completate,
+        problemi,
+        tempoMedio: `${avgTime.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} gg`,
+        successRate: success,
+        valutazione,
+        stato: courier.attivo ? 'online' : 'offline',
+      };
+    })
+    .sort((a, b) => b.totali - a.totali);
 
   return (
     <div className="space-y-6">
@@ -59,7 +243,11 @@ export function LogisticsPage() {
           {activeTab === 'spedizioni' && (
             <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
               <div className="lg:col-span-7">
-                <ShipmentsTable onShipmentClick={setSelectedShipmentId} />
+                <ShipmentsTable
+                  onShipmentClick={setSelectedShipmentId}
+                  shipments={shipments}
+                  loading={loadingShipments}
+                />
               </div>
               <div className="lg:col-span-3">
                 <LogisticsWidgets />
@@ -127,9 +315,9 @@ export function LogisticsPage() {
 
           {activeTab === 'kpi' && (
             <div className="space-y-6">
-              <LogisticsKPIs />
-              <CourierPerformance />
-              <AdvancedKPIs />
+              <LogisticsKPIs items={logisticsKpis} />
+              <CourierPerformance couriers={courierPerformance} />
+              <AdvancedKPIs data={advancedData} />
             </div>
           )}
         </div>

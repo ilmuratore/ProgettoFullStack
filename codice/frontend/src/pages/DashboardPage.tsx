@@ -4,103 +4,144 @@ import {
   Bell, BellDot, Check, Filter, RotateCcw
 } from 'lucide-react';
 
-// Shared
-import { KPICard }               from '../components/shared/KPICard';
-import { OrdersBarChart }        from '../components/shared/OrdersBarChart';
-import { OrdersPieChart }        from '../components/shared/OrdersPieChart';
-import { ActivityTable }         from '../components/shared/ActivityTable';
-import { WarehouseCapacity }     from '../components/shared/WarehouseCapacity';
+import { KPICard } from '../components/shared/KPICard';
+import { OrdersBarChart } from '../components/shared/OrdersBarChart';
+import { OrdersPieChart } from '../components/shared/OrdersPieChart';
+import { ActivityTable } from '../components/shared/ActivityTable';
+import { WarehouseCapacity } from '../components/shared/WarehouseCapacity';
 import { CriticalProductsAlert } from '../components/shared/CriticalProductsAlert';
-import { MiniCalendar }          from '../components/shared/MiniCalendar';
-
-// UI
+import { MiniCalendar } from '../components/shared/MiniCalendar';
 import { PageTabBar } from '../components/ui/PageTabBar';
-
-// Store
 import { useAuthStore, RUOLO_ID_TO_NOME } from '../store/authStore';
-
-// API
 import { giacenzeApi } from '../api/giacenzeApi';
 import { prodottiApi } from '../api/prodottiApi';
 import { acquistiApi } from '../api/acquistiApi';
+import { ordiniApi } from '../api/ordiniApi';
+import { spedizioniApi } from '../api/spedizioniApi';
+import { magazzinoApi } from '../api/magazzinoApi';
+import { notificheApi } from '../api/notificheApi';
+import type { Notifica, NotifType } from '../types/notifiche';
 
 const formatCurrency = (n: number) =>
   new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 
 type DashboardTab = 'dashboard' | 'alert';
-type NotifType    = 'SOTTO_SCORTA' | 'RICEZIONE_PARZIALE' | 'PO_IN_RITARDO' | 'CAMBIO_STATO_SPEDIZIONE';
-
-interface Notifica {
-  id: number; tipo: NotifType; messaggio: string; utente: string; data: string; letta: boolean;
-}
 
 const notifTypeConfig: Record<NotifType, { label: string; bg: string; text: string; dot: string }> = {
   SOTTO_SCORTA:            { label: 'Sotto Scorta',  bg: 'bg-[#FEF3C7]', text: 'text-[#D97706]', dot: 'bg-[#D97706]' },
   RICEZIONE_PARZIALE:      { label: 'Ric. Parziale', bg: 'bg-[#DBEAFE]', text: 'text-[#3B82F6]', dot: 'bg-[#3B82F6]' },
   PO_IN_RITARDO:           { label: 'PO in Ritardo', bg: 'bg-[#FEE2E2]', text: 'text-[#DC2626]', dot: 'bg-[#DC2626]' },
   CAMBIO_STATO_SPEDIZIONE: { label: 'Stato Sped.',   bg: 'bg-[#F0FDF7]', text: 'text-[#16A34A]', dot: 'bg-[#16A34A]' },
+  RICHIESTA_ACCETTATA:     { label: 'Rich. Accettata', bg: 'bg-[#DCFCE7]', text: 'text-[#16A34A]', dot: 'bg-[#16A34A]' },
+  RICHIESTA_RIFIUTATA:     { label: 'Rich. Rifiutata', bg: 'bg-[#FEE2E2]', text: 'text-[#DC2626]', dot: 'bg-[#DC2626]' },
+  MESSAGGIO_FORNITORE:     { label: 'Mess. Fornitore', bg: 'bg-[#EDE9FE]', text: 'text-[#8B5CF6]', dot: 'bg-[#8B5CF6]' },
+  ALTRO:                   { label: 'Altro', bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', dot: 'bg-[#6B7280]' },
 };
-
-// Mock — rimangono statici fino a M11
-const notificheIniziali: Notifica[] = [
-  { id:1, tipo:'SOTTO_SCORTA',            messaggio:'Film Estensibile Trasparente 50cm (FLM-EST-012) sotto scorta minima. Giacenza: 12, minimo: 50',      utente:'Sistema',       data:'2025-06-05 08:14', letta:false },
-  { id:2, tipo:'PO_IN_RITARDO',           messaggio:'PO-2025-028 — Packaging Solutions Italia S.p.A. scaduto il 02/06/2025. Nessuna conferma ricevuta.', utente:'Sistema',       data:'2025-06-05 07:00', letta:false },
-  { id:3, tipo:'RICEZIONE_PARZIALE',      messaggio:'PO-2025-042 ricevuto parzialmente: 120/150 unità. Ubicazione COR-A/SCA-1.',                         utente:'Marco Rossi',   data:'2025-06-04 16:45', letta:false },
-  { id:4, tipo:'CAMBIO_STATO_SPEDIZIONE', messaggio:'Spedizione SHP-2025-311 → SPEDITA. Tracking: GLS-IT-98765432. Corriere: GLS Logistics.',            utente:'Sistema',       data:'2025-06-04 14:22', letta:false },
-  { id:5, tipo:'SOTTO_SCORTA',            messaggio:'Etichette Adesive 10x5cm (ETH-ADH-007) sotto scorta minima. Giacenza: 200, minimo: 500',            utente:'Sistema',       data:'2025-06-04 09:30', letta:false },
-  { id:6, tipo:'CAMBIO_STATO_SPEDIZIONE', messaggio:'Spedizione SHP-2025-309 → CONSEGNATA. Firma ricevuta presso cliente.',                              utente:'Carlo Ricci',   data:'2025-06-03 17:10', letta:true  },
-  { id:7, tipo:'RICEZIONE_PARZIALE',      messaggio:'PO-2025-031 ricevuto parzialmente: 80/200 unità. Fornitore: Packaging Solutions Italia.',           utente:'Laura Bianchi', data:'2025-06-03 11:05', letta:true  },
-  { id:8, tipo:'PO_IN_RITARDO',           messaggio:'PO-2025-024 — Etichette Professionali S.r.l. scaduto il 28/05/2025.',                              utente:'Sistema',       data:'2025-06-02 07:00', letta:true  },
-];
 
 export function DashboardPage() {
   const { utente } = useAuthStore();
 
-  const [dashboardTab,   setDashboardTab]   = useState<DashboardTab>('dashboard');
-  const [notificheState, setNotificheState] = useState<Notifica[]>(notificheIniziali);
-  const [filterTipo,     setFilterTipo]     = useState<NotifType | 'tutti'>('tutti');
-  const [filterLetta,    setFilterLetta]    = useState<'tutti' | 'lette' | 'non_lette'>('tutti');
+  const [dashboardTab, setDashboardTab] = useState<DashboardTab>('dashboard');
+  const [notificheState, setNotificheState] = useState<Notifica[]>([]);
+  const [filterTipo, setFilterTipo] = useState<NotifType | 'tutti'>('tutti');
+  const [filterLetta, setFilterLetta] = useState<'tutti' | 'lette' | 'non_lette'>('tutti');
 
-  const [valoreStock, setValoreStock]   = useState<number | null>(null);
+  const [valoreStock, setValoreStock] = useState<number | null>(null);
   const [ordiniAperti, setOrdiniAperti] = useState<number | null>(null);
-  const [sottoScorta, setSottoScorta]   = useState<number | null>(null);
+  const [sottoScorta, setSottoScorta] = useState<number | null>(null);
+  const [spedizioniOggi, setSpedizioniOggi] = useState<number | null>(null);
+  const [barChartData, setBarChartData] = useState([
+    { name: 'Ricevuti', value: 0, color: '#17E88F' },
+    { name: 'Confermati', value: 0, color: '#22C55E' },
+    { name: 'In Elaborazione', value: 0, color: '#3B82F6' },
+    { name: 'Completati', value: 0, color: '#0FA67A' },
+    { name: 'Annullati', value: 0, color: '#EF4444' },
+  ]);
+  const [pieChartData, setPieChartData] = useState([
+    { name: 'Bozza', value: 0, color: '#6B7280' },
+    { name: 'In Picking', value: 0, color: '#F59E0B' },
+    { name: 'In Preparazione', value: 0, color: '#3B82F6' },
+    { name: 'Spedito', value: 0, color: '#17E88F' },
+  ]);
+  const [warehouseCapacity, setWarehouseCapacity] = useState({ capacity: 0, occupied: 0, available: 0 });
 
   useEffect(() => {
-    Promise.all([giacenzeApi.list(), prodottiApi.list()])
-      .then(([giacenze, prodotti]) => {
+    Promise.all([
+      giacenzeApi.list(),
+      prodottiApi.list(),
+      acquistiApi.list(),
+      ordiniApi.list(),
+      spedizioniApi.list(),
+      magazzinoApi.listUbicazioni(),
+    ])
+      .then(([giacenze, prodotti, ordiniAcquisto, ordiniVendita, spedizioni, ubicazioni]) => {
         const prezzoByProdotto = new Map(prodotti.map((p) => [p.id, Number(p.prezzo ?? 0)]));
         const totale = giacenze.reduce((sum, g) => sum + g.quantita * (prezzoByProdotto.get(g.prodotto_id) ?? 0), 0);
         setValoreStock(totale);
+        setSottoScorta(giacenze.filter((g) => g.sotto_scorta).length);
+        setOrdiniAperti(ordiniAcquisto.filter((o) => o.stato !== 'COMPLETATO' && o.stato !== 'ANNULLATO').length);
+
+        const today = new Date().toDateString();
+        setSpedizioniOggi(spedizioni.filter((s) => new Date(s.created_at).toDateString() === today).length);
+
+        const last30 = new Date();
+        last30.setDate(last30.getDate() - 30);
+        const ordiniAcquisto30 = ordiniAcquisto.filter((o) => new Date(o.created_at) >= last30);
+        setBarChartData([
+          { name: 'Ricevuti', value: ordiniAcquisto30.filter((o) => o.totale_ricevuto > 0).length, color: '#17E88F' },
+          { name: 'Confermati', value: ordiniAcquisto30.filter((o) => o.stato === 'CONFERMATO').length, color: '#22C55E' },
+          { name: 'In Elaborazione', value: ordiniAcquisto30.filter((o) => o.stato === 'INVIATO' || o.stato === 'IN_RICEZIONE').length, color: '#3B82F6' },
+          { name: 'Completati', value: ordiniAcquisto30.filter((o) => o.stato === 'COMPLETATO').length, color: '#0FA67A' },
+          { name: 'Annullati', value: ordiniAcquisto30.filter((o) => o.stato === 'ANNULLATO').length, color: '#EF4444' },
+        ]);
+
+        setPieChartData([
+          { name: 'Bozza', value: ordiniVendita.filter((o) => o.stato === 'BOZZA').length, color: '#6B7280' },
+          { name: 'In Picking', value: ordiniVendita.filter((o) => o.stato === 'CONFERMATO' && o.stato_picking === 'IN_PICKING').length, color: '#F59E0B' },
+          { name: 'In Preparazione', value: ordiniVendita.filter((o) => o.stato === 'CONFERMATO' && o.stato_picking !== 'IN_PICKING').length, color: '#3B82F6' },
+          { name: 'Spedito', value: ordiniVendita.filter((o) => o.stato === 'SPEDITO').length, color: '#17E88F' },
+        ]);
+
+        const occupiedSet = new Set(giacenze.filter((g) => Number(g.quantita) > 0).map((g) => g.ubicazione_id));
+        const totalUbicazioni = ubicazioni.length;
+        const occupied = occupiedSet.size;
+        const available = Math.max(0, totalUbicazioni - occupied);
+        const capacity = totalUbicazioni > 0 ? Math.round((occupied / totalUbicazioni) * 100) : 0;
+        setWarehouseCapacity({ capacity, occupied, available });
       })
       .catch(() => {});
 
-    giacenzeApi.list({ scorta: 'sotto' })
-      .then((data) => setSottoScorta(data.length))
-      .catch(() => {});
-
-    acquistiApi.list()
-      .then((ordini) => setOrdiniAperti(ordini.filter((o) => o.stato !== 'COMPLETATO' && o.stato !== 'ANNULLATO').length))
-      .catch(() => {});
+    notificheApi.list()
+      .then((data) => setNotificheState(Array.isArray(data) ? data : []))
+      .catch(() => setNotificheState([]));
   }, []);
 
   if (!utente) return null;
 
   const ruoloNome = utente.ruolo_nome ?? RUOLO_ID_TO_NOME[utente.ruolo_id] ?? 'Utente';
 
-  const markAsRead  = (id: number) => setNotificheState(prev => prev.map(n => n.id === id ? { ...n, letta: true } : n));
-  const markAllRead = () => setNotificheState(prev => prev.map(n => ({ ...n, letta: true })));
-  const nonLette    = notificheState.filter(n => !n.letta).length;
+  const markAsRead = (id: number) => {
+    setNotificheState((prev) => prev.map((n) => (n.id === id ? { ...n, letto: true } : n)));
+    notificheApi.markAsRead(id).catch(() => {});
+  };
 
-  const filteredNotifiche = notificheState.filter(n => {
+  const markAllRead = () => {
+    setNotificheState((prev) => prev.map((n) => ({ ...n, letto: true })));
+    notificheApi.markAllAsRead().catch(() => {});
+  };
+
+  const nonLette = notificheState.filter((n) => !n.letto).length;
+
+  const filteredNotifiche = notificheState.filter((n) => {
     if (filterTipo !== 'tutti' && n.tipo !== filterTipo) return false;
-    if (filterLetta === 'lette'     && !n.letta) return false;
-    if (filterLetta === 'non_lette' &&  n.letta) return false;
+    if (filterLetta === 'lette' && !n.letto) return false;
+    if (filterLetta === 'non_lette' && n.letto) return false;
     return true;
   });
 
   const alertTabConfig = [
-    { id: 'dashboard', label: 'Dashboard',         icon: Package },
-    { id: 'alert',     label: 'Alert & Notifiche', icon: Bell, count: nonLette > 0 ? nonLette : undefined },
+    { id: 'dashboard', label: 'Dashboard', icon: Package },
+    { id: 'alert', label: 'Alert & Notifiche', icon: Bell, count: nonLette > 0 ? nonLette : undefined },
   ];
 
   return (
@@ -130,17 +171,17 @@ export function DashboardPage() {
           {dashboardTab === 'dashboard' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <KPICard icon={Package}       title="Valore Totale Stock"  value={valoreStock !== null ? formatCurrency(valoreStock) : '…'}  iconBgColor="bg-gradient-to-br from-[#3B82F6] to-[#2563EB]" iconColor="text-white" />
-                <KPICard icon={ClipboardList} title="Ordini da Evadere"    value={ordiniAperti !== null ? String(ordiniAperti) : '…'}        iconBgColor="bg-gradient-to-br from-[#F59E0B] to-[#D97706]" iconColor="text-white" />
-                <KPICard icon={AlertTriangle} title="Prodotti Sottoscorta" value={sottoScorta !== null ? String(sottoScorta) : '…'}          iconBgColor="bg-gradient-to-br from-[#EF4444] to-[#DC2626]" iconColor="text-white" />
-                <KPICard icon={Truck}         title="Spedizioni Odierne"   value="87"          trend={15.7}  iconBgColor="bg-gradient-to-br from-[#17E88F] to-[#0FA67A]" iconColor="text-white" />
+                <KPICard icon={Package} title="Valore Totale Stock" value={valoreStock !== null ? formatCurrency(valoreStock) : '...'} iconBgColor="bg-gradient-to-br from-[#3B82F6] to-[#2563EB]" iconColor="text-white" />
+                <KPICard icon={ClipboardList} title="Ordini da Evadere" value={ordiniAperti !== null ? String(ordiniAperti) : '...'} iconBgColor="bg-gradient-to-br from-[#F59E0B] to-[#D97706]" iconColor="text-white" />
+                <KPICard icon={AlertTriangle} title="Prodotti Sottoscorta" value={sottoScorta !== null ? String(sottoScorta) : '...'} iconBgColor="bg-gradient-to-br from-[#EF4444] to-[#DC2626]" iconColor="text-white" />
+                <KPICard icon={Truck} title="Spedizioni Odierne" value={spedizioniOggi !== null ? String(spedizioniOggi) : '...'} iconBgColor="bg-gradient-to-br from-[#17E88F] to-[#0FA67A]" iconColor="text-white" />
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2"><OrdersBarChart /></div>
-                <div><OrdersPieChart /></div>
+                <div className="lg:col-span-2"><OrdersBarChart data={barChartData} /></div>
+                <div><OrdersPieChart data={pieChartData} /></div>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <WarehouseCapacity /><CriticalProductsAlert /><MiniCalendar />
+                <WarehouseCapacity capacity={warehouseCapacity.capacity} occupied={warehouseCapacity.occupied} available={warehouseCapacity.available} /><CriticalProductsAlert /><MiniCalendar />
               </div>
               <ActivityTable />
             </div>
@@ -155,10 +196,9 @@ export function DashboardPage() {
                 </div>
                 <select value={filterTipo} onChange={(e) => setFilterTipo(e.target.value as NotifType | 'tutti')} className="px-3 py-1.5 border border-[#E5EAF2] rounded-lg text-sm text-[#374151] bg-white focus:outline-none focus:ring-2 focus:ring-[#17E88F]">
                   <option value="tutti">Tutti i tipi</option>
-                  <option value="SOTTO_SCORTA">Sotto Scorta</option>
-                  <option value="RICEZIONE_PARZIALE">Ricezione Parziale</option>
-                  <option value="PO_IN_RITARDO">PO in Ritardo</option>
-                  <option value="CAMBIO_STATO_SPEDIZIONE">Cambio Stato Spedizione</option>
+                  {Object.keys(notifTypeConfig).map((tipo) => (
+                    <option key={tipo} value={tipo}>{notifTypeConfig[tipo as NotifType].label}</option>
+                  ))}
                 </select>
                 <select value={filterLetta} onChange={(e) => setFilterLetta(e.target.value as 'tutti' | 'lette' | 'non_lette')} className="px-3 py-1.5 border border-[#E5EAF2] rounded-lg text-sm text-[#374151] bg-white focus:outline-none focus:ring-2 focus:ring-[#17E88F]">
                   <option value="tutti">Tutte</option>
@@ -169,8 +209,8 @@ export function DashboardPage() {
                   <RotateCcw className="w-3.5 h-3.5" />Reset
                 </button>
                 <div className="ml-auto flex items-center gap-3">
-                  {(['SOTTO_SCORTA','RICEZIONE_PARZIALE','PO_IN_RITARDO','CAMBIO_STATO_SPEDIZIONE'] as NotifType[]).map(tipo => {
-                    const count = notificheState.filter(n => n.tipo === tipo && !n.letta).length;
+                  {(Object.keys(notifTypeConfig) as NotifType[]).map((tipo) => {
+                    const count = notificheState.filter((n) => n.tipo === tipo && !n.letto).length;
                     if (!count) return null;
                     const cfg = notifTypeConfig[tipo];
                     return (
@@ -191,17 +231,16 @@ export function DashboardPage() {
                 {filteredNotifiche.map((n) => {
                   const cfg = notifTypeConfig[n.tipo];
                   return (
-                    <div key={n.id} className={`flex items-start gap-4 p-4 rounded-xl border transition-all ${n.letta ? 'bg-white border-[#E5EAF2] opacity-60' : 'bg-[#FAFFFE] border-[#D1FAE5] shadow-sm'}`}>
-                      <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${n.letta ? 'bg-[#E5EAF2]' : cfg.dot}`} />
+                    <div key={n.id} className={`flex items-start gap-4 p-4 rounded-xl border transition-all ${n.letto ? 'bg-white border-[#E5EAF2] opacity-60' : 'bg-[#FAFFFE] border-[#D1FAE5] shadow-sm'}`}>
+                      <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${n.letto ? 'bg-[#E5EAF2]' : cfg.dot}`} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${cfg.bg} ${cfg.text}`}>{cfg.label}</span>
-                          <span className="text-xs text-[#9CA3AF]">{n.data}</span>
-                          <span className="text-xs text-[#9CA3AF]">· {n.utente}</span>
+                          <span className="text-xs text-[#9CA3AF]">{new Date(n.created_at).toLocaleString('it-IT')}</span>
                         </div>
                         <p className="text-sm text-[#374151] leading-snug">{n.messaggio}</p>
                       </div>
-                      {!n.letta && (
+                      {!n.letto && (
                         <button onClick={() => markAsRead(n.id)} className="flex-shrink-0 px-2.5 py-1 text-xs text-[#6B7280] border border-[#E5EAF2] rounded-lg hover:bg-[#F7F9FC] transition-colors">
                           <Check className="w-3.5 h-3.5" />
                         </button>

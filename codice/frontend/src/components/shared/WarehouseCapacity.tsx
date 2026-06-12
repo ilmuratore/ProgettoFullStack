@@ -1,8 +1,12 @@
 import { Warehouse } from 'lucide-react';
 
-export function WarehouseCapacity() {
-  const capacity = 78;
+interface WarehouseCapacityProps {
+  capacity: number;
+  occupied: number;
+  available: number;
+}
 
+export function WarehouseCapacity({ capacity, occupied, available }: WarehouseCapacityProps) {
   return (
     <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
       <div className="flex items-center gap-3 mb-4">
@@ -10,8 +14,8 @@ export function WarehouseCapacity() {
           <Warehouse className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h3 className="font-semibold text-[#2D2D2D]">Capacità Magazzino</h3>
-          <p className="text-xs text-[#6B7280]">Utilizzo corrente</p>
+          <h3 className="font-semibold text-[#2D2D2D]">Capacita Magazzino</h3>
+          <p className="text-xs text-[#6B7280]">Utilizzo ubicazioni attive</p>
         </div>
       </div>
 
@@ -31,12 +35,12 @@ export function WarehouseCapacity() {
 
       <div className="mt-4 pt-4 border-t border-[#E5EAF2] grid grid-cols-2 gap-4">
         <div>
-          <div className="text-xs text-[#6B7280] mb-1">Spazio Occupato</div>
-          <div className="text-lg font-semibold text-[#2D2D2D]">7.800 m²</div>
+          <div className="text-xs text-[#6B7280] mb-1">Ubicazioni Occupate</div>
+          <div className="text-lg font-semibold text-[#2D2D2D]">{occupied}</div>
         </div>
         <div>
-          <div className="text-xs text-[#6B7280] mb-1">Spazio Disponibile</div>
-          <div className="text-lg font-semibold text-[#17E88F]">2.200 m²</div>
+          <div className="text-xs text-[#6B7280] mb-1">Ubicazioni Libere</div>
+          <div className="text-lg font-semibold text-[#17E88F]">{available}</div>
         </div>
       </div>
     </div>

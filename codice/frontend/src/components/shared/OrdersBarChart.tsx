@@ -1,15 +1,15 @@
-import { TrendingUp } from 'lucide-react';
+export interface OrdersBarChartItem {
+  name: string;
+  value: number;
+  color: string;
+}
 
-const data = [
-  { name: 'Ricevuti', value: 245, color: '#17E88F' },
-  { name: 'Confermati', value: 189, color: '#22C55E' },
-  { name: 'In Elaborazione', value: 128, color: '#3B82F6' },
-  { name: 'Completati', value: 412, color: '#0FA67A' },
-  { name: 'Annullati', value: 23, color: '#EF4444' },
-];
+interface OrdersBarChartProps {
+  data: OrdersBarChartItem[];
+}
 
-export function OrdersBarChart() {
-  const maxValue = Math.max(...data.map(d => d.value));
+export function OrdersBarChart({ data }: OrdersBarChartProps) {
+  const maxValue = Math.max(1, ...data.map((d) => d.value));
 
   return (
     <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2] h-full">
