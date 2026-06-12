@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { Spedizione } from '../types/spedizioni';
+import type { Spedizione, SpedizioneCreateRequest, StatoSpedizione } from '../types/spedizioni';
 
 export const spedizioniApi = {
   list: (): Promise<Spedizione[]> =>
@@ -7,4 +7,10 @@ export const spedizioniApi = {
 
   getById: (id: number): Promise<Spedizione> =>
     api.get<Spedizione>(`/spedizioni/${id}`),
+
+  create: (body: SpedizioneCreateRequest): Promise<Spedizione> =>
+    api.post<Spedizione>('/spedizioni', body),
+
+  updateStato: (id: number, stato: StatoSpedizione): Promise<Spedizione> =>
+    api.patch<Spedizione>(`/spedizioni/${id}/stato`, { stato }),
 };

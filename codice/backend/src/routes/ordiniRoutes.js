@@ -49,6 +49,9 @@ const validateRighe = (req, res, next) => {
 // GET /api/v1/ordini
 router.get('/', auth, requirePermesso('ordini:read'), ordiniController.getAll);
 
+// GET /api/v1/ordini/export
+router.get('/export', auth, requirePermesso('ordini:read'), ordiniController.exportExcel);
+
 // GET /api/v1/ordini/disponibilita/:prodotto_id
 router.get('/disponibilita/:prodotto_id', auth, requirePermesso('ordini:read'), ordiniController.getDisponibilita);
 

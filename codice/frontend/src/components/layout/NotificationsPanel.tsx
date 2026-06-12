@@ -66,6 +66,7 @@ function formatTimestamp(value: string): string {
 export function NotificationsPanel({ onNavigate }: NotificationsPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notifica[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -79,22 +80,57 @@ export function NotificationsPanel({ onNavigate }: NotificationsPanelProps) {
   }, []);
 
   useEffect(() => {
-    notificheApi.list()
-      .then((data) => setNotifications(Array.isArray(data) ? data : []))
-      .catch(() => setNotifications([]));
+    let active = true;
+
+    const loadUnreadCount = () => {
+      notificheApi.count()
+        .then((data) => {
+          if (!active) return;
+          setUnreadCount(Number(data?.count ?? 0));
+        })
+        .catch(() => {
+          if (!active) return;
+          setUnreadCount(0);
+        });
+    };
+
+    loadUnreadCount();
+    const intervalId = window.setInterval(loadUnreadCount, 60000);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
   }, []);
 
-  const unreadCount = notifications.filter((n) => !n.letto).length;
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    notificheApi.list()
+      .then((data) => {
+        const nextNotifications = Array.isArray(data) ? data : [];
+        setNotifications(nextNotifications);
+        setUnreadCount(nextNotifications.filter((n) => !n.letto).length);
+      })
+      .catch(() => setNotifications([]));
+  }, [isOpen]);
 
   const handleMarkAsRead = (id: number) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, letto: true } : n))
-    );
+    setNotifications((prev) => {
+      const target = prev.find((n) => n.id === id);
+      if (target && !target.letto) {
+        setUnreadCount((count) => Math.max(0, count - 1));
+      }
+      return prev.map((n) => (n.id === id ? { ...n, letto: true } : n));
+    });
     notificheApi.markAsRead(id).catch(() => {});
   };
 
   const handleMarkAllAsRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, letto: true })));
+    setUnreadCount(0);
     notificheApi.markAllAsRead().catch(() => {});
   };
 
@@ -110,7 +146,11 @@ export function NotificationsPanel({ onNavigate }: NotificationsPanelProps) {
   return (
     <div className="relative" ref={panelRef}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          sessionStorage.setItem('dashboard-tab', 'alert');
+          onNavigate?.('dashboard');
+          setIsOpen((prev) => !prev);
+        }}
         className="relative p-2 hover:bg-[#F7F9FC] rounded-xl transition-all"
       >
         <Bell className="w-5 h-5 text-[#6B7280]" />

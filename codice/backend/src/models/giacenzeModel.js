@@ -6,6 +6,7 @@ const COLS_FULL = `
     giacenze.prodotto_id,
     prodotti.sku,
     prodotti.nome        AS prodotto,
+    prodotti.attivo,
     prodotti.scorta_minima,
     (giacenze.quantita < prodotti.scorta_minima) AS sotto_scorta,
     categorie.nome       AS categoria,
@@ -134,6 +135,14 @@ const findByProdottoId = (prodotto_id) =>
         [prodotto_id]
     );
 
+const getTotaleByProdottoId = (prodotto_id, client) =>
+    (client || pool).query(
+        `SELECT COALESCE(SUM(quantita), 0)::int AS totale
+         FROM giacenze
+         WHERE prodotto_id = $1`,
+        [prodotto_id]
+    );
+
 const findByUbicazioneId = (ubicazione_id) =>
     pool.query(
         `SELECT giacenze.id,
@@ -219,6 +228,7 @@ module.exports = {
     findAllFiltered,
     findById,
     findByProdottoId,
+    getTotaleByProdottoId,
     findByUbicazioneId,
     findByProdottoIdAndUbicazioneId,
     lockByProdottoIdAndUbicazioneId,

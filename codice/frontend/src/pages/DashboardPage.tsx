@@ -66,6 +66,14 @@ export function DashboardPage() {
   const [warehouseCapacity, setWarehouseCapacity] = useState({ capacity: 0, occupied: 0, available: 0 });
 
   useEffect(() => {
+    const requestedTab = sessionStorage.getItem('dashboard-tab');
+    if (requestedTab === 'alert') {
+      setDashboardTab('alert');
+      sessionStorage.removeItem('dashboard-tab');
+    }
+  }, []);
+
+  useEffect(() => {
     Promise.all([
       giacenzeApi.list(),
       prodottiApi.list(),
@@ -110,10 +118,24 @@ export function DashboardPage() {
         setWarehouseCapacity({ capacity, occupied, available });
       })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    let active = true;
 
     notificheApi.list()
-      .then((data) => setNotificheState(Array.isArray(data) ? data : []))
-      .catch(() => setNotificheState([]));
+      .then((data) => {
+        if (!active) return;
+        setNotificheState(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setNotificheState([]);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   if (!utente) return null;

@@ -1,0 +1,421 @@
+{
+  "info": {
+    "_postman_id": "f48d1d1d-m11-n07i-f1ch-e00000000001",
+    "name": "LogiChain V2 - M11 Notifiche",
+    "description": "Suite di verifica backend M11 (Notifiche utente).\n\nCOME USARLA:\n1) Avvia il backend (npm run dev) con migration applicate.\n2) Nel .env imposta ADMIN_EMAIL e ADMIN_PASSWORD, poi esegui:\n   npm run seed_ruoli_permessi && npm run seed_admin\n3) Allinea le variabili admin_email/admin_password al .env.\n4) Apri Runner -> seleziona questa collection -> Run.\n\nNote:\n- La suite usa token Admin.\n- I test su GET /:id e PATCH /:id/letta richiedono almeno una notifica esistente per l'utente loggato.\n- Se nessuna notifica esiste, quei test vengono saltati automaticamente.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Setup - Login Admin",
+      "item": [
+        {
+          "name": "Login Admin",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('notifica_id', '');",
+                  "pm.collectionVariables.set('notifica_non_letta_id', '');",
+                  "pm.collectionVariables.set('count_non_lette_before', '0');",
+                  "pm.collectionVariables.set('count_non_lette_after_mark_one', '0');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Login Admin -> 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Setup: status = success', () => pm.expect(b.status).to.eql('success'));",
+                  "pm.test('Setup: token presente', () => pm.expect(b.data && b.data.token).to.be.a('string'));",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_admin', b.data.token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "M11 Notifiche",
+      "item": [
+        {
+          "name": "01 GET /notifiche - elenco utente -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('01 GET /notifiche -> 200', () => pm.response.to.have.status(200));",
+                  "pm.test('01 status = success', () => pm.expect(b.status).to.eql('success'));",
+                  "pm.test('01 data array', () => pm.expect(b.data).to.be.an('array'));",
+                  "if (Array.isArray(b.data) && b.data.length > 0 && b.data[0].id) {",
+                  "  pm.collectionVariables.set('notifica_id', b.data[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/notifiche"
+          }
+        },
+        {
+          "name": "02 GET /notifiche/count - count non lette -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('02 GET /notifiche/count -> 200', () => pm.response.to.have.status(200));",
+                  "pm.test('02 status = success', () => pm.expect(b.status).to.eql('success'));",
+                  "pm.test('02 count numerico', () => pm.expect(b.data && b.data.count).to.be.a('number'));",
+                  "pm.test('02 count >= 0', () => pm.expect(b.data.count).to.be.at.least(0));",
+                  "pm.collectionVariables.set('count_non_lette_before', String(b.data.count));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/notifiche/count"
+          }
+        },
+        {
+          "name": "03 GET /notifiche/non-lette - elenco non lette -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('03 GET /notifiche/non-lette -> 200', () => pm.response.to.have.status(200));",
+                  "pm.test('03 status = success', () => pm.expect(b.status).to.eql('success'));",
+                  "pm.test('03 data array', () => pm.expect(b.data).to.be.an('array'));",
+                  "pm.test('03 length coerente con count', () => pm.expect(b.data.length).to.eql(Number(pm.collectionVariables.get('count_non_lette_before') || '0')));",
+                  "if (Array.isArray(b.data) && b.data.length > 0 && b.data[0].id) {",
+                  "  pm.collectionVariables.set('notifica_non_letta_id', b.data[0].id);",
+                  "  pm.collectionVariables.set('notifica_id', b.data[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/notifiche/non-lette"
+          }
+        },
+        {
+          "name": "04 GET /notifiche/:id - dettaglio -> 200 o skip",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('notifica_id')) {",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('04 GET /notifiche/:id -> 200', () => pm.response.to.have.status(200));",
+                  "pm.test('04 status = success', () => pm.expect(b.status).to.eql('success'));",
+                  "pm.test('04 id coerente', () => pm.expect(String(b.data.id)).to.eql(String(pm.collectionVariables.get('notifica_id'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/notifiche/{{notifica_id}}"
+          }
+        },
+        {
+          "name": "05 GET /notifiche/999999999 - not found -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('05 GET /notifiche/999999999 -> 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/notifiche/999999999"
+          }
+        },
+        {
+          "name": "06 PATCH /notifiche/:id/letta - mark as read -> 200 o skip",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('notifica_non_letta_id')) {",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('06 PATCH /notifiche/:id/letta -> 200', () => pm.response.to.have.status(200));",
+                  "pm.test('06 status = success', () => pm.expect(b.status).to.eql('success'));",
+                  "pm.test('06 ritorna id', () => pm.expect(String(b.data.id)).to.eql(String(pm.collectionVariables.get('notifica_non_letta_id'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/notifiche/{{notifica_non_letta_id}}/letta"
+          }
+        },
+        {
+          "name": "07 GET /notifiche/count - dopo mark one -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "var before = Number(pm.collectionVariables.get('count_non_lette_before') || '0');",
+                  "pm.test('07 GET /notifiche/count -> 200', () => pm.response.to.have.status(200));",
+                  "pm.test('07 count numerico', () => pm.expect(b.data && b.data.count).to.be.a('number'));",
+                  "pm.test('07 count non cresce dopo mark one', () => pm.expect(b.data.count).to.be.at.most(before));",
+                  "pm.collectionVariables.set('count_non_lette_after_mark_one', String(b.data.count));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/notifiche/count"
+          }
+        },
+        {
+          "name": "08 PATCH /notifiche/letta-tutto - mark all -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('08 PATCH /notifiche/letta-tutto -> 200', () => pm.response.to.have.status(200));",
+                  "pm.test('08 status = success', () => pm.expect(b.status).to.eql('success'));",
+                  "pm.test('08 data array', () => pm.expect(b.data).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/notifiche/letta-tutto"
+          }
+        },
+        {
+          "name": "09 GET /notifiche/non-lette - dopo mark all -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "var before = Number(pm.collectionVariables.get('count_non_lette_after_mark_one') || pm.collectionVariables.get('count_non_lette_before') || '0');",
+                  "pm.test('09 GET /notifiche/non-lette -> 200', () => pm.response.to.have.status(200));",
+                  "pm.test('09 data array', () => pm.expect(b.data).to.be.an('array'));",
+                  "pm.test('09 non lette non aumentano', () => pm.expect(b.data.length).to.be.at.most(before));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/notifiche/non-lette"
+          }
+        },
+        {
+          "name": "10 PATCH /notifiche/999999999/letta - not found -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('10 PATCH /notifiche/999999999/letta -> 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": "{{base_url}}/api/v1/notifiche/999999999/letta"
+          }
+        },
+        {
+          "name": "11 GET /notifiche - senza token -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('11 GET /notifiche senza token -> 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/api/v1/notifiche"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "admin_email",
+      "value": "admin@logichain.it"
+    },
+    {
+      "key": "admin_password",
+      "value": "Admin123!"
+    },
+    {
+      "key": "token_admin",
+      "value": ""
+    },
+    {
+      "key": "notifica_id",
+      "value": ""
+    },
+    {
+      "key": "notifica_non_letta_id",
+      "value": ""
+    },
+    {
+      "key": "count_non_lette_before",
+      "value": "0"
+    },
+    {
+      "key": "count_non_lette_after_mark_one",
+      "value": "0"
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, ShoppingBag, ListChecks, BarChart2, MapPin, CheckSquare, Clock } from 'lucide-react';
+import { Plus, ShoppingBag, ListChecks, BarChart2, MapPin, CheckSquare, Clock, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { SalesKPIs } from './components/SalesKPIs';
 import { SalesOrdersTable } from './components/SalesOrdersTable';
@@ -11,6 +11,7 @@ import { NewSalesOrderModal } from './components/NewSalesOrderModal';
 import { PageTabBar, type TabConfig } from '../../components/ui/PageTabBar';
 import { ordiniApi } from '../../api/ordiniApi';
 import { clientiApi } from '../../api/clientiApi';
+import { downloadBlob } from '../../api/client';
 import type { OrdineVendita } from '../../types/ordini';
 import type { Cliente } from '../../types/clienti';
 import type { SalesKpiItem } from './components/SalesKPIs';
@@ -46,6 +47,7 @@ export function SalesPage() {
   const [activeTab, setActiveTab] = useState<SalesTab>('ordini');
   const [expandedPicking, setExpandedPicking] = useState<string | null>('PCK-001');
   const [reloadKey, setReloadKey] = useState(0);
+  const [exporting, setExporting] = useState(false);
   const [salesOrders, setSalesOrders] = useState<OrdineVendita[]>([]);
   const [salesClients, setSalesClients] = useState<Cliente[]>([]);
   const [destinazioniByCliente, setDestinazioniByCliente] = useState<Record<number, number>>({});
@@ -210,6 +212,17 @@ export function SalesPage() {
     }
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await downloadBlob('/ordini/export', 'ordini-vendita.xlsx');
+    } catch (err: any) {
+      toast.error('Export fallito', { description: err?.message });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -218,13 +231,25 @@ export function SalesPage() {
           <p className="text-sm text-[#6B7280] mt-1">Gestione ordini clienti, picking e KPI vendite</p>
         </div>
         {activeTab !== 'kpi' && (
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2 font-medium"
-          >
-            <Plus className="w-4 h-4" />
-            {getActionLabel()}
-          </button>
+          <div className="flex items-center gap-3">
+            {activeTab === 'ordini' && (
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="px-4 py-2 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-[#F7F9FC] transition-all flex items-center gap-2 font-medium disabled:opacity-60"
+              >
+                <Download className="w-4 h-4" />
+                {exporting ? 'Export...' : 'Esporta Excel'}
+              </button>
+            )}
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="px-4 py-2 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2 font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              {getActionLabel()}
+            </button>
+          </div>
         )}
       </div>
 

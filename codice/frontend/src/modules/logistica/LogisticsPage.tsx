@@ -78,20 +78,17 @@ export function LogisticsPage() {
   const handleDdtSort = (key: DdtSortKey) => setDdtSort((prev) => toggleSort(prev, key));
   const sortedDdtData = applySort(ddtData, ddtSort, compareDdtByKey);
 
-  useEffect(() => {
-    let alive = true;
+  const loadLogisticsData = () => {
     setLoadingShipments(true);
     Promise.all([
       spedizioniApi.list(),
       corrieriApi.list(),
     ])
       .then(([shipmentsData, couriersData]) => {
-        if (!alive) return;
         setShipments(Array.isArray(shipmentsData) ? shipmentsData : []);
         setCouriers(Array.isArray(couriersData) ? couriersData : []);
       })
       .catch((err: any) => {
-        if (!alive) return;
         setShipments([]);
         setCouriers([]);
         if (err?.status !== 404) {
@@ -99,9 +96,12 @@ export function LogisticsPage() {
         }
       })
       .finally(() => {
-        if (alive) setLoadingShipments(false);
+        setLoadingShipments(false);
       });
-    return () => { alive = false; };
+  };
+
+  useEffect(() => {
+    loadLogisticsData();
   }, []);
 
   const now = new Date();
@@ -246,7 +246,7 @@ export function LogisticsPage() {
         tempoMedio: `${avgTime.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} gg`,
         successRate: success,
         valutazione,
-        stato: courier.attivo ? 'online' : 'offline',
+        stato: courier.attivo ? 'online' as const : 'offline' as const,
       };
     })
     .sort((a, b) => b.totali - a.totali);
@@ -365,6 +365,12 @@ export function LogisticsPage() {
       <NewShipmentModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        couriers={couriers.filter((courier) => courier.attivo)}
+        existingOrdineIds={shipments.map((shipment) => shipment.ordine_id)}
+        onCreated={() => {
+          setIsModalOpen(false);
+          loadLogisticsData();
+        }}
       />
     </div>
   );

@@ -115,8 +115,8 @@ const update = (id, { tracking_number }) =>
 
 
 
-const updateStato = (id, stato) =>
-    pool.query(
+const updateStato = (id, stato, client) =>
+    (client || pool).query(
         `UPDATE spedizioni
      SET stato = $1::shipping_state,
          updated_at = CURRENT_TIMESTAMP

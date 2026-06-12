@@ -2,10 +2,25 @@ const express = require('express');
 const spedizioniController = require('../controllers/spedizioniController');
 const { auth } = require('../middleware/auth');
 const { requirePermesso } = require('../middleware/rbac');
+const { validate } = require('../middleware/validate');
 
 const router = express.Router();
 
+const createBlueprint = {
+    ordine_id: { required: true, type: 'number', integer: true, min: 1 },
+    cliente_id: { required: true, type: 'number', integer: true, min: 1 },
+    destinazione_id: { required: true, type: 'number', integer: true, min: 1 },
+    corriere_id: { required: false, type: 'number', integer: true, min: 1 },
+    tracking_number: { required: false, type: 'string' }
+};
+
+const statoBlueprint = {
+    stato: { required: true, type: 'string', enum: ['IN_PREPARAZIONE', 'SPEDITA', 'CONSEGNATA', 'PROBLEMA'] }
+};
+
 router.get('/', auth, requirePermesso('spedizioni:read'), spedizioniController.getAll);
 router.get('/:id', auth, requirePermesso('spedizioni:read'), spedizioniController.getById);
+router.post('/', auth, requirePermesso('spedizioni:write'), validate(createBlueprint), spedizioniController.create);
+router.patch('/:id/stato', auth, requirePermesso('spedizioni:write'), validate(statoBlueprint), spedizioniController.updateStato);
 
 module.exports = router;

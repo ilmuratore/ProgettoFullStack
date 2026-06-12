@@ -14,6 +14,23 @@ const isOggi = (iso: string) => {
 };
 
 const ATTIVI: ReadonlySet<string> = new Set(['BOZZA', 'INVIATO', 'CONFERMATO', 'IN_RICEZIONE']);
+const STATI_RITARDO: ReadonlySet<string> = new Set(['BOZZA', 'INVIATO', 'CONFERMATO', 'IN_RICEZIONE']);
+
+const normalizeDateOnly = (value: string) => {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getTodayLocalDateOnly = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 interface KpiData {
   ordiniAttivi: number;
@@ -31,8 +48,13 @@ export function PurchaseKPIs() {
     Promise.all([acquistiApi.list(), fornitoriApi.list(), ricezioniApi.list()])
       .then(([ordini, fornitori, ricezioni]) => {
         const ordiniAttivi = ordini.filter((o) => ATTIVI.has(o.stato));
-        const oggi = new Date();
-        const ordiniInRitardo = ordiniAttivi.filter((o) => o.data_prevista && new Date(o.data_prevista) < oggi);
+        const oggi = getTodayLocalDateOnly();
+        const ordiniInRitardo = ordini.filter(
+          (o) =>
+            STATI_RITARDO.has(o.stato) &&
+            Boolean(o.data_prevista) &&
+            normalizeDateOnly(o.data_prevista as string) < oggi
+        );
         const fornitoriAttivi = fornitori.filter((f) => f.attivo);
         const leadTimes = fornitoriAttivi.map((f) => f.lead_time_giorni).filter((v): v is number => v != null);
 

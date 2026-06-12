@@ -52,8 +52,8 @@ const findListino = () =>
          ORDER  BY p.nome ASC`
     );
 
-const findById = (id) =>
-    pool.query(
+const findById = (id, client = pool) =>
+    client.query(
         `SELECT ${BASE_COLS}
          FROM   prodotti p
          LEFT JOIN categorie c ON c.id = p.categoria_id
@@ -61,8 +61,8 @@ const findById = (id) =>
         [id]
     );
 
-const findBySku = (sku) =>
-    pool.query(
+const findBySku = (sku, client = pool) =>
+    client.query(
         `SELECT ${BASE_COLS}
          FROM   prodotti p
          LEFT JOIN categorie c ON c.id = p.categoria_id
@@ -97,8 +97,8 @@ const search = (q) =>
         [`%${q}%`]
     );
 
-const create = ({ sku, nome, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima = 0, prezzo, attivo = true }) =>
-    pool.query(
+const create = ({ sku, nome, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima = 0, prezzo, attivo = true }, client = pool) =>
+    client.query(
         `INSERT INTO prodotti
              (sku, nome, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo, data_agg_prezzo, attivo)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9)
@@ -106,8 +106,8 @@ const create = ({ sku, nome, descrizione, categoria_id, unita_misura, peso_kg, s
         [sku, nome, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo, attivo]
     );
 
-const update = (id, { sku, nome, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo, attivo }) =>
-    pool.query(
+const update = (id, { sku, nome, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo, attivo }, client = pool) =>
+    client.query(
         `UPDATE prodotti
          SET sku           = COALESCE($1,  sku),
              nome          = COALESCE($2,  nome),

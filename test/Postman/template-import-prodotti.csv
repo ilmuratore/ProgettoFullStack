@@ -1,0 +1,3 @@
+sku,nome,descrizione,categoria_id,unita_misura,peso_kg,scorta_minima,prezzo,attivo
+SKU-001,Prodotto demo A,Prodotto esempio,1,pezzo,1.25,10,12.50,true
+SKU-002,Prodotto demo B,Secondo esempio,2,kg,0.75,5,8.90,true
