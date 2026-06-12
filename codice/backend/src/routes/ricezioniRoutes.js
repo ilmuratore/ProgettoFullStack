@@ -59,4 +59,7 @@ router.post(
     }
 );
 
+// GET /api/v1/ricezioni/:id/pdf
+router.get('/:id/pdf', auth, requirePermesso('acquisti:read'), ricezioniController.getPdf);
+
 module.exports = router;

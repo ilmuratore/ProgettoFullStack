@@ -30,5 +30,6 @@ router.get('/ubicazione/:ubicazione_id', auth, requirePermesso('giacenze:read'),
 router.get('/tipo/:movimento_tipo', auth, requirePermesso('giacenze:read'), movimentiStockController.getByTipo);
 router.get('/riferimento/:riferimento', auth, requirePermesso('giacenze:read'), movimentiStockController.getByRiferimento);
 router.get('/:id', auth, requirePermesso('giacenze:read'), movimentiStockController.getById);
+router.get('/:id/pdf', auth, requirePermesso('giacenze:read'), movimentiStockController.getPdf);
 
 module.exports = router;

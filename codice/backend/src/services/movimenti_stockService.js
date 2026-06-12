@@ -298,6 +298,13 @@ const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione
 };
 
 
+const { buildMovimentoPdf } = require('../pdf/movimentoPdf');
+
+const generaPdfMovimento = async (id) => {
+    const movimento = await getById(id);
+    return buildMovimentoPdf({ movimento });
+};
+
 module.exports = {
     getAll,
     getById,
@@ -305,5 +312,6 @@ module.exports = {
     getByUbicazioneId,
     getByTipo,
     getByRiferimento,
-    create
+    create,
+    generaPdfMovimento
 };

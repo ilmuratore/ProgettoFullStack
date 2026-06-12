@@ -32,10 +32,19 @@ const addRiga = async (ricezione_id, data) => {
     throw err;
 };
 
+const { buildRicezioniPdf } = require('../pdf/ricezioniPdf');
+
+const generaPdfRicezione = async (id) => {
+    const ricezione = await getById(id);
+    const righeRes = await righeRicezioneModel.findByRicezioneId(id);
+    return buildRicezioniPdf({ ricezione, righe: righeRes.rows });
+};
+
 module.exports = {
     getAll,
     getById,
     getRighe,
     create,
     addRiga,
+    generaPdfRicezione
 };

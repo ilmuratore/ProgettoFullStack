@@ -69,5 +69,6 @@ router.patch('/:id/stato', auth, requirePermesso('ordini:approve'), validate(sta
 
 // PATCH /api/v1/ordini/:id/picking
 router.patch('/:id/picking', auth, requirePermesso('ordini:approve'), validate(pickingBlueprint), ordiniController.updateStatoPicking);
+router.get('/:id/pdf', auth, requirePermesso('ordini:read'), ordiniController.getPdf);
 
 module.exports = router;

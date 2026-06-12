@@ -444,6 +444,14 @@ const listRicezioniByOrdine = async (ordineId) => {
     return res.rows;
 };
 
+const { buildOrdineAcquistoPdf } = require('../pdf/ordiniAcquistoPdf');
+
+const generaPdfOrdineAcquisto = async (id) => {
+    const ordine = await getOrdineAcquistoById(id);
+    const righeRes = await righePoModel.findByOrdineAcquistoId(id);
+    return buildOrdineAcquistoPdf({ ordine, righe: righeRes.rows });
+};
+
 module.exports = {
     getAll,
     getOrdineAcquistoById,
@@ -452,5 +460,6 @@ module.exports = {
     updateStatoOrdineAcquisto,
     addRigaOrdineAcquisto,
     createRicezione,
-    listRicezioniByOrdine
+    listRicezioniByOrdine,
+    generaPdfOrdineAcquisto
 };

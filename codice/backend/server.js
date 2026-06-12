@@ -82,10 +82,10 @@ app.use('/api/v1/notifiche',        require('./src/routes/notificheRoutes'));
 // app.use('/api/v1/dashboard',        require('./src/routes/dashboardRoutes'));
 
 // M13 — Ricerca Globale Ecosistema
-// app.use('/api/v1/ecosystem',        require('./src/routes/ecosystemRoutes'));
+app.use('/api/v1/ecosystem',        require('./src/routes/ecosystemRoutes'));
 
 // M16 — Richieste di Acquisto
-// app.use('/api/v1/richieste-acquisto', require('./src/routes/richiesteAcquistoRoutes'));
+app.use('/api/v1/richieste-acquisto', require('./src/routes/richiesteAcquistoRoutes'));
 
 // -----------------------------------------------------------------
 // 404 catch-all

@@ -80,10 +80,22 @@ const updateStatoPicking = async (req, res, next) => {
     }
 };
 
+const getPdf = async (req, res, next) => {
+    try {
+        const result = await ordiniService.generaPdfOrdineVendita(req.params.id);
+        const disposition = req.query.download === '1' ? 'attachment' : 'inline';
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `${disposition}; filename="${result.filename}"`);
+        res.setHeader('Content-Length', result.buffer.length);
+        res.end(result.buffer);
+    } catch (err) { next(err); }
+};
+
 module.exports = {
     getAll,
     getById,
     getDisponibilita,
+    getPdf,
     exportExcel,
     create,
     update,

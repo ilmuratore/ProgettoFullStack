@@ -141,9 +141,61 @@ const updateStato = async (id, stato) => {
     }
 };
 
+const ddtModel = require('../models/ddtModel');
+const { buildDdtPdf } = require('../pdf/ddtPdf');
+
+const updateTracking = async (id, tracking_number) => {
+    await getById(id);
+    const r = await spedizioniModel.updateTrackingNumber(id, tracking_number);
+    return r.rows[0];
+};
+
+const getDdt = async (spedizione_id) => {
+    await getById(spedizione_id);
+    const r = await ddtModel.findBySpedizioneId(spedizione_id);
+    return r.rows[0] || null;
+};
+
+const createDdt = async (spedizione_id, data) => {
+    await getById(spedizione_id);
+    const existing = await ddtModel.findBySpedizioneId(spedizione_id);
+    if (existing.rowCount > 0) throwError('DUPLICATE_ENTRY', 'DDT già esistente per questa spedizione', 409);
+    const r = await ddtModel.create({ spedizione_id, ...data });
+    return r.rows[0];
+};
+
+const updateDdt = async (spedizione_id, data) => {
+    await getById(spedizione_id);
+    const existing = await ddtModel.findBySpedizioneId(spedizione_id);
+    if (existing.rowCount === 0) throwError('RESOURCE_NOT_FOUND', 'DDT non trovato', 404);
+    const r = await ddtModel.update(existing.rows[0].id, data);
+    return r.rows[0];
+};
+
+const generaPdfDdt = async (spedizione_id) => {
+    const spedizione = await getById(spedizione_id);
+    const ddtResult = await ddtModel.findBySpedizioneId(spedizione_id);
+    if (ddtResult.rowCount === 0) throwError('RESOURCE_NOT_FOUND', 'DDT non trovato per questa spedizione', 404);
+    const ddt = ddtResult.rows[0];
+    const righeResult = await pool.query(
+        `SELECT ro.prodotto_id, p.sku, p.nome AS prodotto, ro.quantita, NULL AS note
+         FROM ordini o
+         JOIN righe_ordine ro ON ro.ordine_id = o.id
+         JOIN prodotti p ON p.id = ro.prodotto_id
+         WHERE o.id = $1 ORDER BY ro.id`,
+        [spedizione.ordine_id]
+    );
+    return buildDdtPdf({ ddt, spedizione, righe: righeResult.rows });
+};
+
 module.exports = {
     list,
     getById,
     create,
-    updateStato
+    updateStato,
+    updateTracking,
+    getDdt,
+    createDdt,
+    updateDdt,
+    generaPdfDdt
 };

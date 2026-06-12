@@ -332,6 +332,13 @@ const updateStatoPicking = async (id, nuovoStatoPicking, prelievi) => {
     }
 };
 
+const { buildOrdineVenditaPdf } = require('../pdf/ordineVenditaPdf');
+
+const generaPdfOrdineVendita = async (id) => {
+    const { ordine, righe } = await getById(id);
+    return buildOrdineVenditaPdf({ ordine, righe });
+};
+
 module.exports = {
     getAll,
     getById,
@@ -339,5 +346,6 @@ module.exports = {
     create,
     update,
     updateStato,
-    updateStatoPicking
+    updateStatoPicking,
+    generaPdfOrdineVendita
 };
