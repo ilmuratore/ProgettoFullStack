@@ -18,7 +18,7 @@ const canTransitionStato = (from, to) => {
     switch (from) {
         case 'BOZZA': return to === 'INVIATO' || to === 'ANNULLATO';
         case 'INVIATO': return to === 'CONFERMATO' || to === 'ANNULLATO';
-        case 'CONFERMATO': return to === 'ANNULLATO';
+        case 'CONFERMATO': return to === 'IN_RICEZIONE' || to === 'ANNULLATO';
         case 'IN_RICEZIONE': return false;
         case 'COMPLETATO': return false;
         case 'ANNULLATO': return false;

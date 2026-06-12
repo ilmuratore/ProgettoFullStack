@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Plus, GitMerge, Package, ArrowLeftRight,
-  Tag,
+  Tag, PackageCheck,
 } from 'lucide-react';
 import { WarehouseKPIs } from './components/WarehouseKPIs';
 import { WarehouseTreeView } from './components/WarehouseTreeView';
@@ -9,6 +9,8 @@ import { WarehouseWidgets } from './components/WarehouseWidgets';
 import { StockTable } from './components/StockTable';
 import { StockMovementsTimeline } from './components/StockMovementsTimeline';
 import { NewMovementModal } from './components/NewMovementModal';
+import { NewGoodsReceiptModal } from '../acquisti/components/NewGoodsReceiptModal';
+import { GoodsReceiptsTimeline } from '../acquisti/components/GoodsReceiptsTimeline';
 import { ProductFormModal } from './components/ProductFormModal';
 import { ProductDetailDrawer } from './components/ProductDetailDrawer';
 import { CategoryFormModal } from './components/CategoryFormModal';
@@ -21,6 +23,7 @@ import { toast } from 'sonner';
 import { magazzinoApi } from '../../api/magazzinoApi';
 import { prodottiApi } from '../../api/prodottiApi';
 import { categorieApi } from '../../api/categorieApi';
+import { ricezioniApi } from '../../api/ricezioniApi';
 import { useAuthStore } from '../../store/authStore';
 import type {
   MagazzinoConUbicazioni,
@@ -31,8 +34,9 @@ import type {
 } from '../../types/magazzino';
 import type { Prodotto, ProdottoListino, ProdottoCreateRequest, ProdottoUpdateRequest } from '../../types/prodotti';
 import type { Categoria, CategoriaCreateRequest, CategoriaUpdateRequest } from '../../types/categorie';
+import type { Ricezione, StatoOrdineAcquisto } from '../../types/acquisti';
 
-type WarehouseTab = 'prodotti' | 'categorie' | 'struttura' | 'giacenze' | 'movimenti';
+type WarehouseTab = 'prodotti' | 'categorie' | 'struttura' | 'giacenze' | 'movimenti' | 'ricezioni';
 
 const tabs: TabConfig[] = [
   { id: 'prodotti', label: 'Prodotti', icon: Package },
@@ -40,7 +44,20 @@ const tabs: TabConfig[] = [
   { id: 'struttura', label: 'Struttura', icon: GitMerge },
   { id: 'giacenze', label: 'Giacenze', icon: Package },
   { id: 'movimenti', label: 'Movimenti', icon: ArrowLeftRight },
+  { id: 'ricezioni', label: 'Ricezioni', icon: PackageCheck },
 ];
+
+const fmtDataOra = (iso: string | null): string =>
+  iso ? new Date(iso).toLocaleString('it-IT') : '—';
+
+const statoLabel: Record<StatoOrdineAcquisto, { bg: string; text: string; label: string }> = {
+  BOZZA: { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', label: 'Bozza' },
+  INVIATO: { bg: 'bg-[#DBEAFE]', text: 'text-[#3B82F6]', label: 'Inviato' },
+  CONFERMATO: { bg: 'bg-[#EDE9FE]', text: 'text-[#8B5CF6]', label: 'Confermato' },
+  IN_RICEZIONE: { bg: 'bg-[#FEF3C7]', text: 'text-[#F59E0B]', label: 'In Ricezione' },
+  COMPLETATO: { bg: 'bg-[#DCFCE7]', text: 'text-[#22C55E]', label: 'Completato' },
+  ANNULLATO: { bg: 'bg-[#FEE2E2]', text: 'text-[#EF4444]', label: 'Annullato' },
+};
 
 
 interface MagazzinoFormState {
@@ -57,6 +74,7 @@ export function WarehousePage() {
   const { hasPermesso } = useAuthStore();
   const [activeTab, setActiveTab] = useState<WarehouseTab>('prodotti');
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
+  const [isRicezioneModalOpen, setIsRicezioneModalOpen] = useState(false);
 
   const [magazzini, setMagazzini] = useState<MagazzinoConUbicazioni[]>([]);
   const [loading, setLoading] = useState(false);
@@ -95,6 +113,9 @@ export function WarehousePage() {
   const [selectedCategory, setSelectedCategory] = useState<Categoria | null>(null);
   const [initialParentCategoryId, setInitialParentCategoryId] = useState<number | undefined>(undefined);
   const [categoryToDelete, setCategoryToDelete] = useState<Categoria | null>(null);
+  const [ricezioni, setRicezioni] = useState<Ricezione[]>([]);
+  const [loadingRic, setLoadingRic] = useState(false);
+  const [ricezioniReloadKey, setRicezioniReloadKey] = useState(0);
 
   const fetchMagazzini = useCallback(async () => {
     setLoading(true);
@@ -132,6 +153,17 @@ export function WarehousePage() {
 
   useEffect(() => { fetchForTab('struttura'); }, []);
   useEffect(() => { fetchForTab(activeTab); }, [activeTab, fetchForTab]);
+  useEffect(() => {
+    if (activeTab !== 'ricezioni') return;
+    let alive = true;
+    setLoadingRic(true);
+    ricezioniApi
+      .list()
+      .then((d) => { if (alive) setRicezioni(d); })
+      .catch((err: any) => toast.error('Errore caricamento ricezioni', { description: err?.message }))
+      .finally(() => { if (alive) setLoadingRic(false); });
+    return () => { alive = false; };
+  }, [activeTab, ricezioniReloadKey]);
 
   const getActionButton = (): { label: string; action: () => void; show: boolean } => {
     switch (activeTab) {
@@ -154,6 +186,8 @@ export function WarehousePage() {
         return { label: 'Aggiorna Giacenze', show: false, action: () => {} };
       case 'movimenti':
         return { label: 'Nuovo Movimento', show: true, action: () => setIsMovementModalOpen(true) };
+      case 'ricezioni':
+        return { label: 'Registra Ricezione', show: true, action: () => setIsRicezioneModalOpen(true) };
     }
   };
 
@@ -505,12 +539,58 @@ export function WarehousePage() {
 
           {activeTab === 'movimenti' && <StockMovementsTimeline />}
 
+          {activeTab === 'ricezioni' && (
+            <div className="space-y-6">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-[#F7F9FC] border-b border-[#E5EAF2]">
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Ricezione</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Ordine</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Fornitore</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Data Ricezione</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Stato Ordine</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E5EAF2]">
+                    {loadingRic ? (
+                      <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-[#6B7280]">Caricamento ricezioni...</td></tr>
+                    ) : ricezioni.length === 0 ? (
+                      <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-[#6B7280]">Nessuna ricezione registrata.</td></tr>
+                    ) : ricezioni.map((r) => {
+                      const badge = statoLabel[r.stato_ordine] ?? statoLabel.BOZZA;
+                      return (
+                        <tr key={r.id} className="hover:bg-[#F7F9FC] transition-colors">
+                          <td className="px-4 py-3 text-sm font-medium text-[#17E88F]">RIC-{String(r.id).padStart(4, '0')}</td>
+                          <td className="px-4 py-3 text-sm text-[#374151]">OA-{String(r.ordine_acquisto_id).padStart(4, '0')}</td>
+                          <td className="px-4 py-3 text-sm text-[#374151] max-w-[220px] truncate">{r.fornitore}</td>
+                          <td className="px-4 py-3 text-sm text-[#6B7280]">{fmtDataOra(r.data_ricezione)}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
+                              {badge.label}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <GoodsReceiptsTimeline ricezioni={ricezioni} loading={loadingRic} />
+            </div>
+          )}
+
 
         </div>
       </div>
 
       {/* ── Modali ── */}
       <NewMovementModal isOpen={isMovementModalOpen} onClose={() => setIsMovementModalOpen(false)} />
+      <NewGoodsReceiptModal
+        isOpen={isRicezioneModalOpen}
+        onClose={() => setIsRicezioneModalOpen(false)}
+        onCreated={() => setRicezioniReloadKey((k) => k + 1)}
+      />
 
       {/* componente dettaglio prodotto */}
       <ProductDetailDrawer

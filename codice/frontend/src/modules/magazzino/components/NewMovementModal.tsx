@@ -9,6 +9,7 @@ import { movimentiStockApi } from '../../../api/movimentiStockApi';
 import { prodottiApi } from '../../../api/prodottiApi';
 import { magazzinoApi } from '../../../api/magazzinoApi';
 import { giacenzeApi } from '../../../api/giacenzeApi';
+import { acquistiApi } from '../../../api/acquistiApi';
 import type { MovimentoTipo, Giacenza } from '../../../types/magazzino';
 
 interface TipoConfig {
@@ -57,6 +58,7 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<typeof EMPTY_FORM>>({});
   const [prodotti, setProdotti] = useState<{ id: number; sku: string; nome: string }[]>([]);
+  const [prodottoIdsInRicezione, setProdottoIdsInRicezione] = useState<number[]>([]);
   const [tutteUbicazioni, setTutteUbicazioni] = useState<{ id: number; codice_composto: string }[]>([]);
   const [giacenzePerProdotto, setGiacenzePerProdotto] = useState<Giacenza[]>([]);
   const [loadingDati, setLoadingDati] = useState(false);
@@ -79,18 +81,46 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
     tutteUbicazioni.filter((u) => idConGiacenza.has(u.id)),
     [tutteUbicazioni, idConGiacenza]
   );
+  const prodottiVisibili = useMemo(() => {
+    if (tipo !== 'CARICO_ACQUISTO') {
+      return prodotti;
+    }
+    const ids = new Set(prodottoIdsInRicezione);
+    return prodotti.filter((p) => ids.has(p.id));
+  }, [prodotti, prodottoIdsInRicezione, tipo]);
 
   useEffect(() => {
     if (!isOpen) return;
     setLoadingDati(true);
-    Promise.all([prodottiApi.list(), magazzinoApi.listUbicazioni()])
-      .then(([p, u]) => {
+    Promise.all([prodottiApi.list(), magazzinoApi.listUbicazioni(), acquistiApi.list({ stato: 'IN_RICEZIONE' })])
+      .then(async ([p, u, ordiniInRicezione]) => {
+        const dettagli = await Promise.all(
+          ordiniInRicezione.map((ordine) => acquistiApi.getById(ordine.id))
+        );
+        const ids = Array.from(new Set(
+          dettagli.flatMap((dettaglio) => dettaglio.righe.map((riga) => Number(riga.prodotto_id)))
+        ));
         setProdotti(p);
         setTutteUbicazioni(u);
+        setProdottoIdsInRicezione(ids);
       })
       .catch(() => toast.error('Errore caricamento dati'))
       .finally(() => setLoadingDati(false));
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!form.prodotto_id) return;
+    const prodottoId = parseInt(form.prodotto_id, 10);
+    if (Number.isNaN(prodottoId)) return;
+    if (prodottiVisibili.some((p) => p.id === prodottoId)) return;
+    setForm((prev) => ({
+      ...prev,
+      prodotto_id: '',
+      ubicazione_id: '',
+      ubicazione_da_id: '',
+      ubicazione_a_id: '',
+    }));
+  }, [form.prodotto_id, prodottiVisibili]);
 
   // Ricarica giacenze ogni volta che cambia il prodotto selezionato
   useEffect(() => {
@@ -110,6 +140,7 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
     setForm(EMPTY_FORM);
     setErrors({});
     setTipo('CARICO_ACQUISTO');
+    setProdottoIdsInRicezione([]);
     onClose();
   };
 
@@ -264,11 +295,14 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
                 </label>
                 <select value={form.prodotto_id} onChange={set('prodotto_id')} className={inputCls('prodotto_id')}>
                   <option value="">Seleziona prodotto…</option>
-                  {prodotti.map(p => (
+                  {prodottiVisibili.map(p => (
                     <option key={p.id} value={p.id}>{p.sku} — {p.nome}</option>
                   ))}
                 </select>
                 {errors.prodotto_id && <p className="mt-1 text-xs text-red-500">{errors.prodotto_id}</p>}
+                {tipo === 'CARICO_ACQUISTO' && !loadingDati && prodottiVisibili.length === 0 && (
+                  <p className="mt-1 text-xs text-[#F59E0B]">Nessun prodotto presente in ordini acquisto in ricezione</p>
+                )}
               </div>
 
               {/* Ubicazioni — condizionale */}
