@@ -79,7 +79,7 @@ export function NewSalesOrderModal({ isOpen, onClose, onCreated }: NewSalesOrder
   const loadProducts = async () => {
     setLoadingProdotti(true);
     try {
-      const data = await prodottiApi.list();
+      const data = (await prodottiApi.list()).filter((p) => p.attivo === true);
       const enriched = await Promise.all(
         data.map(async (p) => {
           try {

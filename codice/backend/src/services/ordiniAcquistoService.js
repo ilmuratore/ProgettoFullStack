@@ -4,6 +4,7 @@ const righePoModel = require('../models/righe_poModel');
 const righeRicezioneModel = require('../models/righe_ricezioneModel');
 const ricezioniModel = require('../models/ricezioniModel');
 const movimentiStockService = require('./movimenti_stockService');
+const prodottiModel = require('../models/prodottiModel');
 
 const throwError = (code, message) => {
     const err = new Error(message);
@@ -63,6 +64,11 @@ const createOrdineAcquisto = async (data) => {
         const ordine = ordineRes.rows[0];
 
         for (const r of righe) {
+            const prodottoRes = await prodottiModel.findById(r.prodotto_id);
+            if (prodottoRes.rowCount === 0) {
+                throwError('RESOURCE_NOT_FOUND', `Prodotto ${r.prodotto_id} non trovato`);
+            }
+
             await righePoModel.create({
                 ordine_acquisto_id: ordine.id,
                 prodotto_id: r.prodotto_id,
@@ -146,6 +152,10 @@ const addRigaOrdineAcquisto = async (ordineId, data) => {
         await client.query('BEGIN');
 
         const { prodotto_id, quantita_ordinata, quantita, prezzo_unitario } = data;
+        const prodottoRes = await prodottiModel.findById(prodotto_id);
+        if (prodottoRes.rowCount === 0) {
+            throwError('RESOURCE_NOT_FOUND', `Prodotto ${prodotto_id} non trovato`);
+        }
 
         await righePoModel.create({
             ordine_acquisto_id: ordineId,

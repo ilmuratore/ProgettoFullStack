@@ -23,10 +23,11 @@ const throwError = (code, message) => {
 };
 
 const PERMESSI_NOTIFICA_SOTTO_SCORTA = ['giacenze:read', 'notifiche:read'];
+const isProdottoAttivo = (prodotto) => prodotto?.attivo === true;
 
 const createSottoScortaNotificationsIfNeeded = async ({ prodotto_id, client, quantitaPrecedenteTotale }) => {
     const prodottoResult = await prodottiModel.findById(prodotto_id);
-    if (prodottoResult.rowCount === 0 || prodottoResult.rows[0].attivo === false) {
+    if (prodottoResult.rowCount === 0 || !isProdottoAttivo(prodottoResult.rows[0])) {
         return;
     }
 
@@ -83,7 +84,7 @@ const getById = async (id) => {
 const getByProdottoId = async (prodotto_id) => {
     const prodottoResult = await prodottiModel.findById(prodotto_id);
 
-    if (prodottoResult.rowCount === 0 || prodottoResult.rows[0].attivo === false) {
+    if (prodottoResult.rowCount === 0) {
         throwError('RESOURCE_NOT_FOUND', 'Prodotto non trovato');
     }
 
@@ -118,7 +119,7 @@ const getByRiferimento = async (riferimento) => {
 
 const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione_a_id, quantita, movimento_tipo, riferimento, note }, externalClient = null) => {
     const prodottoResult = await prodottiModel.findById(prodotto_id);
-    if (prodottoResult.rowCount === 0 || prodottoResult.rows[0].attivo === false) {
+    if (prodottoResult.rowCount === 0) {
         throwError('RESOURCE_NOT_FOUND', 'Prodotto non trovato');
     }
 

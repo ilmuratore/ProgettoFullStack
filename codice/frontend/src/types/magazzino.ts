@@ -76,6 +76,7 @@ export interface Giacenza {
   prodotto_id: number;
   sku: string;
   prodotto: string;
+  attivo: boolean;
   categoria?: string | null;
   ubicazione_id: number;
   magazzino: string;

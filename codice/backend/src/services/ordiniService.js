@@ -107,8 +107,11 @@ const create = async (payload) => {
 
     for (const r of righe) {
         const prodottoRes = await prodottiModel.findById(r.prodotto_id);
-        if (prodottoRes.rowCount === 0 || prodottoRes.rows[0].attivo === false) {
+        if (prodottoRes.rowCount === 0) {
             throwError('RESOURCE_NOT_FOUND', `Prodotto ${r.prodotto_id} non trovato`);
+        }
+        if (prodottoRes.rows[0].attivo !== true) {
+            throwError('VALIDATION_ERROR', `Prodotto ${r.prodotto_id} disattivato: non vendibile`);
         }
 
         righeConPrezzo.push({

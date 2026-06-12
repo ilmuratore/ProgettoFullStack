@@ -340,7 +340,7 @@ export function NewPurchaseOrderModal({ isOpen, onClose, onCreated }: NewPurchas
                             <option value="">Seleziona...</option>
                             {products.map((product) => (
                               <option key={product.id} value={product.id}>
-                                {product.sku} - {product.nome}
+                                {product.sku} - {product.nome}{product.attivo === false ? ' [disattivato]' : ''}
                               </option>
                             ))}
                           </select>

@@ -14,7 +14,7 @@ const getAll = async (params = {}) => {
 
 const getByProdottoId = async (prodotto_id) => {
     const prodottoResult = await prodottiModel.findById(prodotto_id);
-    if (prodottoResult.rowCount === 0 || prodottoResult.rows[0].attivo === false) {
+    if (prodottoResult.rowCount === 0) {
         throwError('RESOURCE_NOT_FOUND', 'Prodotto non trovato');
     }
 

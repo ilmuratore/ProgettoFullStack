@@ -17,6 +17,7 @@ type ProductStockRow = {
   prodotto_id: Giacenza["prodotto_id"];
   sku: Giacenza["sku"];
   prodotto: Giacenza["prodotto"];
+  attivo: Giacenza["attivo"];
   categoria: Giacenza["categoria"];
   quantita_totale: number;
   scorta_minima: number;
@@ -38,6 +39,7 @@ type SortConfig<T extends string> = {
 type LocationSortKey =
   | "sku"
   | "prodotto"
+  | "attivo"
   | "categoria"
   | "magazzino"
   | "ubicazione"
@@ -49,6 +51,7 @@ type LocationSortKey =
 type ProductSortKey =
   | "sku"
   | "prodotto"
+  | "attivo"
   | "categoria"
   | "ubicazioni_count"
   | "quantita_totale"
@@ -139,6 +142,11 @@ const getStatoOrder = (quantita: number, scortaMinima: number) => {
   return 3;
 };
 
+const getAttivoBadge = (attivo: boolean) =>
+  attivo
+    ? { bg: "bg-[#DCFCE7]", text: "text-[#22C55E]", label: "Attivo" }
+    : { bg: "bg-[#FEE2E2]", text: "text-[#EF4444]", label: "Disattivato" };
+
 const normalizeString = (value: unknown) => String(value ?? "").toLowerCase();
 
 const compareString = (a: unknown, b: unknown) => {
@@ -195,6 +203,9 @@ const sortLocationRows = (
       case "quantita":
         result = toNumber(a.quantita) - toNumber(b.quantita);
         break;
+      case "attivo":
+        result = Number(a.attivo) - Number(b.attivo);
+        break;
       case "scorta_minima":
         result = toNumber(a.scorta_minima) - toNumber(b.scorta_minima);
         break;
@@ -227,6 +238,9 @@ const sortProductRows = (
       case "quantita_totale":
       case "scorta_minima":
         result = a[sortConfig.key] - b[sortConfig.key];
+        break;
+      case "attivo":
+        result = Number(a.attivo) - Number(b.attivo);
         break;
       case "stato":
         result =
@@ -323,6 +337,7 @@ export function StockTable() {
           prodotto_id: item.prodotto_id,
           sku: item.sku,
           prodotto: item.prodotto,
+          attivo: item.attivo,
           categoria: item.categoria,
           quantita_totale: quantita,
           scorta_minima: scortaMinima,
@@ -389,6 +404,7 @@ export function StockTable() {
   const locationColumns: Array<{ label: string; key: LocationSortKey }> = [
     { label: "SKU", key: "sku" },
     { label: "Prodotto", key: "prodotto" },
+    { label: "Stato Prodotto", key: "attivo" },
     { label: "Categoria", key: "categoria" },
     { label: "Magazzino", key: "magazzino" },
     { label: "Ubicazione", key: "ubicazione" },
@@ -401,6 +417,7 @@ export function StockTable() {
   const productColumns: Array<{ label: string; key: ProductSortKey }> = [
     { label: "SKU", key: "sku" },
     { label: "Prodotto", key: "prodotto" },
+    { label: "Stato Prodotto", key: "attivo" },
     { label: "Categoria", key: "categoria" },
     { label: "Ubicazioni", key: "ubicazioni_count" },
     { label: "Quantità Totale", key: "quantita_totale" },
@@ -566,6 +583,7 @@ export function StockTable() {
                   const quantita = toNumber(item.quantita);
                   const scortaMinima = toNumber(item.scorta_minima);
                   const badge = getStatoBadge(quantita, scortaMinima);
+                  const attivoBadge = getAttivoBadge(item.attivo);
 
                   return (
                     <tr
@@ -579,6 +597,13 @@ export function StockTable() {
                       </td>
                       <td className="py-3 px-4 text-sm text-[#2D2D2D] font-medium">
                         {item.prodotto}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${attivoBadge.bg} ${attivoBadge.text}`}
+                        >
+                          {attivoBadge.label}
+                        </span>
                       </td>
                       <td className="py-3 px-4">
                         {item.categoria ? (
@@ -675,6 +700,7 @@ export function StockTable() {
               <tbody>
                 {sortedProductRows.map((item, index) => {
                   const badge = getStatoBadge(item.quantita_totale, item.scorta_minima);
+                  const attivoBadge = getAttivoBadge(item.attivo);
 
                   return (
                     <tr
@@ -688,6 +714,13 @@ export function StockTable() {
                       </td>
                       <td className="py-3 px-4 text-sm text-[#2D2D2D] font-medium">
                         {item.prodotto}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${attivoBadge.bg} ${attivoBadge.text}`}
+                        >
+                          {attivoBadge.label}
+                        </span>
                       </td>
                       <td className="py-3 px-4">
                         {item.categoria ? (

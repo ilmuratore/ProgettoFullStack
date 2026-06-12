@@ -6,6 +6,7 @@ const COLS_FULL = `
     giacenze.prodotto_id,
     prodotti.sku,
     prodotti.nome        AS prodotto,
+    prodotti.attivo,
     prodotti.scorta_minima,
     (giacenze.quantita < prodotti.scorta_minima) AS sotto_scorta,
     categorie.nome       AS categoria,
