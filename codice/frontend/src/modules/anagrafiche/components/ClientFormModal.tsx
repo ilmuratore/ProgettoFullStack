@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Star, Plus, Trash2, Pencil, X, Check } from 'lucide-react';
+import { MapPin, Star, Plus, Pencil, X, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog';
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../../../components/ui/alert-dialog';
 import { clientiApi } from '../../../api/clientiApi';
-import { ordiniApi } from '../../../api/ordiniApi';
 import type { Cliente, ClienteCreateRequest, ClienteUpdateRequest, DestinazioneCliente, DestinazioneUpdateRequest } from '../../../types/clienti';
 
 interface ClientFormModalProps {
@@ -82,9 +80,6 @@ export function ClientFormModal({ open, onClose, onSave, initialData, mode }: Cl
   const [editingDestId, setEditingDestId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<EditIndirizzoForm>(EMPTY_EDIT_FORM);
   const [savingEdit, setSavingEdit] = useState(false);
-  const [destToDelete, setDestToDelete] = useState<DestinazioneCliente | null>(null);
-  const [deletingDest, setDeletingDest] = useState(false);
-  const [destinazioniInUso, setDestinazioniInUso] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (open) {
@@ -97,25 +92,14 @@ export function ClientFormModal({ open, onClose, onSave, initialData, mode }: Cl
           attivo: initialData.attivo,
         });
         loadDestinazioni(initialData.id);
-        loadDestinazioniInUso(initialData.id);
       } else {
         setForm(EMPTY);
         setDestinazioni([]);
-        setDestinazioniInUso(new Set());
       }
       setNuoviIndirizzi([]);
       setErrors({});
     }
   }, [open, mode, initialData]);
-
-  const loadDestinazioniInUso = async (clienteId: number) => {
-    try {
-      const ordini = await ordiniApi.list({ cliente_id: clienteId });
-      setDestinazioniInUso(new Set(ordini.map(o => o.destinazione_id)));
-    } catch {
-      // se non riusciamo a verificare l'utilizzo, per sicurezza non blocchiamo l'eliminazione
-    }
-  };
 
   const loadDestinazioni = async (clienteId: number) => {
     setLoadingDestinazioni(true);
@@ -187,27 +171,8 @@ export function ClientFormModal({ open, onClose, onSave, initialData, mode }: Cl
     }
   };
 
-  const handleDeleteDest = async () => {
-    if (!initialData || !destToDelete) return;
-    setDeletingDest(true);
-    try {
-      await clientiApi.removeDestinazione(initialData.id, destToDelete.id);
-      setDestinazioni(prev => prev.filter(d => d.id !== destToDelete.id));
-      toast.success('Indirizzo eliminato');
-      setDestToDelete(null);
-    } catch (err: any) {
-      toast.error('Eliminazione fallita', { description: err?.message });
-    } finally {
-      setDeletingDest(false);
-    }
-  };
-
   const addIndirizzo = () => {
     setNuoviIndirizzi(prev => [...prev, { ...EMPTY_INDIRIZZO }]);
-  };
-
-  const removeIndirizzo = (index: number) => {
-    setNuoviIndirizzi(prev => prev.filter((_, i) => i !== index));
   };
 
   const updateIndirizzo = (index: number, field: keyof NuovoIndirizzo) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -495,16 +460,6 @@ export function ClientFormModal({ open, onClose, onSave, initialData, mode }: Cl
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
-                          {!destinazioniInUso.has(dest.id) && (
-                            <button
-                              type="button"
-                              onClick={() => setDestToDelete(dest)}
-                              title="Elimina indirizzo"
-                              className="p-1.5 rounded-lg border border-[#E5EAF2] bg-white text-[#EF4444] hover:bg-[#FEE2E2] transition-all"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
                         </div>
                       </div>
                     );
@@ -548,14 +503,6 @@ export function ClientFormModal({ open, onClose, onSave, initialData, mode }: Cl
                         }`}
                       >
                         <Star className={`w-3.5 h-3.5 ${ind.predefinita ? 'fill-current' : ''}`} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeIndirizzo(index)}
-                        title="Rimuovi indirizzo"
-                        className="p-1.5 rounded-lg border border-[#E5EAF2] bg-white text-[#EF4444] hover:bg-[#FEE2E2] transition-all flex-shrink-0"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                     <input
@@ -620,23 +567,6 @@ export function ClientFormModal({ open, onClose, onSave, initialData, mode }: Cl
         </form>
       </DialogContent>
     </Dialog>
-
-    <AlertDialog open={!!destToDelete} onOpenChange={(v) => { if (!v && !deletingDest) setDestToDelete(null); }}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Elimina indirizzo</AlertDialogTitle>
-          <AlertDialogDescription>
-            Sei sicuro di voler eliminare l'indirizzo '{destToDelete ? (destToDelete.etichetta || formatDestinazione(destToDelete)) : ''}'?
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={deletingDest}>Annulla</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDeleteDest} disabled={deletingDest} className="bg-red-500 hover:bg-red-600">
-            Elimina
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
     </>
   );
 }
