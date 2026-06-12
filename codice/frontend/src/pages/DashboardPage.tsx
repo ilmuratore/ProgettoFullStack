@@ -110,10 +110,24 @@ export function DashboardPage() {
         setWarehouseCapacity({ capacity, occupied, available });
       })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    let active = true;
 
     notificheApi.list()
-      .then((data) => setNotificheState(Array.isArray(data) ? data : []))
-      .catch(() => setNotificheState([]));
+      .then((data) => {
+        if (!active) return;
+        setNotificheState(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setNotificheState([]);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   if (!utente) return null;
