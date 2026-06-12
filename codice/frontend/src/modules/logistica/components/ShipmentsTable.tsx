@@ -1,14 +1,11 @@
-import { useEffect, useState } from 'react';
 import { Search, Filter, ArrowUpDown, Package, MapPin } from 'lucide-react';
-import { toast } from 'sonner';
-import { spedizioniApi } from '../../../api/spedizioniApi';
+import { useState } from 'react';
 import type { Spedizione, StatoSpedizione } from '../../../types/spedizioni';
 
 interface ShipmentsTableProps {
   onShipmentClick: (id: number) => void;
-  shipments?: Spedizione[];
-  loading?: boolean;
-  reloadKey?: number;
+  shipments: Spedizione[];
+  loading: boolean;
 }
 
 const getStatusBadge = (stato: StatoSpedizione) => {
@@ -32,36 +29,13 @@ const getStatusBadge = (stato: StatoSpedizione) => {
 };
 
 const fmtDate = (iso: string | null | undefined): string =>
-  iso ? new Date(iso).toLocaleDateString('it-IT') : '—';
+  iso ? new Date(iso).toLocaleDateString('it-IT') : '-';
 
 const fmtDateTime = (iso: string | null | undefined): string =>
-  iso ? new Date(iso).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+  iso ? new Date(iso).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
 
-export function ShipmentsTable({ onShipmentClick, shipments: shipmentsProp, loading: loadingProp, reloadKey }: ShipmentsTableProps) {
+export function ShipmentsTable({ onShipmentClick, shipments, loading }: ShipmentsTableProps) {
   const [search, setSearch] = useState('');
-  const [shipmentsState, setShipmentsState] = useState<Spedizione[]>([]);
-  const [loadingState, setLoadingState] = useState(true);
-  const useExternalData = shipmentsProp !== undefined && loadingProp !== undefined;
-
-  useEffect(() => {
-    if (useExternalData) return;
-    let alive = true;
-    setLoadingState(true);
-    spedizioniApi
-      .list()
-      .then((data) => { if (alive) setShipmentsState(Array.isArray(data) ? data : []); })
-      .catch((err: any) => {
-        if (alive) setShipmentsState([]);
-        if (err?.status !== 404) {
-          toast.error('Errore caricamento spedizioni', { description: err?.message });
-        }
-      })
-      .finally(() => { if (alive) setLoadingState(false); });
-    return () => { alive = false; };
-  }, [reloadKey, useExternalData]);
-
-  const shipments = shipmentsProp ?? shipmentsState;
-  const loading = loadingProp ?? loadingState;
 
   const filtered = shipments.filter((ship) => {
     const term = search.toLowerCase();
@@ -135,7 +109,7 @@ export function ShipmentsTable({ onShipmentClick, shipments: shipmentsProp, load
                     </div>
                   </td>
                   <td className="py-3 px-3">
-                    <span className="text-xs font-mono text-[#6B7280]">{ship.tracking_number ?? '—'}</span>
+                    <span className="text-xs font-mono text-[#6B7280]">{ship.tracking_number ?? '-'}</span>
                   </td>
                   <td className="py-3 px-3">
                     <span className="text-sm text-[#2D2D2D]">{ordineLabel}</span>
@@ -144,19 +118,19 @@ export function ShipmentsTable({ onShipmentClick, shipments: shipmentsProp, load
                     <span className="text-sm text-[#2D2D2D]">{ship.cliente}</span>
                   </td>
                   <td className="py-3 px-3">
-                    <span className="text-sm font-medium text-[#6B7280]">{ship.corriere ?? '—'}</span>
+                    <span className="text-sm font-medium text-[#6B7280]">{ship.corriere ?? '-'}</span>
                   </td>
                   <td className="py-3 px-3">
                     <span className="text-sm text-[#6B7280]">{fmtDate(ship.created_at)}</span>
                   </td>
                   <td className="py-3 px-3">
-                    <span className="text-sm text-[#6B7280]">—</span>
+                    <span className="text-sm text-[#6B7280]">-</span>
                   </td>
                   <td className="py-3 px-3">{getStatusBadge(ship.stato)}</td>
                   <td className="py-3 px-3">
                     <div className="flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5 text-[#9CA3AF]" />
-                      <span className="text-sm text-[#6B7280]">{ship.destinazione ?? '—'}</span>
+                      <span className="text-sm text-[#6B7280]">{ship.destinazione ?? '-'}</span>
                     </div>
                   </td>
                   <td className="py-3 px-3">

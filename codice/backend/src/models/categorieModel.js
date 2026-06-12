@@ -30,8 +30,8 @@ const findById = (id) =>
         GROUP  BY c.id, padre.nome
     `, [id]);
 
-const findByNome = (nome) =>
-    db.query(
+const findByNome = (nome, client = db) =>
+    client.query(
         `SELECT id FROM categorie WHERE LOWER(nome) = LOWER($1)`,
         [nome]
     );

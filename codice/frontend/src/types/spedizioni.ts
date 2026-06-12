@@ -15,3 +15,11 @@ export interface Spedizione {
   created_at: string;
   updated_at: string;
 }
+
+export interface SpedizioneCreateRequest {
+  ordine_id: number;
+  cliente_id: number;
+  destinazione_id: number;
+  corriere_id?: number;
+  tracking_number?: string;
+}

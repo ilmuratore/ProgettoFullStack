@@ -49,3 +49,14 @@ export interface ProdottoUpdateRequest {
   prezzo?: number;
   attivo?: boolean;
 }
+
+export interface ImportProdottiErrore {
+  riga: number;
+  motivo: string;
+}
+
+export interface ImportProdottiResult {
+  importati: number;
+  saltati: number;
+  errori: ImportProdottiErrore[];
+}

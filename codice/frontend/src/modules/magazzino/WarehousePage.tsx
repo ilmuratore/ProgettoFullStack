@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Plus, GitMerge, Package, ArrowLeftRight,
-  Tag, PackageCheck, Download,
+  Tag, PackageCheck, Download, Upload,
 } from 'lucide-react';
 import { WarehouseKPIs } from './components/WarehouseKPIs';
 import { WarehouseTreeView } from './components/WarehouseTreeView';
@@ -16,6 +16,7 @@ import { ProductDetailDrawer } from './components/ProductDetailDrawer';
 import { CategoryFormModal } from './components/CategoryFormModal';
 import { ProductsTab } from './components/ProductsTab';
 import { CategoriesTab } from './components/CategoriesTab';
+import { ImportProdottiModal } from './components/ImportProdottiModal';
 import { PageTabBar, type TabConfig } from '../../components/ui/PageTabBar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../../components/ui/alert-dialog';
@@ -105,6 +106,7 @@ export function WarehousePage() {
   const [selectedProduct, setSelectedProduct] = useState<Prodotto | null>(null);
   const [productDetailOpen, setProductDetailOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   const [categorie, setCategorie] = useState<Categoria[]>([]);
   const [loadingCategorie, setLoadingCategorie] = useState(false);
@@ -475,6 +477,15 @@ export function WarehousePage() {
           <p className="text-sm text-[#6B7280] mt-1">Struttura, prodotti, categorie, giacenze e movimenti</p>
         </div>
         <div className="flex items-center gap-3">
+          {activeTab === 'prodotti' && canWriteProdotti && (
+            <button
+              onClick={() => setImportModalOpen(true)}
+              className="px-4 py-2 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-[#F7F9FC] transition-all flex items-center gap-2 font-medium"
+            >
+              <Upload className="w-4 h-4" />
+              Importa
+            </button>
+          )}
           {activeTab === 'giacenze' && (
             <button
               onClick={handleExportGiacenze}
@@ -631,6 +642,15 @@ export function WarehousePage() {
         initialData={selectedProduct}
         mode={productModalMode}
         categorie={categorie}
+      />
+
+      <ImportProdottiModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onImported={() => {
+          fetchedTabs.current.delete('prodotti');
+          void fetchProdotti();
+        }}
       />
 
       <CategoryFormModal

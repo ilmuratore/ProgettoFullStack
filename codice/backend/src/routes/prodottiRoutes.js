@@ -4,6 +4,7 @@ const prodottiController = require('../controllers/prodottiController');
 const { auth } = require('../middleware/auth');
 const { requirePermesso } = require('../middleware/rbac');
 const { validate } = require('../middleware/validate');
+const { uploadSingleImportFile } = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -32,6 +33,8 @@ const updateBlueprint = {
 };
 
 router.get('/', auth, requirePermesso('prodotti:read'), prodottiController.getAll);
+router.get('/import/template', auth, requirePermesso('prodotti:write'), prodottiController.downloadImportTemplate);
+router.post('/import', auth, requirePermesso('prodotti:write'), uploadSingleImportFile, prodottiController.importProdotti);
 router.post('/', auth, requirePermesso('prodotti:write'), validate(createBlueprint), prodottiController.create);
 router.get('/:id', auth, requirePermesso('prodotti:read'), prodottiController.getById);
 router.patch('/:id', auth, requirePermesso('prodotti:write'), validate(updateBlueprint), prodottiController.update);

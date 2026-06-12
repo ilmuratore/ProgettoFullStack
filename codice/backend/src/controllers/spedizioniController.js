@@ -18,6 +18,15 @@ const getById = async (req, res, next) => {
     }
 };
 
+const create = async (req, res, next) => {
+    try {
+        const data = await spedizioniService.create(req.body);
+        res.status(201).json({ status: 'success', data });
+    } catch (err) {
+        next(err);
+    }
+};
+
 const updateStato = async (req, res, next) => {
     try {
         const data = await spedizioniService.updateStato(req.params.id, req.body.stato);
@@ -30,5 +39,6 @@ const updateStato = async (req, res, next) => {
 module.exports = {
     getAll,
     getById,
+    create,
     updateStato
 };

@@ -1,4 +1,5 @@
 const prodottiService = require('../services/prodottiService');
+const importService = require('../services/importService');
 
 
 const getAll = async (req, res, next) => {
@@ -77,5 +78,38 @@ const elimina = async (req, res, next) => {
     }
 };
 
+const importProdotti = async (req, res, next) => {
+    try {
+        if (!req.file || !req.file.buffer) {
+            const err = new Error('File obbligatorio');
+            err.code = 'VALIDATION_ERROR';
+            err.details = [{ field: 'file', message: 'Caricare un file CSV o XLSX' }];
+            throw err;
+        }
 
-module.exports = { getAll, getById, create, update, elimina };
+        const lowerName = (req.file.originalname || '').toLowerCase();
+        const rows = lowerName.endsWith('.csv')
+            ? importService.parseCSV(req.file.buffer)
+            : importService.parseXLSX(req.file.buffer);
+
+        const result = await importService.importProdotti(rows);
+        return res.status(200).json({ status: 'success', data: result });
+    } catch (err) {
+        return next(err);
+    }
+};
+
+const downloadImportTemplate = async (_req, res, next) => {
+    try {
+        const buffer = importService.getTemplateCSVBuffer();
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename="template-import-prodotti.csv"');
+        res.setHeader('Content-Length', buffer.length);
+        return res.end(buffer);
+    } catch (err) {
+        return next(err);
+    }
+};
+
+
+module.exports = { getAll, getById, create, update, elimina, importProdotti, downloadImportTemplate };
