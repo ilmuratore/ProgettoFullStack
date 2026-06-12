@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, ChevronRight, Search, Plus, Trash2, CheckCircle, User, MapPin, Package, ClipboardList, Check } from 'lucide-react';
+import { X, ChevronRight, Search, Plus, Minus, Trash2, CheckCircle, User, MapPin, Package, ClipboardList, Check, ShoppingCart, PackageX } from 'lucide-react';
 import { toast } from 'sonner';
 import { ClientFormModal } from '../../anagrafiche/components/ClientFormModal';
 import { clientiApi } from '../../../api/clientiApi';
@@ -7,6 +7,7 @@ import { prodottiApi } from '../../../api/prodottiApi';
 import { ordiniApi } from '../../../api/ordiniApi';
 import type { Cliente, ClienteCreateRequest, ClienteUpdateRequest, DestinazioneCliente } from '../../../types/clienti';
 import type { ProdottoListino } from '../../../types/prodotti';
+import { formatDestinazioneLines, formatDestinazioneSnapshot } from '../../../utils/destinazione';
 
 interface NewSalesOrderModalProps {
   isOpen: boolean;
@@ -36,11 +37,6 @@ interface OrderLine {
   prezzo: number;
   qty: number;
 }
-
-const formatDestinazione = (dest: DestinazioneCliente | null): string => {
-  if (!dest) return '—';
-  return dest.etichetta || [dest.indirizzo, dest.cap, dest.citta, dest.provincia].filter(Boolean).join(', ');
-};
 
 export function NewSalesOrderModal({ isOpen, onClose, onCreated }: NewSalesOrderModalProps) {
   const [step, setStep] = useState(1);
@@ -104,24 +100,35 @@ export function NewSalesOrderModal({ isOpen, onClose, onCreated }: NewSalesOrder
   );
 
   const addLine = (p: ProductOption) => {
-    if (!orderLines.find((l) => l.prodotto_id === p.id)) {
-      setOrderLines((prev) => [...prev, {
+    setOrderLines((prev) => {
+      const existing = prev.find((l) => l.prodotto_id === p.id);
+      if (existing) {
+        if (existing.qty >= existing.disponibilita) return prev;
+        return prev.map((l) => (
+          l.prodotto_id === p.id ? { ...l, qty: l.qty + 1 } : l
+        ));
+      }
+      if (p.disponibilita <= 0) return prev;
+      return [...prev, {
         prodotto_id: p.id,
         sku: p.sku,
         nome: p.nome,
         disponibilita: p.disponibilita,
         prezzo: Number(p.prezzo),
         qty: 1,
-      }]);
-    }
+      }];
+    });
   };
 
-  const updateQty = (prodottoId: number, qty: number) => {
-    setOrderLines((prev) => prev.map((l) => (
-      l.prodotto_id === prodottoId
-        ? { ...l, qty: Math.max(1, Math.min(l.disponibilita, qty || 1)) }
-        : l
-    )));
+  const decrementLine = (prodottoId: number) => {
+    setOrderLines((prev) => {
+      const existing = prev.find((l) => l.prodotto_id === prodottoId);
+      if (!existing) return prev;
+      if (existing.qty <= 1) return prev.filter((l) => l.prodotto_id !== prodottoId);
+      return prev.map((l) => (
+        l.prodotto_id === prodottoId ? { ...l, qty: l.qty - 1 } : l
+      ));
+    });
   };
 
   const removeLine = (prodottoId: number) => {
@@ -133,11 +140,27 @@ export function NewSalesOrderModal({ isOpen, onClose, onCreated }: NewSalesOrder
 
   const handleSaveClient = async (data: ClienteCreateRequest | ClienteUpdateRequest, id?: number) => {
     if (id !== undefined) return;
-    const created = await clientiApi.create(data as ClienteCreateRequest);
-    setClienti((prev) => [...prev, created]);
-    setSelectedCliente(created);
-    setSelectedDest(null);
+    let created: Cliente;
+    try {
+      created = await clientiApi.create(data as ClienteCreateRequest);
+    } catch (err: any) {
+      toast.error('Errore creazione cliente', { description: err?.message });
+      throw err;
+    }
+    try {
+      const destinazioni = await clientiApi.listDestinazioni(created.id);
+      const enriched = { ...created, destinazioni };
+      setClienti((prev) => [...prev, enriched]);
+      setSelectedCliente(enriched);
+      setSelectedDest(destinazioni.find((d) => d.predefinita) ?? destinazioni[0] ?? null);
+    } catch (err: any) {
+      setClienti((prev) => [...prev, created]);
+      setSelectedCliente(created);
+      setSelectedDest(null);
+      toast.error('Errore caricamento destinazioni', { description: err?.message });
+    }
     toast.success('Cliente creato');
+    return created;
   };
 
   const handleSelectCliente = async (cliente: ClienteOption) => {
@@ -172,6 +195,7 @@ export function NewSalesOrderModal({ isOpen, onClose, onCreated }: NewSalesOrder
       const result = await ordiniApi.create({
         cliente_id: selectedCliente.id,
         destinazione_id: selectedDest.id,
+        destinazione: formatDestinazioneSnapshot(selectedDest),
         righe,
       });
       toast.success(`Ordine SO-${String(result.ordine.id).padStart(4, '0')} creato`);
@@ -319,21 +343,30 @@ export function NewSalesOrderModal({ isOpen, onClose, onCreated }: NewSalesOrder
               <p className="text-sm text-[#6B7280]">Seleziona la destinazione di consegna per <strong>{selectedCliente.ragione_sociale}</strong>.</p>
               {selectedCliente.destinazioni?.length ? (
                 <div className="space-y-2">
-                  {selectedCliente.destinazioni.map((dest) => (
-                    <div
-                      key={dest.id}
-                      onClick={() => setSelectedDest(dest)}
-                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-3 ${
-                        selectedDest?.id === dest.id
-                          ? 'border-[#17E88F] bg-[#F0FDF7]'
-                          : 'border-[#E5EAF2] hover:border-[#17E88F]/40'
-                      }`}
-                    >
-                      <MapPin className={`w-5 h-5 flex-shrink-0 ${selectedDest?.id === dest.id ? 'text-[#17E88F]' : 'text-[#9CA3AF]'}`} />
-                      <span className="text-sm text-[#2D2D2D]">{formatDestinazione(dest)}</span>
-                      {selectedDest?.id === dest.id && <CheckCircle className="w-5 h-5 text-[#17E88F] ml-auto" />}
-                    </div>
-                  ))}
+                  {selectedCliente.destinazioni.map((dest) => {
+                    const isSelected = selectedDest?.id === dest.id;
+                    const lines = formatDestinazioneLines(dest);
+                    return (
+                      <div
+                        key={dest.id}
+                        onClick={() => setSelectedDest(dest)}
+                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
+                          isSelected
+                            ? 'border-[#17E88F] bg-[#F0FDF7] ring-2 ring-[#17E88F]/20'
+                            : 'border-[#E5EAF2] hover:border-[#17E88F]/40'
+                        }`}
+                      >
+                        <MapPin className={`w-5 h-5 flex-shrink-0 mt-0.5 ${isSelected ? 'text-[#17E88F]' : 'text-[#9CA3AF]'}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-base font-semibold text-[#2D2D2D]">{lines[0]}</p>
+                          {lines.length > 1 && (
+                            <p className="text-sm text-[#6B7280]">{lines.slice(1).join(', ')}</p>
+                          )}
+                        </div>
+                        {isSelected && <CheckCircle className="w-5 h-5 text-[#17E88F] flex-shrink-0 mt-0.5" />}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="rounded-2xl border border-[#E5EAF2] bg-[#F7F9FC] p-6 text-sm text-[#6B7280]">
@@ -346,101 +379,169 @@ export function NewSalesOrderModal({ isOpen, onClose, onCreated }: NewSalesOrder
 
           {step === 3 && (
             <div className="space-y-4">
-              <div className="relative">
-                <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Cerca SKU o prodotto..."
-                  value={prodSearch}
-                  onChange={(e) => setProdSearch(e.target.value)}
-                  className="w-full h-10 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 text-sm"
-                />
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Cerca per SKU o nome prodotto..."
+                    value={prodSearch}
+                    onChange={(e) => setProdSearch(e.target.value)}
+                    className="w-full h-10 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
+                  />
+                </div>
+                <div className={`flex items-center gap-2 px-4 h-10 rounded-xl border transition-colors ${
+                  orderLines.length > 0
+                    ? 'bg-[#F0FDF7] border-[#17E88F]/30 text-[#0FA67A]'
+                    : 'bg-[#F7F9FC] border-[#E5EAF2] text-[#9CA3AF]'
+                }`}>
+                  <ShoppingCart className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-sm font-semibold whitespace-nowrap">
+                    {orderLines.reduce((sum, l) => sum + l.qty, 0)} art. · EUR {totale.toFixed(2)}
+                  </span>
+                </div>
               </div>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
+
+              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                 {loadingProdotti ? (
                   <div className="rounded-2xl border border-[#E5EAF2] bg-[#F7F9FC] p-6 text-center text-sm text-[#6B7280]">
                     Caricamento prodotti...
                   </div>
-                ) : filteredProdotti.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between p-3 bg-[#F7F9FC] rounded-xl hover:bg-[#F0FDF7] transition-colors">
-                    <div>
-                      <span className="text-xs font-mono text-[#9CA3AF]">{p.sku}</span>
-                      <p className="text-sm text-[#2D2D2D]">{p.nome}</p>
-                      <span className="text-xs text-[#22C55E]">Disp: {p.disponibilita}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-semibold text-[#17E88F]">EUR {Number(p.prezzo).toFixed(2)}</span>
-                      <button
-                        onClick={() => addLine(p)}
-                        disabled={p.disponibilita <= 0 || !!orderLines.find((l) => l.prodotto_id === p.id)}
-                        className="p-1.5 bg-[#17E88F]/10 text-[#17E88F] rounded-lg hover:bg-[#17E88F]/20 transition-colors disabled:opacity-40"
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    </div>
+                ) : filteredProdotti.length === 0 ? (
+                  <div className="rounded-2xl border border-[#E5EAF2] bg-[#F7F9FC] p-6 text-center text-sm text-[#6B7280] space-y-2">
+                    <PackageX className="w-6 h-6 text-[#9CA3AF] mx-auto" />
+                    <p>Nessun prodotto trovato con questi criteri.</p>
                   </div>
-                ))}
-              </div>
-              {orderLines.length > 0 && (
-                <div className="space-y-2 border-t border-[#E5EAF2] pt-4">
-                  <p className="text-xs font-medium text-[#6B7280]">Righe ordine ({orderLines.length})</p>
-                  {orderLines.map((l) => (
-                    <div key={l.prodotto_id} className="flex items-center gap-3 p-3 bg-white border border-[#E5EAF2] rounded-xl">
-                      <div className="flex-1">
-                        <p className="text-xs font-medium text-[#2D2D2D]">{l.nome}</p>
+                ) : filteredProdotti.map((p) => {
+                  const existing = orderLines.find((l) => l.prodotto_id === p.id);
+                  const remaining = p.disponibilita - (existing?.qty ?? 0);
+                  const esaurito = remaining <= 0 && !existing;
+                  return (
+                    <div
+                      key={p.id}
+                      className={`flex items-center justify-between gap-3 p-3 rounded-xl border-2 transition-all ${
+                        existing
+                          ? 'border-[#17E88F]/40 bg-[#F0FDF7]'
+                          : esaurito
+                            ? 'border-[#E5EAF2] bg-[#F7F9FC] opacity-60'
+                            : 'border-transparent bg-[#F7F9FC] hover:border-[#17E88F]/30'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono text-[#9CA3AF]">{p.sku}</span>
+                          {existing && (
+                            <span className="text-[10px] font-semibold text-[#17E88F] bg-[#17E88F]/10 px-1.5 py-0.5 rounded-full">
+                              Nel carrello
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm font-medium text-[#2D2D2D] truncate">{p.nome}</p>
+                        <span className={`text-xs ${remaining > 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}>
+                          {remaining > 0 ? `Disponibili: ${remaining}` : 'Esaurito'}
+                        </span>
                       </div>
-                      <input
-                        type="number"
-                        min={1}
-                        max={l.disponibilita}
-                        value={l.qty}
-                        onChange={(e) => updateQty(l.prodotto_id, parseInt(e.target.value, 10) || 1)}
-                        className="w-20 h-8 text-center bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#17E88F]"
-                      />
-                      <span className="text-sm font-semibold text-[#17E88F] w-24 text-right">EUR {(l.prezzo * l.qty).toFixed(2)}</span>
-                      <button onClick={() => removeLine(l.prodotto_id)} className="p-1.5 text-[#EF4444] hover:bg-[#FEE2E2] rounded-lg transition-colors">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <span className="text-sm font-semibold text-[#17E88F] w-24 text-right">
+                          EUR {(existing ? existing.prezzo * existing.qty : Number(p.prezzo)).toFixed(2)}
+                        </span>
+                        {existing ? (
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex items-center bg-white border border-[#E5EAF2] rounded-full">
+                              <button
+                                onClick={() => decrementLine(p.id)}
+                                className="p-1.5 text-[#EF4444] hover:bg-[#FEE2E2] rounded-full transition-colors"
+                              >
+                                <Minus className="w-3.5 h-3.5" />
+                              </button>
+                              <span className="w-8 text-center text-sm font-semibold text-[#2D2D2D]">{existing.qty}</span>
+                              <button
+                                onClick={() => addLine(p)}
+                                disabled={remaining <= 0}
+                                className="p-1.5 text-[#17E88F] hover:bg-[#F0FDF7] rounded-full transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            <button
+                              onClick={() => removeLine(p.id)}
+                              title="Rimuovi prodotto dall'ordine"
+                              className="p-1.5 text-[#EF4444] hover:bg-[#FEE2E2] rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => addLine(p)}
+                            disabled={remaining <= 0}
+                            className="p-1.5 bg-[#17E88F]/10 text-[#17E88F] rounded-lg hover:bg-[#17E88F]/20 transition-colors disabled:opacity-30 disabled:hover:bg-[#17E88F]/10"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                  );
+                })}
+              </div>
             </div>
           )}
 
-          {step === 4 && (
-            <div className="space-y-4">
-              <div className="bg-[#F7F9FC] rounded-xl p-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#6B7280]">Cliente</span>
-                  <span className="font-medium text-[#2D2D2D]">{selectedCliente?.ragione_sociale}</span>
+          {step === 4 && (() => {
+            const [etichetta, ...resto] = formatDestinazioneLines(selectedDest);
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="bg-[#F7F9FC] rounded-xl p-4 flex items-start gap-3">
+                    <div className="p-2 bg-[#17E88F]/10 rounded-lg flex-shrink-0">
+                      <User className="w-4 h-4 text-[#17E88F]" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-[#9CA3AF] mb-0.5">Cliente</p>
+                      <p className="text-sm font-semibold text-[#2D2D2D] truncate">{selectedCliente?.ragione_sociale}</p>
+                    </div>
+                  </div>
+                  <div className="bg-[#F7F9FC] rounded-xl p-4 flex items-start gap-3">
+                    <div className="p-2 bg-[#17E88F]/10 rounded-lg flex-shrink-0">
+                      <MapPin className="w-4 h-4 text-[#17E88F]" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-[#9CA3AF] mb-0.5">Destinazione</p>
+                      <p className="text-sm font-bold text-[#2D2D2D] uppercase truncate">{etichetta}</p>
+                      {resto.length > 0 && (
+                        <p className="text-xs text-[#6B7280] truncate">{resto.join(', ')}</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#6B7280]">Destinazione</span>
-                  <span className="font-medium text-[#2D2D2D] text-right max-w-[60%]">{formatDestinazione(selectedDest)}</span>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-[#F7F9FC] rounded-xl p-4 text-center">
+                    <p className="text-2xl font-bold text-[#2D2D2D]">{orderLines.length}</p>
+                    <p className="text-xs text-[#6B7280] mt-1">Righe prodotto</p>
+                  </div>
+                  <div className="bg-[#F7F9FC] rounded-xl p-4 text-center">
+                    <p className="text-2xl font-bold text-[#2D2D2D]">{pesoTotale.toFixed(1)} kg</p>
+                    <p className="text-xs text-[#6B7280] mt-1">Peso totale stimato</p>
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#6B7280]">Righe prodotto</span>
-                  <span className="font-medium text-[#2D2D2D]">{orderLines.length}</span>
+
+                <div className="bg-gradient-to-r from-[#17E88F] to-[#0FA67A] rounded-xl p-4 flex items-center justify-between text-white shadow-lg shadow-[#17E88F]/20">
+                  <span className="text-sm font-medium opacity-90">Totale Ordine</span>
+                  <span className="text-xl font-bold">EUR {totale.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#6B7280]">Peso totale stimato</span>
-                  <span className="font-medium text-[#2D2D2D]">{pesoTotale.toFixed(1)} kg</span>
-                </div>
-                <div className="flex justify-between text-sm border-t border-[#E5EAF2] pt-2 mt-2">
-                  <span className="font-semibold text-[#2D2D2D]">Totale Ordine</span>
-                  <span className="font-bold text-[#17E88F]">EUR {totale.toFixed(2)}</span>
-                </div>
+
+                <textarea
+                  placeholder="Note aggiuntive (opzionale)..."
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  rows={3}
+                  className="w-full p-3 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 resize-none"
+                />
               </div>
-              <textarea
-                placeholder="Note aggiuntive (opzionale)..."
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                rows={3}
-                className="w-full p-3 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 resize-none"
-              />
-            </div>
-          )}
+            );
+          })()}
 
           {step === 5 && (
             <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">

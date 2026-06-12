@@ -176,7 +176,7 @@ export function ShipmentDrawer({ shipmentId, isOpen, onClose }: ShipmentDrawerPr
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs text-[#6B7280] mb-1">Destinazione</p>
-                    <p className="text-sm font-medium text-[#2D2D2D]">{shipment.destinazione ?? '-'}</p>
+                    <p className="text-sm font-medium text-[#2D2D2D] whitespace-pre-line">{shipment.destinazione ?? '-'}</p>
                   </div>
                   <div>
                     <p className="text-xs text-[#6B7280] mb-1">Data</p>

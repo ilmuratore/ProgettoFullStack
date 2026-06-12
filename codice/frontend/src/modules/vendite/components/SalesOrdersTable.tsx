@@ -1,9 +1,38 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { Search, Filter, ArrowUpDown, ChevronDown } from 'lucide-react';
+import { Search, Filter, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { ordiniApi } from '../../../api/ordiniApi';
 import type { OrdineVendita, StatoOrdineVendita, StatoPickingVendita } from '../../../types/ordini';
+import { SortableHeader } from '../../../components/shared/SortableHeader';
+import { applySort, compareDate, compareNumber, compareText, toggleSort, type SortConfig } from '../../../utils/sorting';
+
+type SortKey = 'id' | 'cliente' | 'data_ordine' | 'destinazione' | 'importo_totale' | 'stato' | 'stato_picking' | 'utente' | 'updated_at';
+
+const compareOrdersByKey = (left: OrdineVendita, right: OrdineVendita, key: SortKey) => {
+  switch (key) {
+    case 'id':
+      return compareNumber(left.id, right.id);
+    case 'cliente':
+      return compareText(left.cliente ?? '', right.cliente ?? '');
+    case 'data_ordine':
+      return compareDate(left.data_ordine, right.data_ordine);
+    case 'destinazione':
+      return compareText(left.destinazione ?? '', right.destinazione ?? '');
+    case 'importo_totale':
+      return compareNumber(left.importo_totale, right.importo_totale);
+    case 'stato':
+      return compareText(left.stato ?? '', right.stato ?? '');
+    case 'stato_picking':
+      return compareText(left.stato_picking ?? '', right.stato_picking ?? '');
+    case 'utente':
+      return compareText(left.utente ?? '', right.utente ?? '');
+    case 'updated_at':
+      return compareDate(left.updated_at, right.updated_at);
+    default:
+      return 0;
+  }
+};
 
 const getOrderStatusBadge = (status: StatoOrdineVendita) => {
   switch (status) {
@@ -43,6 +72,9 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
   const [searchParams] = useSearchParams();
   const [orders, setOrders] = useState<OrdineVendita[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sort, setSort] = useState<SortConfig<SortKey> | null>(null);
+
+  const handleSort = (key: SortKey) => setSort((prev) => toggleSort(prev, key));
 
   useEffect(() => {
     const cliente = searchParams.get('cliente');
@@ -63,13 +95,17 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
     return () => { alive = false; };
   }, [filterStatus, filterPicking, reloadKey]);
 
-  const filtered = orders.filter((o) => {
-    const term = search.toLowerCase();
-    return (
-      `so-${String(o.id).padStart(4, '0')}`.toLowerCase().includes(term) ||
-      (o.cliente ?? '').toLowerCase().includes(term)
-    );
-  });
+  const filtered = applySort(
+    orders.filter((o) => {
+      const term = search.toLowerCase();
+      return (
+        `so-${String(o.id).padStart(4, '0')}`.toLowerCase().includes(term) ||
+        (o.cliente ?? '').toLowerCase().includes(term)
+      );
+    }),
+    sort,
+    compareOrdersByKey
+  );
 
   return (
     <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
@@ -124,14 +160,16 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
         <table className="w-full">
           <thead>
             <tr className="border-b border-[#E5EAF2]">
-              {['N° Ordine', 'Cliente', 'Data', 'Destinazione', 'Importo', 'Stato Ordine', 'Picking', 'Spedizione', 'Responsabile', 'Agg.'].map((col, i) => (
-                <th key={i} className="text-left py-3 px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap">
-                  <button className="flex items-center gap-1 hover:text-[#2D2D2D] transition-colors">
-                    {col}
-                    <ArrowUpDown className="w-3 h-3 opacity-50" />
-                  </button>
-                </th>
-              ))}
+              <SortableHeader label="N° Ordine" sortKey="id" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap" />
+              <SortableHeader label="Cliente" sortKey="cliente" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap" />
+              <SortableHeader label="Data" sortKey="data_ordine" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap" />
+              <SortableHeader label="Destinazione" sortKey="destinazione" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap" />
+              <SortableHeader label="Importo" sortKey="importo_totale" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap" />
+              <SortableHeader label="Stato Ordine" sortKey="stato" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap" />
+              <SortableHeader label="Picking" sortKey="stato_picking" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap" />
+              <th className="text-left py-3 px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap">Spedizione</th>
+              <SortableHeader label="Responsabile" sortKey="utente" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap" />
+              <SortableHeader label="Agg." sortKey="updated_at" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap" />
             </tr>
           </thead>
           <tbody>
