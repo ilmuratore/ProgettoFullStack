@@ -47,6 +47,7 @@ export interface PrelievoRigaVendita {
 export interface OrdineVenditaCreateRequest {
   cliente_id: number;
   destinazione_id: number;
+  destinazione?: string;
   data_consegna_richiesta?: string;
   righe: RigaOrdineVenditaCreateRequest[];
 }

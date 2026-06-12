@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 import { X, Package, MapPin, User, Calendar, Receipt, Boxes, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ordiniApi } from '../../../api/ordiniApi';
+import { destinazioniApi } from '../../../api/destinazioniApi';
 import type { OrdineVenditaDettaglio, RigaOrdineVendita, StatoOrdineVendita } from '../../../types/ordini';
+import type { DestinazioneCliente } from '../../../types/destinazioni';
+import { formatDestinazioneLines } from '../../../utils/destinazione';
 import { useAuthStore } from '../../../store/authStore';
 
 interface SalesOrderDrawerProps {
@@ -41,6 +44,7 @@ const getPickingBadge = (stato: string) => {
 export function SalesOrderDrawer({ orderId, isOpen, onClose }: SalesOrderDrawerProps) {
   const hasPermesso = useAuthStore((state) => state.hasPermesso);
   const [detail, setDetail] = useState<OrdineVenditaDettaglio | null>(null);
+  const [destinazione, setDestinazione] = useState<DestinazioneCliente | null>(null);
   const [loading, setLoading] = useState(false);
   const [updatingStato, setUpdatingStato] = useState(false);
 
@@ -63,8 +67,25 @@ export function SalesOrderDrawer({ orderId, isOpen, onClose }: SalesOrderDrawerP
   }, [isOpen, orderId]);
 
   useEffect(() => {
-    if (!isOpen) setDetail(null);
+    if (!isOpen) {
+      setDetail(null);
+      setDestinazione(null);
+    }
   }, [isOpen]);
+
+  useEffect(() => {
+    const ordine = detail?.ordine;
+    if (!ordine) return;
+    let alive = true;
+    destinazioniApi.getById(ordine.cliente_id, ordine.destinazione_id)
+      .then((data) => {
+        if (alive) setDestinazione(data);
+      })
+      .catch(() => {
+        if (alive) setDestinazione(null);
+      });
+    return () => { alive = false; };
+  }, [detail?.ordine]);
 
   const order = detail?.ordine;
   const righe = detail?.righe ?? [];
@@ -91,10 +112,11 @@ export function SalesOrderDrawer({ orderId, isOpen, onClose }: SalesOrderDrawerP
     { icon: Package, label: 'Numero Ordine', value: orderLabel },
     { icon: User, label: 'Cliente', value: order.cliente ?? '-' },
     { icon: Calendar, label: 'Data Ordine', value: fmtData(order.data_ordine) },
-    { icon: MapPin, label: 'Destinazione', value: order.destinazione ?? '-' },
     { icon: User, label: 'Responsabile', value: order.utente ?? '-' },
     { icon: Receipt, label: 'Importo Totale', value: fmtEuro(order.importo_totale) },
   ] : [];
+
+  const [destEtichetta, ...destResto] = formatDestinazioneLines(destinazione);
 
   return (
     <>
@@ -148,6 +170,22 @@ export function SalesOrderDrawer({ orderId, isOpen, onClose }: SalesOrderDrawerP
                       </div>
                     );
                   })}
+                  <div className="bg-white rounded-xl p-3 col-span-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <MapPin className="w-3.5 h-3.5 text-[#9CA3AF]" />
+                      <span className="text-xs text-[#9CA3AF]">Destinazione</span>
+                    </div>
+                    {destEtichetta ? (
+                      <>
+                        <p className="text-sm font-bold text-[#2D2D2D] uppercase">{destEtichetta}</p>
+                        {destResto.length > 0 && (
+                          <p className="text-xs text-[#6B7280] mt-0.5">{destResto.join(', ')}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm font-medium text-[#2D2D2D]">-</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
