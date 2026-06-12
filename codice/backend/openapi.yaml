@@ -2,9 +2,9 @@ openapi: 3.0.3
 
 info:
   title: LogiChain ERP — API
-  version: "2.1.0"
+  version: "2.2.0"
   description: |
-    API REST per LogiChain ERP — milestone M01–M08 + Ordini di Vendita.
+    API REST per LogiChain ERP — milestone M01–M09 + PDF e invio email ordini di acquisto.
 
     ## Autenticazione
     Tutte le rotte (eccetto `POST /auth/login`) richiedono un token JWT nell'header:
@@ -39,6 +39,9 @@ info:
     | `CATEGORIA_CON_PRODOTTI` | 409 | Impossibile eliminare la categoria: ha prodotti associati |
     | `CATEGORIA_CON_SOTTOCATEGORIE` | 409 | Impossibile eliminare la categoria: ha sottocategorie |
     | `INSUFFICIENT_STOCK` | 422 | Giacenza insufficiente per il movimento richiesto |
+    | `STATE_TRANSITION_INVALID` | 409 | Transizione di stato non consentita |
+    | `UNSUPPORTED_FILE_TYPE` | 400 | Tipo file allegato non supportato |
+    | `EMAIL_SEND_FAILED` | 502 | Invio email fallito lato provider SMTP |
     | `INTERNAL_SERVER_ERROR` | 500 | Errore generico server |
 
     ## RBAC — Tutti i permessi (30)
@@ -66,12 +69,12 @@ info:
     | `magazzino:write` | Crea/modifica magazzini, ubicazioni e corrieri | ✅ M05–M06 |
     | `giacenze:read` | Visualizza giacenze e movimenti stock | ✅ M07 |
     | `giacenze:write` | Registra movimenti stock | ✅ M07 |
-    | `acquisti:read` | Visualizza ordini di acquisto e ricezioni | ⬜ M08 |
-    | `acquisti:write` | Crea/modifica ordini di acquisto | ⬜ M08 |
-    | `acquisti:approve` | Approva ordini di acquisto | ⬜ M08 |
-    | `ordini:read` | Visualizza ordini di vendita | ⬜ M09 |
-    | `ordini:write` | Crea/modifica ordini e gestisce picking | ⬜ M09 |
-    | `ordini:approve` | Approva ordini commerciali | ⬜ M09 |
+    | `acquisti:read` | Visualizza ordini di acquisto, ricezioni, PDF e log email | ✅ M08 + email |
+    | `acquisti:write` | Crea/modifica ordini di acquisto e invia email al fornitore | ✅ M08 + email |
+    | `acquisti:approve` | Approva ordini di acquisto e registra ricezioni | ✅ M08 |
+    | `ordini:read` | Visualizza ordini di vendita | ✅ M09 |
+    | `ordini:write` | Crea/modifica ordini e gestisce picking | ✅ M09 |
+    | `ordini:approve` | Approva ordini commerciali e picking | ✅ M09 |
     | `spedizioni:read` | Visualizza spedizioni e DDT | ⬜ M10 |
     | `spedizioni:write` | Gestisce spedizioni e DDT | ⬜ M10 |
     | `notifiche:read` | Visualizza notifiche | ⬜ M11 |
@@ -169,7 +172,7 @@ tags:
   - name: MovimentiStock
     description: Registro append-only di tutti i movimenti di magazzino (M07)
   - name: OrdiniAcquisto
-    description: Ordini in entrata / Purchase Orders — ciclo BOZZA→COMPLETATO, permessi acquisti:* (M08)
+    description: Ordini in entrata / Purchase Orders — ciclo BOZZA→COMPLETATO, PDF, invio email e log invii, permessi acquisti:* (M08 ext)
   - name: Ricezioni
     description: Ricezioni merce su ordini di acquisto e relative righe — permessi acquisti:* (M08)
   - name: Ordini
@@ -259,6 +262,19 @@ components:
             code: INSUFFICIENT_STOCK
             message: Giacenza insufficiente per completare il movimento
             details: []
+
+    EmailSendFailed:
+      description: Errore invio email o provider SMTP non disponibile
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            status: error
+            code: EMAIL_SEND_FAILED
+            message: Invio email non riuscito
+            details:
+              - field: smtp
+                message: Errore temporaneo del provider email
 
   schemas:
 
@@ -1139,6 +1155,88 @@ components:
         totale:      { type: integer, example: 125, description: "Somma giacenze di tutte le ubicazioni" }
         impegnato:   { type: integer, example: 30, description: "Quantità impegnata su ordini non evasi" }
         disponibile: { type: integer, example: 95, description: "totale - impegnato" }
+
+
+    # ─── M08 (ext) — EMAIL ORDINE DI ACQUISTO ───
+
+    EmailAttachmentInfo:
+      type: object
+      description: Metadati di un allegato inviato via email.
+      properties:
+        filename:   { type: string, example: ordine-acquisto-15.pdf }
+        mime_type:  { type: string, example: application/pdf }
+        size_bytes: { type: integer, example: 245760 }
+        kind:
+          type: string
+          enum: [ORDINE_PDF, CONTABILE]
+          example: ORDINE_PDF
+
+    OrdineAcquistoEmailRequest:
+      type: object
+      description: |
+        Body `multipart/form-data` per inviare via email un ordine di acquisto.
+        Il PDF dell'ordine viene sempre generato dal server e allegato automaticamente.
+        La contabile è opzionale e può essere PDF, JPG, PNG o WEBP.
+        Se `to` è omesso, il backend usa l'email del fornitore collegato all'ordine.
+      properties:
+        to:
+          type: string
+          description: Destinatari principali separati da virgola. Se assente usa email del fornitore.
+          example: fornitore@example.com,amministrazione@example.com
+        cc:
+          type: string
+          description: Destinatari in copia separati da virgola.
+          example: acquisti@logichain.it
+        bcc:
+          type: string
+          description: Destinatari in copia nascosta separati da virgola.
+          example: audit@logichain.it
+        subject:
+          type: string
+          description: Oggetto email. Se omesso viene generato dal server.
+          example: Ordine di acquisto PO-15
+        message:
+          type: string
+          description: Corpo testuale dell'email. Se omesso viene generato un testo standard.
+          example: Buongiorno, in allegato trasmettiamo ordine e contabile del bonifico.
+        contabile:
+          type: string
+          format: binary
+          description: "Allegato opzionale della contabile bonifico. Tipi ammessi: PDF, JPG, PNG, WEBP."
+
+    OrdineAcquistoEmailLog:
+      type: object
+      description: Log di un invio email collegato a un ordine di acquisto.
+      properties:
+        id:                  { type: integer, example: 27 }
+        ordine_acquisto_id:  { type: integer, example: 15 }
+        message_id:          { type: string, example: "<smtp-message-id@example.com>", nullable: true }
+        provider:            { type: string, example: smtp, nullable: true }
+        from:                { type: string, format: email, example: acquisti@logichain.it, nullable: true }
+        to:                  { type: string, example: fornitore@example.com }
+        cc:                  { type: string, example: acquisti@logichain.it, nullable: true }
+        bcc:                 { type: string, example: audit@logichain.it, nullable: true }
+        subject:             { type: string, example: Ordine di acquisto PO-15 }
+        message:             { type: string, example: Buongiorno, in allegato trasmettiamo ordine e contabile., nullable: true }
+        status:
+          type: string
+          enum: [SENT, FAILED]
+          example: SENT
+        errore:              { type: string, example: null, nullable: true }
+        attachments:
+          type: array
+          items: { $ref: '#/components/schemas/EmailAttachmentInfo' }
+        created_at:          { type: string, format: date-time, example: "2026-06-12T18:20:00.000Z" }
+        sent_at:             { type: string, format: date-time, example: "2026-06-12T18:20:02.000Z", nullable: true }
+
+    OrdineAcquistoEmailSendResult:
+      type: object
+      description: Risultato dell'invio email di un ordine di acquisto.
+      properties:
+        ordine_id:                 { type: integer, example: 15 }
+        stato_ordine_precedente:   { $ref: '#/components/schemas/StatoOrdineAcquisto' }
+        stato_ordine_corrente:     { $ref: '#/components/schemas/StatoOrdineAcquisto' }
+        email_log:                 { $ref: '#/components/schemas/OrdineAcquistoEmailLog' }
 
 # ─────────────────────────────────────────────
 # SECURITY DEFAULT
@@ -4295,75 +4393,190 @@ paths:
         "403": { $ref: '#/components/responses/Forbidden' }
         "404": { $ref: '#/components/responses/NotFound' }
 
-# Fragment da integrare in openapi.yaml sotto paths.
+  # ══════════════════════════════════════════
+  # M08 (ext) — INVIO EMAIL ORDINE DI ACQUISTO
+  # ══════════════════════════════════════════
 
-/ordini-acquisto/{id}/invia-email:
-  parameters:
-    - name: id
-      in: path
-      required: true
-      schema: { type: integer }
-      example: 15
-  post:
-    tags: [OrdiniAcquisto]
-    summary: Invia via email ordine di acquisto
-    description: |
-      Genera il PDF dell'ordine di acquisto, allega opzionalmente la contabile del bonifico
-      e invia l'email al fornitore. Se l'ordine è in stato BOZZA e l'invio riesce,
-      lo stato viene portato a INVIATO. Richiede permesso acquisti:write.
-    x-required-permission: acquisti:write
-    requestBody:
-      required: false
-      content:
-        multipart/form-data:
-          schema:
-            type: object
-            properties:
-              to:
-                type: string
-                description: Destinatari separati da virgola. Se assente usa email del fornitore.
-                example: fornitore@example.com
-              cc:
-                type: string
-                example: acquisti@example.com
-              bcc:
-                type: string
-              subject:
-                type: string
-                example: Ordine di acquisto PO-15
-              message:
-                type: string
-                example: Buongiorno, in allegato trasmettiamo ordine e contabile.
+  /ordini-acquisto/{id}/invia-email:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 15
+    post:
+      tags: [OrdiniAcquisto]
+      summary: Invia via email ordine di acquisto
+      description: |
+        Genera il PDF dell'ordine di acquisto, allega opzionalmente la contabile del bonifico
+        e invia l'email al fornitore.
+
+        Comportamento lato server:
+        - il PDF ordine viene sempre generato e allegato automaticamente;
+        - `contabile` è opzionale e accetta PDF/JPG/PNG/WEBP;
+        - se `to` non viene inviato, viene usata l'email del fornitore;
+        - se l'ordine è in stato `BOZZA` e l'invio riesce, lo stato passa a `INVIATO`;
+        - viene registrato un log dell'invio consultabile con `GET /ordini-acquisto/{id}/email-log`.
+
+        Richiede permesso `acquisti:write`.
+      x-required-permission: acquisti:write
+      requestBody:
+        required: false
+        content:
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/OrdineAcquistoEmailRequest' }
+            encoding:
               contabile:
-                type: string
-                format: binary
-                description: PDF/JPG/PNG/WEBP della contabile del bonifico.
-    responses:
-      "200":
-        description: Email inviata
-      "400":
-        description: Dati non validi o destinatario mancante
-      "401":
-        description: Autenticazione richiesta
-      "403":
-        description: Permesso mancante
-      "404":
-        description: Ordine non trovato
-      "409":
-        description: Ordine annullato
-      "502":
-        description: Errore invio email/provider SMTP
+                contentType: application/pdf, image/jpeg, image/png, image/webp
+            examples:
+              solo_pdf:
+                summary: Invio solo PDF ordine
+                value:
+                  to: fornitore@example.com
+                  cc: acquisti@logichain.it
+                  subject: Ordine di acquisto PO-15
+                  message: Buongiorno, in allegato trasmettiamo il nostro ordine di acquisto.
+              pdf_con_contabile:
+                summary: Invio PDF ordine + contabile bonifico
+                value:
+                  to: fornitore@example.com
+                  cc: acquisti@logichain.it
+                  subject: Ordine di acquisto PO-15 e contabile bonifico
+                  message: Buongiorno, in allegato trasmettiamo ordine e contabile del bonifico.
+                  contabile: "<binary>"
+      responses:
+        "200":
+          description: Email inviata correttamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:   { $ref: '#/components/schemas/OrdineAcquistoEmailSendResult' }
+              example:
+                status: success
+                data:
+                  ordine_id: 15
+                  stato_ordine_precedente: BOZZA
+                  stato_ordine_corrente: INVIATO
+                  email_log:
+                    id: 27
+                    ordine_acquisto_id: 15
+                    message_id: "<smtp-message-id@example.com>"
+                    provider: smtp
+                    from: acquisti@logichain.it
+                    to: fornitore@example.com
+                    cc: acquisti@logichain.it
+                    bcc: null
+                    subject: Ordine di acquisto PO-15
+                    message: Buongiorno, in allegato trasmettiamo ordine e contabile del bonifico.
+                    status: SENT
+                    errore: null
+                    attachments:
+                      - filename: ordine-acquisto-15.pdf
+                        mime_type: application/pdf
+                        size_bytes: 245760
+                        kind: ORDINE_PDF
+                      - filename: contabile-bonifico.pdf
+                        mime_type: application/pdf
+                        size_bytes: 184320
+                        kind: CONTABILE
+                    created_at: "2026-06-12T18:20:00.000Z"
+                    sent_at: "2026-06-12T18:20:02.000Z"
+        "400":
+          description: Dati non validi, destinatario mancante o allegato non supportato
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              examples:
+                destinatario_mancante:
+                  summary: Nessun destinatario disponibile
+                  value:
+                    status: error
+                    code: VALIDATION_ERROR
+                    message: Destinatario email mancante. Specificare `to` o valorizzare l'email del fornitore.
+                    details:
+                      - field: to
+                        message: Destinatario obbligatorio se il fornitore non ha email
+                file_non_supportato:
+                  summary: Tipo file contabile non supportato
+                  value:
+                    status: error
+                    code: UNSUPPORTED_FILE_TYPE
+                    message: Tipo file non supportato. Sono ammessi PDF, JPG, PNG o WEBP.
+                    details:
+                      - field: contabile
+                        message: Formato allegato non valido
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409":
+          description: Ordine in stato incompatibile con l'invio email
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example:
+                status: error
+                code: STATE_TRANSITION_INVALID
+                message: Impossibile inviare email per un ordine annullato
+                details: []
+        "502": { $ref: '#/components/responses/EmailSendFailed' }
 
-/ordini-acquisto/{id}/email-log:
-  parameters:
-    - name: id
-      in: path
-      required: true
-      schema: { type: integer }
-  get:
-    tags: [OrdiniAcquisto]
-    summary: Lista invii email ordine acquisto
-    x-required-permission: acquisti:read
-    responses:
-      "200":
-        description: Lista log invii email
+  /ordini-acquisto/{id}/email-log:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 15
+    get:
+      tags: [OrdiniAcquisto]
+      summary: Lista invii email ordine acquisto
+      description: |
+        Restituisce lo storico degli invii email collegati all'ordine di acquisto.
+        Include destinatari, oggetto, stato invio, allegati registrati, `message_id` provider
+        ed eventuale errore in caso di invio fallito. Richiede permesso `acquisti:read`.
+      x-required-permission: acquisti:read
+      responses:
+        "200":
+          description: Lista log invii email
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/OrdineAcquistoEmailLog' }
+              example:
+                status: success
+                data:
+                  - id: 27
+                    ordine_acquisto_id: 15
+                    message_id: "<smtp-message-id@example.com>"
+                    provider: smtp
+                    from: acquisti@logichain.it
+                    to: fornitore@example.com
+                    cc: acquisti@logichain.it
+                    bcc: null
+                    subject: Ordine di acquisto PO-15
+                    message: Buongiorno, in allegato trasmettiamo ordine e contabile del bonifico.
+                    status: SENT
+                    errore: null
+                    attachments:
+                      - filename: ordine-acquisto-15.pdf
+                        mime_type: application/pdf
+                        size_bytes: 245760
+                        kind: ORDINE_PDF
+                      - filename: contabile-bonifico.pdf
+                        mime_type: application/pdf
+                        size_bytes: 184320
+                        kind: CONTABILE
+                    created_at: "2026-06-12T18:20:00.000Z"
+                    sent_at: "2026-06-12T18:20:02.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
