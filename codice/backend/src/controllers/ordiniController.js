@@ -1,4 +1,5 @@
 const ordiniService = require('../services/ordiniService');
+const { buildOrdiniVenditaExcel } = require('../excel/ordiniVenditaExcel');
 
 const getAll = async (req, res, next) => {
     try {
@@ -22,6 +23,18 @@ const getDisponibilita = async (req, res, next) => {
     try {
         const data = await ordiniService.getDisponibilita(req.params.prodotto_id);
         res.json({ status: 'success', data });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const exportExcel = async (req, res, next) => {
+    try {
+        const { buffer, filename } = await buildOrdiniVenditaExcel();
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Length', buffer.length);
+        res.end(buffer);
     } catch (err) {
         next(err);
     }
@@ -71,6 +84,7 @@ module.exports = {
     getAll,
     getById,
     getDisponibilita,
+    exportExcel,
     create,
     update,
     updateStato,

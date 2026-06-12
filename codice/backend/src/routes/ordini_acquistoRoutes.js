@@ -44,6 +44,14 @@ const createRicezioneBlueprint = {
 
 // GET /api/v1/ordini-acquisto/:id/pdf
 router.get(
+    '/export',
+    auth,
+    requirePermesso('acquisti:read'),
+    ordiniAcquistoController.exportExcel
+);
+
+// GET /api/v1/ordini-acquisto/:id/pdf
+router.get(
     '/:id/pdf',
     auth,
     requirePermesso('acquisti:read'),
