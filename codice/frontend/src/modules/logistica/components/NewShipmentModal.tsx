@@ -18,7 +18,7 @@ const steps = [
   { num: 1, label: 'Selezione Ordine', icon: ShoppingCart },
   { num: 2, label: 'Selezione Corriere', icon: Truck },
   { num: 3, label: 'Tracking', icon: FileText },
-  { num: 4, label: 'Conferma', icon: Check },
+  { num: 4, label: 'Conferma', icon: FileText },
 ];
 
 const formatOrderCode = (id: number) => `SO-${String(id).padStart(4, '0')}`;
@@ -104,11 +104,10 @@ export function NewShipmentModal({ isOpen, onClose, couriers, existingOrdineIds,
               const isDone = step > s.num;
               return (
                 <div key={s.num} className="flex items-center gap-2">
-                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${
-                    isActive ? 'bg-[#17E88F]/10 text-[#17E88F]' :
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${isActive ? 'bg-[#17E88F]/10 text-[#17E88F]' :
                     isDone ? 'bg-[#DCFCE7] text-[#22C55E]' :
-                    'text-[#9CA3AF]'
-                  }`}>
+                      'text-[#9CA3AF]'
+                    }`}>
                     {isDone ? <CheckCircle className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
                     <span className="text-xs font-medium">{s.label}</span>
                   </div>
@@ -132,11 +131,10 @@ export function NewShipmentModal({ isOpen, onClose, couriers, existingOrdineIds,
                   <div
                     key={ordine.id}
                     onClick={() => setSelectedOrdine(ordine)}
-                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                      selectedOrdine?.id === ordine.id
-                        ? 'border-[#17E88F] bg-[#F0FDF7]'
-                        : 'border-[#E5EAF2] hover:border-[#17E88F]/40 hover:bg-[#F7F9FC]'
-                    }`}
+                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedOrdine?.id === ordine.id
+                      ? 'border-[#17E88F] bg-[#F0FDF7]'
+                      : 'border-[#E5EAF2] hover:border-[#17E88F]/40 hover:bg-[#F7F9FC]'
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <div>
@@ -163,11 +161,10 @@ export function NewShipmentModal({ isOpen, onClose, couriers, existingOrdineIds,
               <p className="text-sm text-[#6B7280]">Corriere opzionale.</p>
               <button
                 onClick={() => setSelectedCorriere(null)}
-                className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                  selectedCorriere === null
-                    ? 'border-[#17E88F] bg-[#F0FDF7]'
-                    : 'border-[#E5EAF2] hover:border-[#17E88F]/40'
-                }`}
+                className={`w-full p-4 rounded-xl border-2 text-left transition-all ${selectedCorriere === null
+                  ? 'border-[#17E88F] bg-[#F0FDF7]'
+                  : 'border-[#E5EAF2] hover:border-[#17E88F]/40'
+                  }`}
               >
                 <p className="text-sm font-medium text-[#2D2D2D]">Da assegnare dopo</p>
               </button>
@@ -176,11 +173,10 @@ export function NewShipmentModal({ isOpen, onClose, couriers, existingOrdineIds,
                   <div
                     key={corriere.id}
                     onClick={() => setSelectedCorriere(corriere)}
-                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                      selectedCorriere?.id === corriere.id
-                        ? 'border-[#17E88F] bg-[#F0FDF7]'
-                        : 'border-[#E5EAF2] hover:border-[#17E88F]/40'
-                    }`}
+                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedCorriere?.id === corriere.id
+                      ? 'border-[#17E88F] bg-[#F0FDF7]'
+                      : 'border-[#E5EAF2] hover:border-[#17E88F]/40'
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
