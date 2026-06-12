@@ -1,4 +1,4 @@
-const contattiModel = require('../models/contatti_fornitoriModel');
+const contattiModel = require('../models/contatti_fornitoreModel');
 const fornitoriModel = require('../models/fornitoriModel');
 
 const throwError = (code, message) => {

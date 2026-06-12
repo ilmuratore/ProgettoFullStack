@@ -1,5 +1,5 @@
 const spedizioniModel = require('../models/spedizioniModel');
-const destinazioniClientiModel = require('../models/destinazioniclientiModel');
+const destinazioneClientiModel = require('../models/destinazioneclientiModel');
 const clientiModel = require('../models/clientiModel');
 
 const getAll = async () => {
@@ -40,7 +40,7 @@ const create = async (data) => {
     }
 
     // Verifica destinazione
-    const dest = await destinazioniClientiModel.findById(destinazione_id);
+    const dest = await destinazioneClientiModel.findById(destinazione_id);
     if (dest.rowCount === 0) {
         throw {
             code: 'RESOURCE_NOT_FOUND',
