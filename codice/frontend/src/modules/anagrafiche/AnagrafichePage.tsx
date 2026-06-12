@@ -24,8 +24,59 @@ import type {
   Corriere, CorriereCreateRequest, CorriereUpdateRequest,
   Dipendente, DipendenteCreateRequest, DipendenteUpdateRequest,
 } from '../../types/corrieri';
+import { SortableHeader } from '../../components/shared/SortableHeader';
+import { applySort, compareBoolean, compareDate, compareText, toggleSort, type SortConfig } from '../../utils/sorting';
 
 type TabType = 'fornitori' | 'clienti' | 'corrieri' | 'dipendenti';
+
+type FornitoriSortKey = 'ragione_sociale' | 'piva' | 'email' | 'indirizzo' | 'source' | 'attivo';
+type ClientiSortKey = 'ragione_sociale' | 'piva_cf' | 'email' | 'source' | 'attivo';
+type CorrieriSortKey = 'codice' | 'nome' | 'email' | 'telefono' | 'attivo';
+type DipendentiSortKey = 'nominativo' | 'codice_fiscale' | 'ruolo_operativo' | 'data_assunzione';
+
+const compareFornitoriByKey = (left: Fornitore, right: Fornitore, key: FornitoriSortKey) => {
+  switch (key) {
+    case 'ragione_sociale': return compareText(left.ragione_sociale ?? '', right.ragione_sociale ?? '');
+    case 'piva': return compareText(left.piva ?? '', right.piva ?? '');
+    case 'email': return compareText(left.email ?? '', right.email ?? '');
+    case 'indirizzo': return compareText(left.indirizzo ?? '', right.indirizzo ?? '');
+    case 'source': return compareText(left.source ?? '', right.source ?? '');
+    case 'attivo': return compareBoolean(left.attivo, right.attivo);
+    default: return 0;
+  }
+};
+
+const compareClientiByKey = (left: Cliente, right: Cliente, key: ClientiSortKey) => {
+  switch (key) {
+    case 'ragione_sociale': return compareText(left.ragione_sociale ?? '', right.ragione_sociale ?? '');
+    case 'piva_cf': return compareText(left.piva_cf ?? '', right.piva_cf ?? '');
+    case 'email': return compareText(left.email ?? '', right.email ?? '');
+    case 'source': return compareText(left.source ?? '', right.source ?? '');
+    case 'attivo': return compareBoolean(left.attivo, right.attivo);
+    default: return 0;
+  }
+};
+
+const compareCorrieriByKey = (left: Corriere, right: Corriere, key: CorrieriSortKey) => {
+  switch (key) {
+    case 'codice': return compareText(left.codice ?? '', right.codice ?? '');
+    case 'nome': return compareText(left.nome ?? '', right.nome ?? '');
+    case 'email': return compareText(left.email ?? '', right.email ?? '');
+    case 'telefono': return compareText(left.telefono ?? '', right.telefono ?? '');
+    case 'attivo': return compareBoolean(left.attivo, right.attivo);
+    default: return 0;
+  }
+};
+
+const compareDipendentiByKey = (left: Dipendente, right: Dipendente, key: DipendentiSortKey) => {
+  switch (key) {
+    case 'nominativo': return compareText(`${left.cognome} ${left.nome}`, `${right.cognome} ${right.nome}`);
+    case 'codice_fiscale': return compareText(left.codice_fiscale ?? '', right.codice_fiscale ?? '');
+    case 'ruolo_operativo': return compareText(left.ruolo_operativo ?? '', right.ruolo_operativo ?? '');
+    case 'data_assunzione': return compareDate(left.data_assunzione, right.data_assunzione);
+    default: return 0;
+  }
+};
 
 type Ordinamento = 'nessuno' | 'alfabetico';
 type StatoFilter = 'tutti' | 'attivo' | 'disattivo';
@@ -58,6 +109,16 @@ export function AnagrafichePage() {
   const [fornitoriFilters, setFornitoriFilters] = useState<AnagraficaFiltersState>(EMPTY_ANAGRAFICA_FILTERS);
   const [clientiFilters, setClientiFilters] = useState<AnagraficaFiltersState>(EMPTY_ANAGRAFICA_FILTERS);
   const [dipendentiFilters, setDipendentiFilters] = useState<DipendentiFiltersState>(EMPTY_DIPENDENTI_FILTERS);
+
+  const [fornitoriSort, setFornitoriSort] = useState<SortConfig<FornitoriSortKey> | null>(null);
+  const [clientiSort, setClientiSort] = useState<SortConfig<ClientiSortKey> | null>(null);
+  const [corrieriSort, setCorrieriSort] = useState<SortConfig<CorrieriSortKey> | null>(null);
+  const [dipendentiSort, setDipendentiSort] = useState<SortConfig<DipendentiSortKey> | null>(null);
+
+  const handleFornitoriSort = (key: FornitoriSortKey) => setFornitoriSort((prev) => toggleSort(prev, key));
+  const handleClientiSort = (key: ClientiSortKey) => setClientiSort((prev) => toggleSort(prev, key));
+  const handleCorrieriSort = (key: CorrieriSortKey) => setCorrieriSort((prev) => toggleSort(prev, key));
+  const handleDipendentiSort = (key: DipendentiSortKey) => setDipendentiSort((prev) => toggleSort(prev, key));
 
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [clientModalOpen, setClientModalOpen] = useState(false);
@@ -269,10 +330,12 @@ export function AnagrafichePage() {
         const created = await clientiApi.create(data as ClienteCreateRequest);
         setClienti(prev => [...prev, created]);
         toast.success('Cliente creato');
+        return created;
       } else if (id !== undefined) {
         const updated = await clientiApi.update(id, data as ClienteUpdateRequest);
         setClienti(prev => prev.map(c => c.id === id ? updated : c));
         toast.success('Cliente aggiornato');
+        return updated;
       }
     } catch (err: any) {
       toast.error('Salvataggio fallito', { description: err?.code === 'DUPLICATE_ENTRY' ? 'P.IVA/CF già in uso' : err?.message });
@@ -331,6 +394,7 @@ export function AnagrafichePage() {
         if (fornitoriFilters.ordinamento === 'alfabetico') {
           data = [...data].sort((a, b) => a.ragione_sociale.localeCompare(b.ragione_sociale, 'it'));
         }
+        data = applySort(data, fornitoriSort, compareFornitoriByKey);
         return [...data].sort((a, b) => Number(a.attivo === false) - Number(b.attivo === false));
       }
       case 'clienti': {
@@ -343,12 +407,15 @@ export function AnagrafichePage() {
         if (clientiFilters.ordinamento === 'alfabetico') {
           data = [...data].sort((a, b) => a.ragione_sociale.localeCompare(b.ragione_sociale, 'it'));
         }
+        data = applySort(data, clientiSort, compareClientiByKey);
         return [...data].sort((a, b) => Number(a.attivo === false) - Number(b.attivo === false));
       }
-      case 'corrieri':
-        return corrieri.filter(c =>
+      case 'corrieri': {
+        const data = corrieri.filter(c =>
           c.nome.toLowerCase().includes(q) || c.codice.toLowerCase().includes(q)
         );
+        return applySort(data, corrieriSort, compareCorrieriByKey);
+      }
       case 'dipendenti': {
         let data = dipendenti.filter(d =>
           d.nome.toLowerCase().includes(q) ||
@@ -361,7 +428,7 @@ export function AnagrafichePage() {
         if (dipendentiFilters.ordinamento === 'alfabetico') {
           data = [...data].sort((a, b) => `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`, 'it'));
         }
-        return data;
+        return applySort(data, dipendentiSort, compareDipendentiByKey);
       }
       default: return [];
     }
@@ -598,12 +665,12 @@ export function AnagrafichePage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-[#E5EAF2]">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Ragione Sociale</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">P. IVA</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Contatti</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Indirizzo</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Sorgente</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Stato</th>
+                    <SortableHeader label="Ragione Sociale" sortKey="ragione_sociale" sort={fornitoriSort} onSort={handleFornitoriSort} />
+                    <SortableHeader label="P. IVA" sortKey="piva" sort={fornitoriSort} onSort={handleFornitoriSort} />
+                    <SortableHeader label="Contatti" sortKey="email" sort={fornitoriSort} onSort={handleFornitoriSort} />
+                    <SortableHeader label="Indirizzo" sortKey="indirizzo" sort={fornitoriSort} onSort={handleFornitoriSort} />
+                    <SortableHeader label="Sorgente" sortKey="source" sort={fornitoriSort} onSort={handleFornitoriSort} />
+                    <SortableHeader label="Stato" sortKey="attivo" sort={fornitoriSort} onSort={handleFornitoriSort} />
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Azioni</th>
                   </tr>
                 </thead>
@@ -657,11 +724,11 @@ export function AnagrafichePage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-[#E5EAF2]">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Denominazione Cliente</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">P. IVA / CF</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Contatti</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Sorgente</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Stato</th>
+                    <SortableHeader label="Denominazione Cliente" sortKey="ragione_sociale" sort={clientiSort} onSort={handleClientiSort} />
+                    <SortableHeader label="P. IVA / CF" sortKey="piva_cf" sort={clientiSort} onSort={handleClientiSort} />
+                    <SortableHeader label="Contatti" sortKey="email" sort={clientiSort} onSort={handleClientiSort} />
+                    <SortableHeader label="Sorgente" sortKey="source" sort={clientiSort} onSort={handleClientiSort} />
+                    <SortableHeader label="Stato" sortKey="attivo" sort={clientiSort} onSort={handleClientiSort} />
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Azioni</th>
                   </tr>
                 </thead>
@@ -703,11 +770,11 @@ export function AnagrafichePage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-[#E5EAF2]">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Codice</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Nome</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Email</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Telefono</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Stato</th>
+                    <SortableHeader label="Codice" sortKey="codice" sort={corrieriSort} onSort={handleCorrieriSort} />
+                    <SortableHeader label="Nome" sortKey="nome" sort={corrieriSort} onSort={handleCorrieriSort} />
+                    <SortableHeader label="Email" sortKey="email" sort={corrieriSort} onSort={handleCorrieriSort} />
+                    <SortableHeader label="Telefono" sortKey="telefono" sort={corrieriSort} onSort={handleCorrieriSort} />
+                    <SortableHeader label="Stato" sortKey="attivo" sort={corrieriSort} onSort={handleCorrieriSort} />
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Azioni</th>
                   </tr>
                 </thead>
@@ -751,10 +818,10 @@ export function AnagrafichePage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-[#E5EAF2]">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Nominativo</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Codice Fiscale</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Ruolo Operativo</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Data Assunzione</th>
+                    <SortableHeader label="Nominativo" sortKey="nominativo" sort={dipendentiSort} onSort={handleDipendentiSort} />
+                    <SortableHeader label="Codice Fiscale" sortKey="codice_fiscale" sort={dipendentiSort} onSort={handleDipendentiSort} />
+                    <SortableHeader label="Ruolo Operativo" sortKey="ruolo_operativo" sort={dipendentiSort} onSort={handleDipendentiSort} />
+                    <SortableHeader label="Data Assunzione" sortKey="data_assunzione" sort={dipendentiSort} onSort={handleDipendentiSort} />
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Azioni</th>
                   </tr>
                 </thead>

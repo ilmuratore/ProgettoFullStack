@@ -3,6 +3,35 @@ import { Search, Filter, ArrowUpDown, Package, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { spedizioniApi } from '../../../api/spedizioniApi';
 import type { Spedizione, StatoSpedizione } from '../../../types/spedizioni';
+import { SortableHeader } from '../../../components/shared/SortableHeader';
+import { applySort, compareDate, compareNumber, compareText, toggleSort, type SortConfig } from '../../../utils/sorting';
+
+type SortKey = 'id' | 'tracking_number' | 'ordine_id' | 'cliente' | 'corriere' | 'created_at' | 'stato' | 'destinazione' | 'updated_at';
+
+const compareShipmentsByKey = (left: Spedizione, right: Spedizione, key: SortKey) => {
+  switch (key) {
+    case 'id':
+      return compareNumber(left.id, right.id);
+    case 'tracking_number':
+      return compareText(left.tracking_number ?? '', right.tracking_number ?? '');
+    case 'ordine_id':
+      return compareNumber(left.ordine_id, right.ordine_id);
+    case 'cliente':
+      return compareText(left.cliente ?? '', right.cliente ?? '');
+    case 'corriere':
+      return compareText(left.corriere ?? '', right.corriere ?? '');
+    case 'created_at':
+      return compareDate(left.created_at, right.created_at);
+    case 'stato':
+      return compareText(left.stato ?? '', right.stato ?? '');
+    case 'destinazione':
+      return compareText(left.destinazione ?? '', right.destinazione ?? '');
+    case 'updated_at':
+      return compareDate(left.updated_at, right.updated_at);
+    default:
+      return 0;
+  }
+};
 
 interface ShipmentsTableProps {
   onShipmentClick: (id: number) => void;
@@ -41,7 +70,10 @@ export function ShipmentsTable({ onShipmentClick, shipments: shipmentsProp, load
   const [search, setSearch] = useState('');
   const [shipmentsState, setShipmentsState] = useState<Spedizione[]>([]);
   const [loadingState, setLoadingState] = useState(true);
+  const [sort, setSort] = useState<SortConfig<SortKey> | null>(null);
   const useExternalData = shipmentsProp !== undefined && loadingProp !== undefined;
+
+  const handleSort = (key: SortKey) => setSort((prev) => toggleSort(prev, key));
 
   useEffect(() => {
     if (useExternalData) return;
@@ -63,15 +95,19 @@ export function ShipmentsTable({ onShipmentClick, shipments: shipmentsProp, load
   const shipments = shipmentsProp ?? shipmentsState;
   const loading = loadingProp ?? loadingState;
 
-  const filtered = shipments.filter((ship) => {
-    const term = search.toLowerCase();
-    const label = `SH-${String(ship.id).padStart(4, '0')}`.toLowerCase();
-    return (
-      label.includes(term) ||
-      (ship.tracking_number ?? '').toLowerCase().includes(term) ||
-      (ship.cliente ?? '').toLowerCase().includes(term)
-    );
-  });
+  const filtered = applySort(
+    shipments.filter((ship) => {
+      const term = search.toLowerCase();
+      const label = `SH-${String(ship.id).padStart(4, '0')}`.toLowerCase();
+      return (
+        label.includes(term) ||
+        (ship.tracking_number ?? '').toLowerCase().includes(term) ||
+        (ship.cliente ?? '').toLowerCase().includes(term)
+      );
+    }),
+    sort,
+    compareShipmentsByKey
+  );
 
   return (
     <div className="bg-white rounded-2xl border border-[#E5EAF2] p-6">
@@ -102,16 +138,16 @@ export function ShipmentsTable({ onShipmentClick, shipments: shipmentsProp, load
         <table className="w-full">
           <thead>
             <tr className="border-b border-[#E5EAF2]">
-              <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Numero Spedizione</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Tracking</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Ordine Cliente</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Cliente</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Corriere</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Data Partenza</th>
+              <SortableHeader label="Numero Spedizione" sortKey="id" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]" />
+              <SortableHeader label="Tracking" sortKey="tracking_number" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]" />
+              <SortableHeader label="Ordine Cliente" sortKey="ordine_id" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]" />
+              <SortableHeader label="Cliente" sortKey="cliente" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]" />
+              <SortableHeader label="Corriere" sortKey="corriere" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]" />
+              <SortableHeader label="Data Partenza" sortKey="created_at" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]" />
               <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Data Prevista</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Stato</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Destinazione</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Ultimo Agg.</th>
+              <SortableHeader label="Stato" sortKey="stato" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]" />
+              <SortableHeader label="Destinazione" sortKey="destinazione" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]" />
+              <SortableHeader label="Ultimo Agg." sortKey="updated_at" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]" />
             </tr>
           </thead>
           <tbody>

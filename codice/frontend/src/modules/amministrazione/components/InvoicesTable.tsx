@@ -1,11 +1,51 @@
 import { useState } from 'react';
-import { Search, Filter, ArrowUpDown, Eye, FileText } from 'lucide-react';
+import { Search, Filter, Eye, FileText } from 'lucide-react';
+import { SortableHeader } from '../../../components/shared/SortableHeader';
+import { applySort, compareNumber, compareText, toggleSort, type SortConfig } from '../../../utils/sorting';
 
 interface InvoicesTableProps {
   onInvoiceClick: (id: string) => void;
 }
 
-const invoices = [
+interface InvoiceRow {
+  id: string;
+  tipo: string;
+  soggetto: string;
+  dataEmissione: string;
+  dataScadenza: string;
+  importo: string;
+  stato: string;
+  pagamento: string;
+  responsabile: string;
+}
+
+type SortKey = 'id' | 'tipo' | 'soggetto' | 'dataEmissione' | 'dataScadenza' | 'importo' | 'stato' | 'pagamento' | 'responsabile';
+
+const parseDataBreve = (value: string): number => {
+  const [day, month, year] = value.split('/').map(Number);
+  if (!day || !month || !year) return 0;
+  return new Date(year, month - 1, day).getTime();
+};
+
+const parseImporto = (value: string): number =>
+  Number(value.replace(/[^\d,-]/g, '').replace(',', '.')) || 0;
+
+const compareInvoicesByKey = (left: InvoiceRow, right: InvoiceRow, key: SortKey) => {
+  switch (key) {
+    case 'id': return compareText(left.id, right.id);
+    case 'tipo': return compareText(left.tipo, right.tipo);
+    case 'soggetto': return compareText(left.soggetto, right.soggetto);
+    case 'dataEmissione': return compareNumber(parseDataBreve(left.dataEmissione), parseDataBreve(right.dataEmissione));
+    case 'dataScadenza': return compareNumber(parseDataBreve(left.dataScadenza), parseDataBreve(right.dataScadenza));
+    case 'importo': return compareNumber(parseImporto(left.importo), parseImporto(right.importo));
+    case 'stato': return compareText(left.stato, right.stato);
+    case 'pagamento': return compareText(left.pagamento, right.pagamento);
+    case 'responsabile': return compareText(left.responsabile, right.responsabile);
+    default: return 0;
+  }
+};
+
+const invoices: InvoiceRow[] = [
   { id: 'FT-2026-0842', tipo: 'ATTIVA', soggetto: 'Ferrero S.p.A.', dataEmissione: '01/06/2026', dataScadenza: '01/07/2026', importo: '€ 24.850,00', stato: 'DA_INCASSARE', pagamento: 'Bonifico', responsabile: 'Maria Rossi' },
   { id: 'FT-2026-0841', tipo: 'PASSIVA', soggetto: 'Packaging Solutions', dataEmissione: '28/05/2026', dataScadenza: '28/06/2026', importo: '€ 8.420,00', stato: 'PAGATA', pagamento: 'Bonifico', responsabile: 'Luca Bianchi' },
   { id: 'NC-2026-0124', tipo: 'NOTA_CREDITO', soggetto: 'Barilla Group', dataEmissione: '30/05/2026', dataScadenza: '-', importo: '€ 1.200,00', stato: 'PAGATA', pagamento: 'Storno', responsabile: 'Anna Verdi' },
@@ -59,6 +99,21 @@ const getStatoBadge = (stato: string) => {
 
 export function InvoicesTable({ onInvoiceClick }: InvoicesTableProps) {
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<SortConfig<SortKey> | null>(null);
+
+  const handleSort = (key: SortKey) => setSort((prev) => toggleSort(prev, key));
+
+  const filtered = applySort(
+    invoices.filter((invoice) => {
+      const term = search.toLowerCase();
+      return (
+        invoice.id.toLowerCase().includes(term) ||
+        invoice.soggetto.toLowerCase().includes(term)
+      );
+    }),
+    sort,
+    compareInvoicesByKey
+  );
 
   return (
     <div className="bg-white rounded-2xl border border-[#E5EAF2] p-6">
@@ -80,9 +135,6 @@ export function InvoicesTable({ onInvoiceClick }: InvoicesTableProps) {
             <Filter className="w-4 h-4 text-[#6B7280]" />
             <span className="text-sm text-[#6B7280]">Filtri</span>
           </button>
-          <button className="h-9 px-3 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl hover:bg-white transition-colors flex items-center gap-2">
-            <ArrowUpDown className="w-4 h-4 text-[#6B7280]" />
-          </button>
         </div>
       </div>
 
@@ -91,20 +143,20 @@ export function InvoicesTable({ onInvoiceClick }: InvoicesTableProps) {
         <table className="w-full">
           <thead>
             <tr className="border-b border-[#E5EAF2]">
-              <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Numero Documento</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Tipo</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Cliente / Fornitore</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Data Emissione</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Data Scadenza</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Importo</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Stato</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Metodo Pagamento</th>
-              <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Responsabile</th>
+              <SortableHeader label="Numero Documento" sortKey="id" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]" />
+              <SortableHeader label="Tipo" sortKey="tipo" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]" />
+              <SortableHeader label="Cliente / Fornitore" sortKey="soggetto" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]" />
+              <SortableHeader label="Data Emissione" sortKey="dataEmissione" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]" />
+              <SortableHeader label="Data Scadenza" sortKey="dataScadenza" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]" />
+              <SortableHeader label="Importo" sortKey="importo" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]" />
+              <SortableHeader label="Stato" sortKey="stato" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]" />
+              <SortableHeader label="Metodo Pagamento" sortKey="pagamento" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]" />
+              <SortableHeader label="Responsabile" sortKey="responsabile" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]" />
               <th className="text-left py-3 px-3 text-xs font-medium text-[#9CA3AF]">Azioni</th>
             </tr>
           </thead>
           <tbody>
-            {invoices.map((invoice) => (
+            {filtered.map((invoice) => (
               <tr
                 key={invoice.id}
                 className="border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors cursor-pointer"
