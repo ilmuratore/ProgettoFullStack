@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { X, Mail, Phone, MapPin, Globe, ExternalLink, Calendar, Building2, User, Edit, FileText, Clock, Truck, Briefcase, IdCard, History } from 'lucide-react';
+import { X, Mail, Phone, MapPin, Globe, ExternalLink, Calendar, Building2, User, Edit, FileText, Clock, Truck, Briefcase, IdCard, History, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { clientiApi } from '../../../api/clientiApi';
 import { fornitoriApi } from '../../../api/fornitoriApi';
 import { corrieriApi, dipendentiApi } from '../../../api/corrieriApi';
 import { useAuthStore } from '../../../store/authStore';
-import type { Cliente } from '../../../types/clienti';
+import type { Cliente, DestinazioneCliente } from '../../../types/clienti';
 import type { Fornitore } from '../../../types/fornitori';
 import type { Corriere, Dipendente } from '../../../types/corrieri';
 
@@ -44,6 +44,9 @@ const formatDataBreve = (iso: string | null | undefined) =>
 const getBadgeAttivo = (attivo: boolean) =>
   attivo ? 'bg-[#DCFCE7] text-[#16A34A]' : 'bg-[#FEE2E2] text-[#DC2626]';
 
+const formatDestinazione = (dest: DestinazioneCliente): string =>
+  [dest.indirizzo, dest.cap, dest.citta, dest.provincia, dest.paese].filter(Boolean).join(', ') || '—';
+
 const getNomeVisualizzato = (entityType: EntityType, item: EntityItem): string => {
   switch (entityType) {
     case 'cliente':
@@ -63,12 +66,14 @@ export function AnagraficaDetailDrawer({ entityType, entityId, isOpen, onClose, 
   const navigate = useNavigate();
   const [item, setItem] = useState<EntityItem | null>(null);
   const [loading, setLoading] = useState(false);
+  const [destinazioni, setDestinazioni] = useState<DestinazioneCliente[]>([]);
 
   useEffect(() => {
     if (!isOpen || entityId === null) {
       return;
     }
     setLoading(true);
+    setDestinazioni([]);
     const request =
       entityType === 'cliente' ? clientiApi.getById(entityId)
       : entityType === 'fornitore' ? fornitoriApi.getById(entityId)
@@ -78,6 +83,12 @@ export function AnagraficaDetailDrawer({ entityType, entityId, isOpen, onClose, 
       .then(setItem)
       .catch((err: any) => toast.error('Errore caricamento dettaglio', { description: err?.message }))
       .finally(() => setLoading(false));
+
+    if (entityType === 'cliente') {
+      clientiApi.listDestinazioni(entityId)
+        .then(setDestinazioni)
+        .catch((err: any) => toast.error('Errore caricamento destinazioni', { description: err?.message }));
+    }
   }, [isOpen, entityId, entityType]);
 
   if (entityId === null) return null;
@@ -223,6 +234,31 @@ export function AnagraficaDetailDrawer({ entityType, entityId, isOpen, onClose, 
                       )}
                     </>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Destinazioni di consegna */}
+            {cliente && destinazioni.length > 0 && (
+              <div className="bg-white border border-[#E5EAF2] rounded-2xl p-5">
+                <h3 className="text-sm font-semibold text-[#2D2D2D] mb-4">Indirizzi di Consegna</h3>
+                <div className="space-y-2">
+                  {destinazioni.map((dest) => (
+                    <div key={dest.id} className="flex items-start justify-between gap-3 px-4 py-3 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl">
+                      <div className="flex items-start gap-2 min-w-0">
+                        <MapPin className="w-3.5 h-3.5 text-[#6B7280] flex-shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          {dest.etichetta && <p className="text-sm font-medium text-[#2D2D2D]">{dest.etichetta}</p>}
+                          <p className="text-sm text-[#6B7280]">{formatDestinazione(dest)}</p>
+                        </div>
+                      </div>
+                      {dest.predefinita && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#F0FDF7] text-[#0FA67A] flex-shrink-0">
+                          <Star className="w-3 h-3 fill-current" /> Predefinito
+                        </span>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

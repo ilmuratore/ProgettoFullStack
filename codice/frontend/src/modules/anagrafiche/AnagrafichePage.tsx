@@ -269,10 +269,12 @@ export function AnagrafichePage() {
         const created = await clientiApi.create(data as ClienteCreateRequest);
         setClienti(prev => [...prev, created]);
         toast.success('Cliente creato');
+        return created;
       } else if (id !== undefined) {
         const updated = await clientiApi.update(id, data as ClienteUpdateRequest);
         setClienti(prev => prev.map(c => c.id === id ? updated : c));
         toast.success('Cliente aggiornato');
+        return updated;
       }
     } catch (err: any) {
       toast.error('Salvataggio fallito', { description: err?.code === 'DUPLICATE_ENTRY' ? 'P.IVA/CF già in uso' : err?.message });

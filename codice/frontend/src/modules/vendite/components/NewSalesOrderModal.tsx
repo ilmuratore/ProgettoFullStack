@@ -138,6 +138,7 @@ export function NewSalesOrderModal({ isOpen, onClose, onCreated }: NewSalesOrder
     setSelectedCliente(created);
     setSelectedDest(null);
     toast.success('Cliente creato');
+    return created;
   };
 
   const handleSelectCliente = async (cliente: ClienteOption) => {

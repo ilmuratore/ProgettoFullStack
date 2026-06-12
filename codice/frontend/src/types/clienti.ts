@@ -24,6 +24,26 @@ export interface DestinazioneCliente {
   updated_at: string;
 }
 
+export interface DestinazioneCreateRequest {
+  etichetta?: string;
+  indirizzo?: string;
+  cap?: string;
+  citta?: string;
+  provincia?: string;
+  paese?: string;
+  predefinita?: boolean;
+}
+
+export interface DestinazioneUpdateRequest {
+  etichetta?: string;
+  indirizzo?: string;
+  cap?: string;
+  citta?: string;
+  provincia?: string;
+  paese?: string;
+  predefinita?: boolean;
+}
+
 export interface ClienteCreateRequest {
   ragione_sociale: string;
   piva_cf?: string;
