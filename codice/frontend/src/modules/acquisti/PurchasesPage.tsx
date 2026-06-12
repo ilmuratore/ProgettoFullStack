@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, ShoppingCart, BarChart2 } from 'lucide-react';
+import { Plus, ShoppingCart, BarChart2, Download } from 'lucide-react';
+import { toast } from 'sonner';
 import { PurchaseKPIs } from './components/PurchaseKPIs';
 import { PurchaseOrdersTable } from './components/PurchaseOrdersTable';
 import { PurchaseWidgets } from './components/PurchaseWidgets';
@@ -7,6 +8,7 @@ import { SuppliersPerformance } from './components/SuppliersPerformance';
 import { OrderDetailDrawer } from './components/OrderDetailDrawer';
 import { NewPurchaseOrderModal } from './components/NewPurchaseOrderModal';
 import { PageTabBar, type TabConfig } from '../../components/ui/PageTabBar';
+import { downloadBlob } from '../../api/client';
 
 type PurchaseTab = 'ordini' | 'kpi';
 
@@ -20,6 +22,18 @@ export function PurchasesPage() {
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<PurchaseTab>('ordini');
   const [reloadKey, setReloadKey] = useState(0);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await downloadBlob('/ordini-acquisto/export', 'ordini-acquisto.xlsx');
+    } catch (err: any) {
+      toast.error('Export fallito', { description: err?.message });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -29,13 +43,23 @@ export function PurchasesPage() {
           <p className="text-sm text-[#6B7280] mt-1">Gestione ordini e KPI acquisti</p>
         </div>
         {activeTab !== 'kpi' && (
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2 font-medium"
-          >
-            <Plus className="w-4 h-4" />
-            Nuovo Ordine Acquisto
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="px-4 py-2 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-[#F7F9FC] transition-all flex items-center gap-2 font-medium disabled:opacity-60"
+            >
+              <Download className="w-4 h-4" />
+              {exporting ? 'Export...' : 'Esporta Excel'}
+            </button>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="px-4 py-2 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2 font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              Nuovo Ordine Acquisto
+            </button>
+          </div>
         )}
       </div>
 

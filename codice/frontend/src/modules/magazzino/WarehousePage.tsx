@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Plus, GitMerge, Package, ArrowLeftRight,
-  Tag, PackageCheck,
+  Tag, PackageCheck, Download,
 } from 'lucide-react';
 import { WarehouseKPIs } from './components/WarehouseKPIs';
 import { WarehouseTreeView } from './components/WarehouseTreeView';
@@ -24,6 +24,7 @@ import { magazzinoApi } from '../../api/magazzinoApi';
 import { prodottiApi } from '../../api/prodottiApi';
 import { categorieApi } from '../../api/categorieApi';
 import { ricezioniApi } from '../../api/ricezioniApi';
+import { downloadBlob } from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
 import type {
   MagazzinoConUbicazioni,
@@ -116,6 +117,7 @@ export function WarehousePage() {
   const [ricezioni, setRicezioni] = useState<Ricezione[]>([]);
   const [loadingRic, setLoadingRic] = useState(false);
   const [ricezioniReloadKey, setRicezioniReloadKey] = useState(0);
+  const [exportingGiacenze, setExportingGiacenze] = useState(false);
 
   const fetchMagazzini = useCallback(async () => {
     setLoading(true);
@@ -192,6 +194,17 @@ export function WarehousePage() {
   };
 
   const action = getActionButton();
+
+  const handleExportGiacenze = async () => {
+    setExportingGiacenze(true);
+    try {
+      await downloadBlob('/giacenze/export', 'giacenze.xlsx');
+    } catch (err: any) {
+      toast.error('Export fallito', { description: err?.message });
+    } finally {
+      setExportingGiacenze(false);
+    }
+  };
 
   const handleEditMagazzino = (mag: MagazzinoConUbicazioni) => {
     setMagModalMode('edit');
@@ -461,15 +474,27 @@ export function WarehousePage() {
           <h1 className="text-2xl font-semibold text-[#2D2D2D]">Magazzino</h1>
           <p className="text-sm text-[#6B7280] mt-1">Struttura, prodotti, categorie, giacenze e movimenti</p>
         </div>
-        {action.show && (
-          <button
-            onClick={action.action}
-            className="px-4 py-2 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2 font-medium"
-          >
-            <Plus className="w-4 h-4" />
-            {action.label}
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {activeTab === 'giacenze' && (
+            <button
+              onClick={handleExportGiacenze}
+              disabled={exportingGiacenze}
+              className="px-4 py-2 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-[#F7F9FC] transition-all flex items-center gap-2 font-medium disabled:opacity-60"
+            >
+              <Download className="w-4 h-4" />
+              {exportingGiacenze ? 'Export...' : 'Esporta Excel'}
+            </button>
+          )}
+          {action.show && (
+            <button
+              onClick={action.action}
+              className="px-4 py-2 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2 font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              {action.label}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-[#E5EAF2] overflow-hidden">
