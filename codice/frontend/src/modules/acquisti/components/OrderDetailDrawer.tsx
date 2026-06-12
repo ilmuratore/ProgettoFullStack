@@ -15,8 +15,8 @@ interface OrderDetailDrawerProps {
 const TRANSIZIONI_CONSENTITE: Record<StatoOrdineAcquisto, StatoOrdineAcquisto[]> = {
   BOZZA: ['INVIATO', 'ANNULLATO'],
   INVIATO: ['CONFERMATO', 'ANNULLATO'],
-  CONFERMATO: ['IN_RICEZIONE', 'ANNULLATO'],
-  IN_RICEZIONE: ['COMPLETATO', 'ANNULLATO'],
+  CONFERMATO: ['ANNULLATO'],
+  IN_RICEZIONE: [],
   COMPLETATO: [],
   ANNULLATO: [],
 };
@@ -25,7 +25,6 @@ const STATO_AZIONE_LABEL: Record<StatoOrdineAcquisto, string> = {
   BOZZA: 'Riporta a Bozza',
   INVIATO: 'Invia Ordine',
   CONFERMATO: 'Conferma Ordine',
-  IN_RICEZIONE: 'Avvia Ricezione',
   COMPLETATO: 'Completa Ordine',
   ANNULLATO: 'Annulla Ordine',
 };
@@ -119,7 +118,18 @@ export function OrderDetailDrawer({ orderId, isOpen, onClose, onStatusChange }: 
               <X className="w-5 h-5 text-[#6B7280]" />
             </button>
           </div>
-          {ordine && TRANSIZIONI_CONSENTITE[ordine.stato].length > 0 && (
+          {ordine?.stato === 'IN_RICEZIONE' && (
+            <div className="flex items-center gap-2 mt-4">
+              <button
+                type="button"
+                disabled
+                className="px-4 py-2 rounded-xl text-sm font-medium bg-[#F3F4F6] text-[#9CA3AF] cursor-not-allowed"
+              >
+                Ordine non annullabile perche in stato di ricezione
+              </button>
+            </div>
+          )}
+          {ordine && ordine.stato !== 'IN_RICEZIONE' && TRANSIZIONI_CONSENTITE[ordine.stato].length > 0 && (
             <div className="flex items-center gap-2 mt-4">
               {TRANSIZIONI_CONSENTITE[ordine.stato].map((stato) => (
                 <button

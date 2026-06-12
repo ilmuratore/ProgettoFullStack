@@ -9,7 +9,6 @@ import { movimentiStockApi } from '../../../api/movimentiStockApi';
 import { prodottiApi } from '../../../api/prodottiApi';
 import { magazzinoApi } from '../../../api/magazzinoApi';
 import { giacenzeApi } from '../../../api/giacenzeApi';
-import { acquistiApi } from '../../../api/acquistiApi';
 import type { MovimentoTipo, Giacenza } from '../../../types/magazzino';
 
 interface TipoConfig {
@@ -53,14 +52,23 @@ const EMPTY_FORM = {
   note: '',
 };
 
+type ProdottoOption = {
+  id: number;
+  sku: string;
+  nome: string;
+  attivo: boolean;
+};
+
+type StatoProdottoFilter = 'all' | 'attivi' | 'disattivati';
+
 export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
   const [tipo, setTipo] = useState<MovimentoTipo>('CARICO_ACQUISTO');
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<typeof EMPTY_FORM>>({});
-  const [prodotti, setProdotti] = useState<{ id: number; sku: string; nome: string }[]>([]);
-  const [prodottoIdsInRicezione, setProdottoIdsInRicezione] = useState<number[]>([]);
+  const [prodotti, setProdotti] = useState<ProdottoOption[]>([]);
   const [tutteUbicazioni, setTutteUbicazioni] = useState<{ id: number; codice_composto: string }[]>([]);
   const [giacenzePerProdotto, setGiacenzePerProdotto] = useState<Giacenza[]>([]);
+  const [statoProdottoFilter, setStatoProdottoFilter] = useState<StatoProdottoFilter>('all');
   const [loadingDati, setLoadingDati] = useState(false);
   const [loadingGiacenze, setLoadingGiacenze] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -81,28 +89,26 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
     tutteUbicazioni.filter((u) => idConGiacenza.has(u.id)),
     [tutteUbicazioni, idConGiacenza]
   );
-  const prodottiVisibili = useMemo(() => {
-    if (tipo !== 'CARICO_ACQUISTO') {
-      return prodotti;
+  const prodottiFiltratiCarico = useMemo(() => {
+    let items = prodotti;
+
+    if (statoProdottoFilter === 'attivi') {
+      items = items.filter((p) => p.attivo === true);
+    } else if (statoProdottoFilter === 'disattivati') {
+      items = items.filter((p) => p.attivo === false);
     }
-    const ids = new Set(prodottoIdsInRicezione);
-    return prodotti.filter((p) => ids.has(p.id));
-  }, [prodotti, prodottoIdsInRicezione, tipo]);
+
+    return items;
+  }, [prodotti, statoProdottoFilter]);
+  const prodottiVisibili = tipo === 'CARICO_ACQUISTO' ? prodottiFiltratiCarico : prodotti;
 
   useEffect(() => {
     if (!isOpen) return;
     setLoadingDati(true);
-    Promise.all([prodottiApi.list(), magazzinoApi.listUbicazioni(), acquistiApi.list({ stato: 'IN_RICEZIONE' })])
-      .then(async ([p, u, ordiniInRicezione]) => {
-        const dettagli = await Promise.all(
-          ordiniInRicezione.map((ordine) => acquistiApi.getById(ordine.id))
-        );
-        const ids = Array.from(new Set(
-          dettagli.flatMap((dettaglio) => dettaglio.righe.map((riga) => Number(riga.prodotto_id)))
-        ));
+    Promise.all([prodottiApi.list(), magazzinoApi.listUbicazioni()])
+      .then(([p, u]) => {
         setProdotti(p);
         setTutteUbicazioni(u);
-        setProdottoIdsInRicezione(ids);
       })
       .catch(() => toast.error('Errore caricamento dati'))
       .finally(() => setLoadingDati(false));
@@ -140,7 +146,7 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
     setForm(EMPTY_FORM);
     setErrors({});
     setTipo('CARICO_ACQUISTO');
-    setProdottoIdsInRicezione([]);
+    setStatoProdottoFilter('all');
     onClose();
   };
 
@@ -148,6 +154,10 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
     setTipo(t);
     setForm(prev => ({ ...prev, ubicazione_id: '', ubicazione_da_id: '', ubicazione_a_id: '' }));
     setErrors({});
+  };
+
+  const handleResetCaricoFilters = () => {
+    setStatoProdottoFilter('all');
   };
 
   const set = (field: keyof typeof EMPTY_FORM) =>
@@ -293,6 +303,37 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
                 <label className="flex items-center gap-2 text-sm font-medium text-[#2D2D2D] mb-1.5">
                   <Package className="w-4 h-4 text-[#9CA3AF]" /> Prodotto
                 </label>
+                {tipo === 'CARICO_ACQUISTO' && (
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <div className="inline-flex items-center rounded-lg border border-[#E5EAF2] bg-white p-1">
+                      <button
+                        type="button"
+                        onClick={() => setStatoProdottoFilter('attivi')}
+                        className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                          statoProdottoFilter === 'attivi' ? 'bg-[#DCFCE7] text-[#166534]' : 'text-[#6B7280]'
+                        }`}
+                      >
+                        Attivi
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setStatoProdottoFilter('disattivati')}
+                        className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                          statoProdottoFilter === 'disattivati' ? 'bg-[#FEE2E2] text-[#B91C1C]' : 'text-[#6B7280]'
+                        }`}
+                      >
+                        Disattivati
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleResetCaricoFilters}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium border border-[#E5EAF2] text-[#6B7280] hover:bg-[#F7F9FC] transition-all"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                )}
                 <select value={form.prodotto_id} onChange={set('prodotto_id')} className={inputCls('prodotto_id')}>
                   <option value="">Seleziona prodotto…</option>
                   {prodottiVisibili.map(p => (
@@ -301,7 +342,7 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
                 </select>
                 {errors.prodotto_id && <p className="mt-1 text-xs text-red-500">{errors.prodotto_id}</p>}
                 {tipo === 'CARICO_ACQUISTO' && !loadingDati && prodottiVisibili.length === 0 && (
-                  <p className="mt-1 text-xs text-[#F59E0B]">Nessun prodotto presente in ordini acquisto in ricezione</p>
+                  <p className="mt-1 text-xs text-[#F59E0B]">Nessun prodotto corrisponde ai filtri selezionati</p>
                 )}
               </div>
 
