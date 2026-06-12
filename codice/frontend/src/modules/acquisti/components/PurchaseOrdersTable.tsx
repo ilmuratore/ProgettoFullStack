@@ -1,9 +1,36 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { Search, Filter, ArrowUpDown } from 'lucide-react';
+import { Search, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { acquistiApi } from '../../../api/acquistiApi';
 import type { OrdineAcquistoLista, StatoOrdineAcquisto } from '../../../types/acquisti';
+import { SortableHeader } from '../../../components/shared/SortableHeader';
+import { applySort, compareDate, compareNumber, compareText, toggleSort, type SortConfig } from '../../../utils/sorting';
+
+type SortKey = 'id' | 'fornitore' | 'created_at' | 'data_prevista' | 'importo_totale' | 'stato' | 'numero_righe' | 'utente';
+
+const compareOrdersByKey = (left: OrdineAcquistoLista, right: OrdineAcquistoLista, key: SortKey) => {
+  switch (key) {
+    case 'id':
+      return compareNumber(left.id, right.id);
+    case 'fornitore':
+      return compareText(left.fornitore ?? '', right.fornitore ?? '');
+    case 'created_at':
+      return compareDate(left.created_at, right.created_at);
+    case 'data_prevista':
+      return compareDate(left.data_prevista, right.data_prevista);
+    case 'importo_totale':
+      return compareNumber(left.importo_totale, right.importo_totale);
+    case 'stato':
+      return compareText(left.stato ?? '', right.stato ?? '');
+    case 'numero_righe':
+      return compareNumber(left.numero_righe, right.numero_righe);
+    case 'utente':
+      return compareText(left.utente ?? '', right.utente ?? '');
+    default:
+      return 0;
+  }
+};
 
 const getStatusBadge = (status: StatoOrdineAcquisto) => {
   switch (status) {
@@ -40,6 +67,9 @@ export function PurchaseOrdersTable({ onOrderClick, reloadKey }: PurchaseOrdersT
   const [searchParams] = useSearchParams();
   const [orders, setOrders] = useState<OrdineAcquistoLista[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sort, setSort] = useState<SortConfig<SortKey> | null>(null);
+
+  const handleSort = (key: SortKey) => setSort((prev) => toggleSort(prev, key));
 
   useEffect(() => {
     const fornitore = searchParams.get('fornitore');
@@ -57,9 +87,13 @@ export function PurchaseOrdersTable({ onOrderClick, reloadKey }: PurchaseOrdersT
     return () => { alive = false; };
   }, [reloadKey]);
 
-  const filtered = orders.filter(o =>
-    String(o.id).includes(search.toLowerCase()) ||
-    (o.fornitore ?? '').toLowerCase().includes(search.toLowerCase())
+  const filtered = applySort(
+    orders.filter(o =>
+      String(o.id).includes(search.toLowerCase()) ||
+      (o.fornitore ?? '').toLowerCase().includes(search.toLowerCase())
+    ),
+    sort,
+    compareOrdersByKey
   );
 
   return (
@@ -88,24 +122,14 @@ export function PurchaseOrdersTable({ onOrderClick, reloadKey }: PurchaseOrdersT
         <table className="w-full">
           <thead className="sticky top-0 bg-white">
             <tr className="border-b border-[#E5EAF2]">
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">
-                <button className="flex items-center gap-2 hover:text-[#2D2D2D]">
-                  ID Ordine
-                  <ArrowUpDown className="w-3 h-3" />
-                </button>
-              </th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">
-                <button className="flex items-center gap-2 hover:text-[#2D2D2D]">
-                  Fornitore
-                  <ArrowUpDown className="w-3 h-3" />
-                </button>
-              </th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Data Creazione</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Data Prevista</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Importo Totale</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Stato</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Prodotti</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Responsabile</th>
+              <SortableHeader label="ID Ordine" sortKey="id" sort={sort} onSort={handleSort} />
+              <SortableHeader label="Fornitore" sortKey="fornitore" sort={sort} onSort={handleSort} />
+              <SortableHeader label="Data Creazione" sortKey="created_at" sort={sort} onSort={handleSort} />
+              <SortableHeader label="Data Prevista" sortKey="data_prevista" sort={sort} onSort={handleSort} />
+              <SortableHeader label="Importo Totale" sortKey="importo_totale" sort={sort} onSort={handleSort} />
+              <SortableHeader label="Stato" sortKey="stato" sort={sort} onSort={handleSort} />
+              <SortableHeader label="Prodotti" sortKey="numero_righe" sort={sort} onSort={handleSort} />
+              <SortableHeader label="Responsabile" sortKey="utente" sort={sort} onSort={handleSort} />
             </tr>
           </thead>
           <tbody>

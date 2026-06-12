@@ -16,6 +16,8 @@ import type { Corriere } from '../../types/corrieri';
 import type { LogisticsKpiItem } from './components/LogisticsKPIs';
 import type { CourierPerformanceItem } from './components/CourierPerformance';
 import type { AdvancedLogisticsData } from './components/AdvancedKPIs';
+import { SortableHeader } from '../../components/shared/SortableHeader';
+import { applySort, compareDate, compareNumber, compareText, toggleSort, type SortConfig } from '../../utils/sorting';
 
 type LogisticsTab = 'spedizioni' | 'ddt' | 'kpi';
 
@@ -25,7 +27,34 @@ const tabs: TabConfig[] = [
   { id: 'kpi', label: 'KPI Logistica', icon: BarChart2 },
 ];
 
-const ddtData: {id:string;spedizione:string;ordine:string;cliente:string;corriere:string;dataEmissione:string;peso:string;colli:number;stato:string}[] = [];
+type DdtRow = { id: string; spedizione: string; ordine: string; cliente: string; corriere: string; dataEmissione: string; peso: string; colli: number; stato: string };
+
+const ddtData: DdtRow[] = [];
+
+type DdtSortKey = 'id' | 'spedizione' | 'ordine' | 'cliente' | 'corriere' | 'dataEmissione' | 'colli' | 'stato';
+
+const compareDdtByKey = (left: DdtRow, right: DdtRow, key: DdtSortKey) => {
+  switch (key) {
+    case 'id':
+      return compareText(left.id, right.id);
+    case 'spedizione':
+      return compareText(left.spedizione, right.spedizione);
+    case 'ordine':
+      return compareText(left.ordine, right.ordine);
+    case 'cliente':
+      return compareText(left.cliente, right.cliente);
+    case 'corriere':
+      return compareText(left.corriere, right.corriere);
+    case 'dataEmissione':
+      return compareDate(left.dataEmissione, right.dataEmissione);
+    case 'colli':
+      return compareNumber(left.colli, right.colli);
+    case 'stato':
+      return compareText(left.stato, right.stato);
+    default:
+      return 0;
+  }
+};
 
 const shippingStateBadge = (stato: string) => {
   switch (stato) {
@@ -44,6 +73,10 @@ export function LogisticsPage() {
   const [shipments, setShipments] = useState<Spedizione[]>([]);
   const [loadingShipments, setLoadingShipments] = useState(true);
   const [couriers, setCouriers] = useState<Corriere[]>([]);
+  const [ddtSort, setDdtSort] = useState<SortConfig<DdtSortKey> | null>(null);
+
+  const handleDdtSort = (key: DdtSortKey) => setDdtSort((prev) => toggleSort(prev, key));
+  const sortedDdtData = applySort(ddtData, ddtSort, compareDdtByKey);
 
   useEffect(() => {
     let alive = true;
@@ -269,19 +302,19 @@ export function LogisticsPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="bg-[#F7F9FC] border-b border-[#E5EAF2]">
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Numero DDT</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Spedizione</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Ordine</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Cliente</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Corriere</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Data Emissione</th>
-                      <th className="text-center px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Colli / Peso</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Stato</th>
+                      <SortableHeader label="Numero DDT" sortKey="id" sort={ddtSort} onSort={handleDdtSort} thClassName="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider" />
+                      <SortableHeader label="Spedizione" sortKey="spedizione" sort={ddtSort} onSort={handleDdtSort} thClassName="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider" />
+                      <SortableHeader label="Ordine" sortKey="ordine" sort={ddtSort} onSort={handleDdtSort} thClassName="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider" />
+                      <SortableHeader label="Cliente" sortKey="cliente" sort={ddtSort} onSort={handleDdtSort} thClassName="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider" />
+                      <SortableHeader label="Corriere" sortKey="corriere" sort={ddtSort} onSort={handleDdtSort} thClassName="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider" />
+                      <SortableHeader label="Data Emissione" sortKey="dataEmissione" sort={ddtSort} onSort={handleDdtSort} thClassName="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider" />
+                      <SortableHeader label="Colli / Peso" sortKey="colli" sort={ddtSort} onSort={handleDdtSort} align="center" thClassName="text-center px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider" />
+                      <SortableHeader label="Stato" sortKey="stato" sort={ddtSort} onSort={handleDdtSort} thClassName="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider" />
                       <th className="text-center px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Azioni</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E5EAF2]">
-                    {ddtData.map((ddt) => (
+                    {sortedDdtData.map((ddt) => (
                       <tr key={ddt.id} className="hover:bg-[#F7F9FC] transition-colors">
                         <td className="px-4 py-3 text-sm font-semibold text-[#17E88F]">{ddt.id}</td>
                         <td className="px-4 py-3 text-sm text-[#374151]">{ddt.spedizione}</td>

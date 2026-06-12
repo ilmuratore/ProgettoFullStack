@@ -1,11 +1,36 @@
 import { useState } from 'react';
-import { Package, Clock, User, MapPin } from 'lucide-react';
+import { Package, Clock, User, MapPin, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import type { Ricezione } from '../../../types/acquisti';
+import { applySort, compareDate, compareNumber, compareText, toggleSort, type SortConfig } from '../../../utils/sorting';
 
 interface GoodsReceiptsTimelineProps {
   ricezioni: Ricezione[];
   loading?: boolean;
 }
+
+type SortKey = 'ordine_acquisto_id' | 'fornitore' | 'data_ricezione' | 'utente';
+
+const sortOptions: { key: SortKey; label: string }[] = [
+  { key: 'ordine_acquisto_id', label: 'Ordine' },
+  { key: 'fornitore', label: 'Fornitore' },
+  { key: 'data_ricezione', label: 'Data' },
+  { key: 'utente', label: 'Responsabile' },
+];
+
+const compareReceiptsByKey = (left: Ricezione, right: Ricezione, key: SortKey) => {
+  switch (key) {
+    case 'ordine_acquisto_id':
+      return compareNumber(left.ordine_acquisto_id, right.ordine_acquisto_id);
+    case 'fornitore':
+      return compareText(left.fornitore ?? '', right.fornitore ?? '');
+    case 'data_ricezione':
+      return compareDate(left.data_ricezione, right.data_ricezione);
+    case 'utente':
+      return compareText(left.utente ?? '', right.utente ?? '');
+    default:
+      return 0;
+  }
+};
 
 const PAGE_SIZE = 6;
 
@@ -16,8 +41,12 @@ const fmtDataOra = (iso: string | null): string =>
 
 export function GoodsReceiptsTimeline({ ricezioni, loading }: GoodsReceiptsTimelineProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [sort, setSort] = useState<SortConfig<SortKey> | null>(null);
 
-  const visible = ricezioni.slice(0, visibleCount);
+  const handleSort = (key: SortKey) => setSort((prev) => toggleSort(prev, key));
+
+  const sorted = applySort(ricezioni, sort, compareReceiptsByKey);
+  const visible = sorted.slice(0, visibleCount);
 
   return (
     <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
@@ -30,6 +59,28 @@ export function GoodsReceiptsTimeline({ ricezioni, loading }: GoodsReceiptsTimel
           </div>
         </div>
         <div className="text-xs text-[#6B7280]">Ultime ricezioni registrate</div>
+      </div>
+
+      <div className="flex items-center gap-1.5 mb-4 pb-3 border-b border-[#E5EAF2]">
+        <span className="text-xs text-[#9CA3AF] mr-1">Ordina per:</span>
+        {sortOptions.map((opt) => {
+          const active = sort?.key === opt.key;
+          const Icon = !active ? ArrowUpDown : sort.direction === 'asc' ? ArrowUp : ArrowDown;
+          return (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => handleSort(opt.key)}
+              aria-sort={!active ? 'none' : sort.direction === 'asc' ? 'ascending' : 'descending'}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                active ? 'text-[#2D2D2D] bg-[#F7F9FC]' : 'text-[#9CA3AF] hover:text-[#2D2D2D]'
+              }`}
+            >
+              <span>{opt.label}</span>
+              <Icon className={`w-3.5 h-3.5 ${active ? 'text-[#2D2D2D]' : 'text-[#9CA3AF]'}`} />
+            </button>
+          );
+        })}
       </div>
 
       {loading ? (
