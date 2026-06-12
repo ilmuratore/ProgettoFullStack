@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
-import { useAuthStore } from '../store/authStore';
-import { LoginPage } from '../pages/LoginPage';
+import { useAuthStore } from '../../store/authStore';
+import { LoginPage } from '../../pages/LoginPage';
 
 interface PrivateRouteProps {
   children: ReactNode;

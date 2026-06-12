@@ -1,4 +1,4 @@
-import { useAuthStore, RUOLO_ID_TO_NOME } from '../store/authStore';
+import { useAuthStore, RUOLO_ID_TO_NOME } from '../../store/authStore';
 
 const ROLE_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
   'Admin':                    { color: '#0F172A', bg: '#F1F5F9', label: 'Admin'           },
