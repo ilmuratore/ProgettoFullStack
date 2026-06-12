@@ -10,6 +10,7 @@ const LIST_SELECT = `
        ordini.stato,
        ordini.stato_picking,
        ordini.utente_id,
+       ordini.indirizzo_snapshot,   -- <— AGGIUNTO
        ordini.created_at,
        ordini.updated_at,
        clienti.ragione_sociale AS cliente,
@@ -17,12 +18,13 @@ const LIST_SELECT = `
        CONCAT(utenti.nome, ' ', utenti.cognome) AS utente
 `;
 
+
 const create = ({ cliente_id, destinazione_id, data_consegna_richiesta, importo_totale, utente_id }, client) =>
     (client || pool).query(
         `
         INSERT INTO ordini
-        (cliente_id, destinazione_id, data_consegna_richiesta, importo_totale, utente_id)
-        VALUES ($1, $2, $3, $4, $5)
+        (cliente_id, destinazione_id, data_consegna_richiesta, importo_totale, utente_id, indirizzo_snapshot)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *;
         `,
         [cliente_id, destinazione_id, data_consegna_richiesta, importo_totale, utente_id]

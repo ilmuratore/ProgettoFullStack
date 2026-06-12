@@ -1,20 +1,14 @@
 const pool = require('../config/db');
 const ordiniModel = require('../models/ordiniModel');
 const righeOrdineModel = require('../models/righe_ordineModel');
-const clientiModel = require('../models/clientiModel');
-const destinazioniModel = require('../models/destinazioneclientiModel');
 const prodottiModel = require('../models/prodottiModel');
-const giacenzeModel = require('../models/giacenzeModel');
-const movimentiStockService = require('./movimenti_stockService');
+const clientiModel = require('../models/clientiModel');
+const destinazioneClientiModel = require('../models/destinazioneclientiModel');
+const movimentiStockService = require('../services/movimenti_stockService');
 
 const VALID_STATES = ['BOZZA', 'CONFERMATO', 'SPEDITO', 'ANNULLATO'];
 const VALID_PICKING = ['NON_AVVIATO', 'IN_PICKING', 'PICKING_COMPLETATO'];
 
-const throwError = (code, message) => {
-    const err = new Error(message);
-    err.code = code;
-    throw err;
-};
 
 const canTransitionStato = (from, to) => {
     if (from === to) return true;
@@ -34,6 +28,7 @@ const canTransitionPicking = (from, to) => {
     }
 };
 
+
 const getGiacenzaTotale = async (prodotto_id, client) => {
     const res = await (client || pool).query(
         `SELECT COALESCE(SUM(quantita), 0)::int AS totale FROM giacenze WHERE prodotto_id = $1;`,
@@ -45,7 +40,11 @@ const getGiacenzaTotale = async (prodotto_id, client) => {
 const getDisponibilita = async (prodotto_id, client) => {
     const prodottoRes = await prodottiModel.findById(prodotto_id);
     if (prodottoRes.rowCount === 0) {
-        throwError('RESOURCE_NOT_FOUND', 'Prodotto non trovato');
+        throw {
+            code: 'RESOURCE_NOT_FOUND',
+            message: 'Prodotto non trovato',
+            status: 404
+        };
     }
 
     const totale = await getGiacenzaTotale(prodotto_id, client);
@@ -60,55 +59,109 @@ const getDisponibilita = async (prodotto_id, client) => {
     };
 };
 
+
 const getAll = async (filters = {}) => {
     const { stato, stato_picking, cliente_id } = filters;
+
     if (stato && !VALID_STATES.includes(stato)) {
-        throwError('VALIDATION_ERROR', `Stato non valido. Valori ammessi: ${VALID_STATES.join(', ')}`);
+        throw {
+            code: 'VALIDATION_ERROR',
+            message: `Stato non valido. Valori ammessi: ${VALID_STATES.join(', ')}`,
+            status: 400
+        };
     }
+
     if (stato_picking && !VALID_PICKING.includes(stato_picking)) {
-        throwError('VALIDATION_ERROR', `Stato picking non valido. Valori ammessi: ${VALID_PICKING.join(', ')}`);
+        throw {
+            code: 'VALIDATION_ERROR',
+            message: `Stato picking non valido. Valori ammessi: ${VALID_PICKING.join(', ')}`,
+            status: 400
+        };
     }
+
     if (stato) return (await ordiniModel.findByStato(stato)).rows;
     if (stato_picking) return (await ordiniModel.findByStatoPicking(stato_picking)).rows;
     if (cliente_id) return (await ordiniModel.findByClienteId(cliente_id)).rows;
+
     return (await ordiniModel.findAll()).rows;
 };
 
 const getById = async (id) => {
     const ordineRes = await ordiniModel.findById(id);
     if (ordineRes.rowCount === 0) {
-        throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato');
+        throw {
+            code: 'RESOURCE_NOT_FOUND',
+            message: 'Ordine non trovato',
+            status: 404
+        };
     }
+
     const righeRes = await righeOrdineModel.findByOrdine(id);
     return { ordine: ordineRes.rows[0], righe: righeRes.rows };
 };
 
+/* -------------------------------------------------------
+   CREATE ORDINE (CON SNAPSHOT JSON)
+------------------------------------------------------- */
 const create = async (payload) => {
     const { cliente_id, destinazione_id, data_consegna_richiesta, utente_id, righe = [] } = payload;
 
     if (!cliente_id || !destinazione_id || righe.length === 0) {
-        throwError('VALIDATION_ERROR', 'cliente_id, destinazione_id e almeno una riga sono obbligatori');
+        throw {
+            code: 'VALIDATION_ERROR',
+            message: 'cliente_id, destinazione_id e almeno una riga sono obbligatori',
+            status: 400
+        };
     }
 
     const clienteRes = await clientiModel.findById(cliente_id);
     if (clienteRes.rowCount === 0 || clienteRes.rows[0].attivo === false) {
-        throwError('RESOURCE_NOT_FOUND', 'Cliente non trovato');
+        throw {
+            code: 'RESOURCE_NOT_FOUND',
+            message: 'Cliente non trovato',
+            status: 404
+        };
     }
 
-    const destRes = await destinazioniModel.findById(destinazione_id);
+    const destRes = await destinazioneClientiModel.findById(destinazione_id);
     if (destRes.rowCount === 0) {
-        throwError('RESOURCE_NOT_FOUND', 'Destinazione non trovata');
+        throw {
+            code: 'RESOURCE_NOT_FOUND',
+            message: 'Destinazione non trovata',
+            status: 404
+        };
     }
+
     if (destRes.rows[0].cliente_id !== Number(cliente_id)) {
-        throwError('VALIDATION_ERROR', 'La destinazione non appartiene al cliente indicato');
+        throw {
+            code: 'VALIDATION_ERROR',
+            message: 'La destinazione non appartiene al cliente indicato',
+            status: 400
+        };
     }
 
-    const righeConPrezzo = [];
+    const d = destRes.rows[0];
 
+    // SNAPSHOT JSON
+    const indirizzoSnapshot = JSON.stringify({
+        etichetta: d.etichetta,
+        indirizzo: d.indirizzo,
+        cap: d.cap,
+        citta: d.citta,
+        provincia: d.provincia,
+        paese: d.paese
+    });
+
+    // Calcolo prezzi righe
+    const righeConPrezzo = [];
     for (const r of righe) {
         const prodottoRes = await prodottiModel.findById(r.prodotto_id);
         if (prodottoRes.rowCount === 0 || prodottoRes.rows[0].attivo === false) {
-            throwError('RESOURCE_NOT_FOUND', `Prodotto ${r.prodotto_id} non trovato`);
+            throw {
+                code: 'RESOURCE_NOT_FOUND',
+                message: `Prodotto ${r.prodotto_id} non trovato`,
+                status: 404
+            };
         }
 
         righeConPrezzo.push({
@@ -119,18 +172,22 @@ const create = async (payload) => {
     }
 
     const client = await pool.connect();
+
     try {
         await client.query('BEGIN');
 
-        const importo_totale = righeConPrezzo.reduce((sum, r) =>
-            sum + Number(r.quantita || 0) * Number(r.prezzo_unitario || 0), 0);
+        const importo_totale = righeConPrezzo.reduce(
+            (sum, r) => sum + Number(r.quantita || 0) * Number(r.prezzo_unitario || 0),
+            0
+        );
 
         const ordineRes = await ordiniModel.create({
             cliente_id,
             destinazione_id,
             data_consegna_richiesta,
             importo_totale,
-            utente_id
+            utente_id,
+            indirizzo_snapshot: indirizzoSnapshot
         }, client);
 
         const ordine = ordineRes.rows[0];
@@ -148,6 +205,7 @@ const create = async (payload) => {
 
         await client.query('COMMIT');
         return { ordine, righe: righeCreated };
+
     } catch (err) {
         await client.query('ROLLBACK');
         throw err;
@@ -156,22 +214,38 @@ const create = async (payload) => {
     }
 };
 
+
 const update = async (id, payload) => {
     const ordineRes = await ordiniModel.findById(id);
     if (ordineRes.rowCount === 0) {
-        throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato');
+        throw {
+            code: 'RESOURCE_NOT_FOUND',
+            message: 'Ordine non trovato',
+            status: 404
+        };
     }
+
     if (ordineRes.rows[0].stato !== 'BOZZA') {
-        throwError('STATE_TRANSITION_INVALID', 'Solo gli ordini in BOZZA sono modificabili');
+        throw {
+            code: 'STATE_TRANSITION_INVALID',
+            message: 'Solo gli ordini in BOZZA sono modificabili',
+            status: 400
+        };
     }
+
     const { data_consegna_richiesta } = payload;
     const res = await ordiniModel.update(id, { data_consegna_richiesta, importo_totale: undefined });
     return res.rows[0];
 };
 
+
 const updateStato = async (id, nuovoStato) => {
     if (!VALID_STATES.includes(nuovoStato)) {
-        throwError('VALIDATION_ERROR', `Stato non valido. Valori ammessi: ${VALID_STATES.join(', ')}`);
+        throw {
+            code: 'VALIDATION_ERROR',
+            message: `Stato non valido. Valori ammessi: ${VALID_STATES.join(', ')}`,
+            status: 400
+        };
     }
 
     const client = await pool.connect();
@@ -181,12 +255,21 @@ const updateStato = async (id, nuovoStato) => {
 
         const ordineRes = await ordiniModel.findByIdForUpdate(id, client);
         if (ordineRes.rowCount === 0) {
-            throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato');
+            throw {
+                code: 'RESOURCE_NOT_FOUND',
+                message: 'Ordine non trovato',
+                status: 404
+            };
         }
 
         const ordine = ordineRes.rows[0];
+
         if (!canTransitionStato(ordine.stato, nuovoStato)) {
-            throwError('STATE_TRANSITION_INVALID', `Transizione ${ordine.stato} -> ${nuovoStato} non consentita`);
+            throw {
+                code: 'STATE_TRANSITION_INVALID',
+                message: `Transizione ${ordine.stato} -> ${nuovoStato} non consentita`,
+                status: 400
+            };
         }
 
         if (nuovoStato === 'CONFERMATO') {
@@ -198,6 +281,7 @@ const updateStato = async (id, nuovoStato) => {
             }
 
             const prodottoIds = Array.from(fabbisogno.keys()).sort((a, b) => a - b);
+
             if (prodottoIds.length > 0) {
                 await ordiniModel.lockGiacenzeByProdottoIds(prodottoIds, client);
 
@@ -209,32 +293,39 @@ const updateStato = async (id, nuovoStato) => {
                 );
 
                 if (precedentiRes.rowCount > 0) {
-                    throwError(
-                        'STATE_TRANSITION_INVALID',
-                        'Esistono ordini più vecchi sugli stessi prodotti da processare prima'
-                    );
+                    throw {
+                        code: 'STATE_TRANSITION_INVALID',
+                        message: 'Esistono ordini più vecchi sugli stessi prodotti da processare prima',
+                        status: 400
+                    };
                 }
             }
 
             for (const [prodotto_id, richiesto] of fabbisogno.entries()) {
                 const disp = await getDisponibilita(prodotto_id, client);
                 if (richiesto > disp.disponibile) {
-                    throwError(
-                        'INSUFFICIENT_STOCK',
-                        `Disponibilita insufficiente per il prodotto ${prodotto_id}: richiesti ${richiesto}, disponibili ${disp.disponibile}`
-                    );
+                    throw {
+                        code: 'INSUFFICIENT_STOCK',
+                        message: `Disponibilità insufficiente per il prodotto ${prodotto_id}: richiesti ${richiesto}, disponibili ${disp.disponibile}`,
+                        status: 400
+                    };
                 }
             }
         }
 
         if (nuovoStato === 'SPEDITO' && ordine.stato_picking !== 'PICKING_COMPLETATO') {
-            throwError('STATE_TRANSITION_INVALID', 'Impossibile spedire: il picking non e completato');
+            throw {
+                code: 'STATE_TRANSITION_INVALID',
+                message: 'Impossibile spedire: il picking non è completato',
+                status: 400
+            };
         }
 
         const res = await ordiniModel.updateStato(id, nuovoStato, client);
 
         await client.query('COMMIT');
         return res.rows[0];
+
     } catch (err) {
         await client.query('ROLLBACK');
         throw err;
@@ -243,9 +334,15 @@ const updateStato = async (id, nuovoStato) => {
     }
 };
 
+
+
 const updateStatoPicking = async (id, nuovoStatoPicking, prelievi) => {
     if (!VALID_PICKING.includes(nuovoStatoPicking)) {
-        throwError('VALIDATION_ERROR', `Stato picking non valido. Valori ammessi: ${VALID_PICKING.join(', ')}`);
+        throw {
+            code: 'VALIDATION_ERROR',
+            message: `Stato picking non valido. Valori ammessi: ${VALID_PICKING.join(', ')}`,
+            status: 400
+        };
     }
 
     const client = await pool.connect();
@@ -255,20 +352,29 @@ const updateStatoPicking = async (id, nuovoStatoPicking, prelievi) => {
 
         const ordineRes = await ordiniModel.findById(id, client);
         if (ordineRes.rowCount === 0) {
-            throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato');
+            throw {
+                code: 'RESOURCE_NOT_FOUND',
+                message: 'Ordine non trovato',
+                status: 404
+            };
         }
 
         const ordine = ordineRes.rows[0];
 
         if (ordine.stato !== 'CONFERMATO') {
-            throwError('STATE_TRANSITION_INVALID', 'Il picking e gestibile solo su ordini CONFERMATO');
+            throw {
+                code: 'STATE_TRANSITION_INVALID',
+                message: 'Il picking è gestibile solo su ordini CONFERMATO',
+                status: 400
+            };
         }
 
         if (!canTransitionPicking(ordine.stato_picking, nuovoStatoPicking)) {
-            throwError(
-                'STATE_TRANSITION_INVALID',
-                `Transizione picking ${ordine.stato_picking} -> ${nuovoStatoPicking} non consentita`
-            );
+            throw {
+                code: 'STATE_TRANSITION_INVALID',
+                message: `Transizione picking ${ordine.stato_picking} -> ${nuovoStatoPicking} non consentita`,
+                status: 400
+            };
         }
 
         if (nuovoStatoPicking !== 'PICKING_COMPLETATO') {
@@ -278,7 +384,11 @@ const updateStatoPicking = async (id, nuovoStatoPicking, prelievi) => {
         }
 
         if (!Array.isArray(prelievi) || prelievi.length === 0) {
-            throwError('VALIDATION_ERROR', 'Per completare il picking serve la lista prelievi per ogni riga');
+            throw {
+                code: 'VALIDATION_ERROR',
+                message: 'Per completare il picking serve la lista prelievi per ogni riga',
+                status: 400
+            };
         }
 
         const righeRes = await righeOrdineModel.findByOrdine(id, client);
@@ -287,23 +397,36 @@ const updateStatoPicking = async (id, nuovoStatoPicking, prelievi) => {
         for (const p of prelievi) {
             const riga = righeById.get(Number(p.riga_id));
             if (!riga) {
-                throwError('VALIDATION_ERROR', `Riga ordine ${p.riga_id} non trovata in questo ordine`);
+                throw {
+                    code: 'VALIDATION_ERROR',
+                    message: `Riga ordine ${p.riga_id} non trovata in questo ordine`,
+                    status: 400
+                };
             }
+
             if (!Array.isArray(p.ubicazioni) || p.ubicazioni.length === 0) {
-                throwError('VALIDATION_ERROR', `La riga ${p.riga_id} non ha ubicazioni di prelievo`);
+                throw {
+                    code: 'VALIDATION_ERROR',
+                    message: `La riga ${p.riga_id} non ha ubicazioni di prelievo`,
+                    status: 400
+                };
             }
+
             const sommaPrelievi = p.ubicazioni.reduce((s, u) => s + Number(u.quantita || 0), 0);
             if (sommaPrelievi !== Number(riga.quantita)) {
-                throwError(
-                    'VALIDATION_ERROR',
-                    `La somma dei prelievi (${sommaPrelievi}) per la riga ${p.riga_id} non corrisponde alla quantita ordinata (${riga.quantita})`
-                );
+                throw {
+                    code: 'VALIDATION_ERROR',
+                    message: `La somma dei prelievi (${sommaPrelievi}) per la riga ${p.riga_id} non corrisponde alla quantità ordinata (${riga.quantita})`,
+                    status: 400
+                };
             }
         }
 
         const movimenti = [];
+
         for (const p of prelievi) {
             const riga = righeById.get(Number(p.riga_id));
+
             for (const u of p.ubicazioni) {
                 const movimento = await movimentiStockService.create({
                     prodotto_id: riga.prodotto_id,
@@ -313,6 +436,7 @@ const updateStatoPicking = async (id, nuovoStatoPicking, prelievi) => {
                     riferimento: `ordine:${id}`,
                     note: null
                 }, client);
+
                 movimenti.push(movimento);
             }
         }
@@ -321,6 +445,7 @@ const updateStatoPicking = async (id, nuovoStatoPicking, prelievi) => {
 
         await client.query('COMMIT');
         return { ordine: res.rows[0], movimenti };
+
     } catch (err) {
         await client.query('ROLLBACK');
         throw err;
@@ -328,6 +453,7 @@ const updateStatoPicking = async (id, nuovoStatoPicking, prelievi) => {
         client.release();
     }
 };
+
 
 module.exports = {
     getAll,

@@ -29,7 +29,10 @@ const getDisponibilita = async (req, res, next) => {
 
 const create = async (req, res, next) => {
     try {
-        const data = await ordiniService.create({ ...req.body, utente_id: req.user.id });
+        const data = await ordiniService.create({
+            ...req.body,
+            utente_id: req.user.id
+        });
         res.status(201).json({ status: 'success', data });
     } catch (err) {
         next(err);

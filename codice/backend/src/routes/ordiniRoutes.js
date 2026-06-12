@@ -46,25 +46,65 @@ const validateRighe = (req, res, next) => {
     next();
 };
 
-// GET /api/v1/ordini
-router.get('/', auth, requirePermesso('ordini:read'), ordiniController.getAll);
+// ⚠️ IMPORTANTE: questa route deve venire PRIMA di /:id
+router.get(
+    '/disponibilita/:prodotto_id',
+    auth,
+    requirePermesso('ordini:read'),
+    ordiniController.getDisponibilita
+);
 
-// GET /api/v1/ordini/disponibilita/:prodotto_id
-router.get('/disponibilita/:prodotto_id', auth, requirePermesso('ordini:read'), ordiniController.getDisponibilita);
+// GET /api/v1/ordini
+router.get(
+    '/',
+    auth,
+    requirePermesso('ordini:read'),
+    ordiniController.getAll
+);
 
 // GET /api/v1/ordini/:id
-router.get('/:id', auth, requirePermesso('ordini:read'), ordiniController.getById);
+router.get(
+    '/:id',
+    auth,
+    requirePermesso('ordini:read'),
+    ordiniController.getById
+);
 
 // POST /api/v1/ordini
-router.post('/', auth, requirePermesso('ordini:write'), validate(createBlueprint), validateRighe, ordiniController.create);
+router.post(
+    '/',
+    auth,
+    requirePermesso('ordini:write'),
+    validate(createBlueprint),
+    validateRighe,
+    ordiniController.create
+);
 
 // PATCH /api/v1/ordini/:id
-router.patch('/:id', auth, requirePermesso('ordini:write'), validate(updateBlueprint), ordiniController.update);
+router.patch(
+    '/:id',
+    auth,
+    requirePermesso('ordini:write'),
+    validate(updateBlueprint),
+    ordiniController.update
+);
 
 // PATCH /api/v1/ordini/:id/stato
-router.patch('/:id/stato', auth, requirePermesso('ordini:approve'), validate(statoBlueprint), ordiniController.updateStato);
+router.patch(
+    '/:id/stato',
+    auth,
+    requirePermesso('ordini:approve'),
+    validate(statoBlueprint),
+    ordiniController.updateStato
+);
 
 // PATCH /api/v1/ordini/:id/picking
-router.patch('/:id/picking', auth, requirePermesso('ordini:approve'), validate(pickingBlueprint), ordiniController.updateStatoPicking);
+router.patch(
+    '/:id/picking',
+    auth,
+    requirePermesso('ordini:approve'),
+    validate(pickingBlueprint),
+    ordiniController.updateStatoPicking
+);
 
 module.exports = router;

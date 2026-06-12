@@ -14,6 +14,7 @@ const findAll = () =>
                 corrieri.codice AS codice_corriere,
                 spedizioni.stato,
                 spedizioni.tracking_number,
+                spedizioni.indirizzo_snapshot,
                 spedizioni.created_at,
                 spedizioni.updated_at
      FROM spedizioni
@@ -37,6 +38,7 @@ const findById = (id) =>
                 corrieri.codice AS codice_corriere,
                 spedizioni.stato,
                 spedizioni.tracking_number,
+                spedizioni.indirizzo_snapshot,
                 spedizioni.created_at,
                 spedizioni.updated_at
      FROM spedizioni
@@ -86,25 +88,25 @@ const findByCorriereId = (corriere_id) =>
 const findByStato = (stato) =>
     pool.query(
         `SELECT id, ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number, created_at, updated_at
-     FROM spedizioni
-     WHERE stato = $1
-     ORDER BY id`,
+        FROM spedizioni
+        WHERE stato = $1
+        ORDER BY id`,
         [stato]
     );
 
 
 const create = ({ ordine_id, cliente_id, destinazione_id, corriere_id, stato = 'IN_PREPARAZIONE', tracking_number }) =>
     pool.query(
-        `INSERT INTO spedizioni (ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number)
-     VALUES ($1, $2, $3, $4, $5::shipping_state, $6)
-     RETURNING id, ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number, created_at, updated_at`,
+        `INSERT INTO spedizioni 
+        (ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number, indirizzo_snapshot)
+        VALUES ($1, $2, $3, $4, $5::shipping_state, $6, $7)
+        RETURNING id, ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number, indirizzo_snapshot, created_at, updated_at`,
         [ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number]
     );
 
 const update = (id, { tracking_number }) =>
     pool.query(
-        `
-        UPDATE spedizioni
+        `UPDATE spedizioni
         SET tracking_number = COALESCE($1, tracking_number),
             updated_at = CURRENT_TIMESTAMP
         WHERE id = $2
@@ -118,28 +120,28 @@ const update = (id, { tracking_number }) =>
 const updateStato = (id, stato) =>
     pool.query(
         `UPDATE spedizioni
-     SET stato = $1::shipping_state,
-         updated_at = CURRENT_TIMESTAMP
-     WHERE id = $2
-     RETURNING id, stato, updated_at`,
+        SET stato = $1::shipping_state,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+        RETURNING id, stato, updated_at`,
         [stato, id]
     );
 
 const updateTrackingNumber = (id, tracking_number) =>
     pool.query(
         `UPDATE spedizioni
-     SET tracking_number = $1,
-         updated_at = CURRENT_TIMESTAMP
-     WHERE id = $2
-     RETURNING id, tracking_number, updated_at`,
+        SET tracking_number = $1,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+        RETURNING id, tracking_number, updated_at`,
         [tracking_number, id]
     );
 
 const remove = (id) =>
     pool.query(
         `DELETE FROM spedizioni
-     WHERE id = $1
-     RETURNING id, ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number, created_at, updated_at`,
+        WHERE id = $1
+        RETURNING id, ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number, created_at, updated_at`,
         [id]
     );
 
