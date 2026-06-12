@@ -1,19 +1,21 @@
 const express = require('express');
+const router = express.Router();
+
 const clientiController = require('../controllers/clientiController');
-const destinazioniController = require('../controllers/destinazioniController');
 
 const { auth } = require('../middleware/auth');
 const { requirePermesso } = require('../middleware/rbac');
 const { validate } = require('../middleware/validate');
 
-const router = express.Router();
-
+// Blueprint CREATE cliente
 const createBlueprint = {
     ragione_sociale: { required: true, type: 'string' },
     piva_cf: { required: true, type: 'string' },
     email: { required: false, type: 'string' },
     telefono: { required: false, type: 'string' }
 };
+
+// Blueprint UPDATE cliente
 const updateBlueprint = {
     ragione_sociale: { required: false, type: 'string' },
     piva_cf: { required: false, type: 'string' },
@@ -22,15 +24,9 @@ const updateBlueprint = {
     attivo: { required: false, type: 'boolean' }
 };
 
-const destinazioneBlueprint = {
-    etichetta: { required: false, type: 'string' },
-    indirizzo: { required: false, type: 'string' },
-    cap: { required: false, type: 'string' },
-    citta: { required: false, type: 'string' },
-    provincia: { required: false, type: 'string' },
-    paese: { required: false, type: 'string' },
-    predefinita: { required: false, type: 'boolean' }
-};
+// -----------------------------
+// ROUTES CLIENTI
+// -----------------------------
 
 router.get(
     '/',
@@ -69,43 +65,11 @@ router.delete(
     clientiController.elimina
 );
 
-// ----- Destinazioni (sub-risorsa del cliente) -----
+// -----------------------------
+// SUB-ROUTES: DESTINAZIONI
+// -----------------------------
 
-router.get(
-    '/:id/destinazioni',
-    auth,
-    requirePermesso('clienti:read'),
-    destinazioniController.getByCliente
-);
-
-router.post(
-    '/:id/destinazioni',
-    auth,
-    requirePermesso('clienti:write'),
-    validate(destinazioneBlueprint),
-    destinazioniController.create
-);
-
-router.get(
-    '/:id/destinazioni/:destId',
-    auth,
-    requirePermesso('clienti:read'),
-    destinazioniController.getById
-);
-
-router.patch(
-    '/:id/destinazioni/:destId',
-    auth,
-    requirePermesso('clienti:write'),
-    validate(destinazioneBlueprint),
-    destinazioniController.update
-);
-
-router.delete(
-    '/:id/destinazioni/:destId',
-    auth,
-    requirePermesso('clienti:delete'),
-    destinazioniController.remove
-);
+const destinazioniRoutes = require('./destinazioniRoutes');
+router.use('/:id/destinazioni', destinazioniRoutes);
 
 module.exports = router;
