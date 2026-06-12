@@ -134,6 +134,14 @@ const findByProdottoId = (prodotto_id) =>
         [prodotto_id]
     );
 
+const getTotaleByProdottoId = (prodotto_id, client) =>
+    (client || pool).query(
+        `SELECT COALESCE(SUM(quantita), 0)::int AS totale
+         FROM giacenze
+         WHERE prodotto_id = $1`,
+        [prodotto_id]
+    );
+
 const findByUbicazioneId = (ubicazione_id) =>
     pool.query(
         `SELECT giacenze.id,
@@ -219,6 +227,7 @@ module.exports = {
     findAllFiltered,
     findById,
     findByProdottoId,
+    getTotaleByProdottoId,
     findByUbicazioneId,
     findByProdottoIdAndUbicazioneId,
     lockByProdottoIdAndUbicazioneId,

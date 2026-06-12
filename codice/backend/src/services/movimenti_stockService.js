@@ -2,6 +2,8 @@ const movimentiStockModel = require('../models/movimenti_stockModel');
 const giacenzeModel = require('../models/giacenzeModel');
 const prodottiModel = require('../models/prodottiModel');
 const ubicazioniModel = require('../models/ubicazioniModel');
+const utentiModel = require('../models/utentiModel');
+const notificheModel = require('../models/notificheModel');
 const pool = require('../config/db');
 
 
@@ -18,6 +20,49 @@ const throwError = (code, message) => {
     const err = new Error(message);
     err.code = code;
     throw err;
+};
+
+const PERMESSI_NOTIFICA_SOTTO_SCORTA = ['giacenze:read', 'notifiche:read'];
+
+const createSottoScortaNotificationsIfNeeded = async ({ prodotto_id, client, quantitaPrecedenteTotale }) => {
+    const prodottoResult = await prodottiModel.findById(prodotto_id);
+    if (prodottoResult.rowCount === 0 || prodottoResult.rows[0].attivo === false) {
+        return;
+    }
+
+    const prodotto = prodottoResult.rows[0];
+    const scortaMinima = Number(prodotto.scorta_minima || 0);
+
+    if (scortaMinima <= 0) {
+        return;
+    }
+
+    const totaleResult = await giacenzeModel.getTotaleByProdottoId(prodotto_id, client);
+    const quantitaAttualeTotale = Number(totaleResult.rows[0]?.totale ?? 0);
+
+    if (quantitaAttualeTotale >= scortaMinima) {
+        return;
+    }
+
+    const enteredCriticalFromSafe = quantitaPrecedenteTotale >= scortaMinima;
+    const stillCriticalAfterFirstLoad = quantitaPrecedenteTotale === 0 && quantitaAttualeTotale > 0;
+
+    if (!enteredCriticalFromSafe && !stillCriticalAfterFirstLoad) {
+        return;
+    }
+
+    const destinatariResult = await utentiModel.findAttiviByPermessi(PERMESSI_NOTIFICA_SOTTO_SCORTA, client);
+    const messaggio = `Prodotto ${prodotto.nome} (${prodotto.sku}) sotto scorta: disponibilita totale ${quantitaAttualeTotale}, scorta minima ${scortaMinima}.`;
+
+    for (const utente of destinatariResult.rows) {
+        await notificheModel.create({
+            utente_id: utente.id,
+            tipo: notificheModel.TIPI.SOTTO_SCORTA,
+            messaggio,
+            riferimento_tipo: 'prodotto',
+            riferimento_id: Number(prodotto_id)
+        }, client);
+    }
 };
 
 const getAll = async () => {
@@ -195,10 +240,16 @@ const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione
 
     const client = externalClient || await pool.connect();
     const shouldManageTransaction = !externalClient;
+    let quantitaPrecedenteTotale = null;
 
     try {
         if (shouldManageTransaction) {
             await client.query('BEGIN');
+        }
+
+        {
+            const totaleResult = await giacenzeModel.getTotaleByProdottoId(prodotto_id, client);
+            quantitaPrecedenteTotale = Number(totaleResult.rows[0]?.totale ?? 0);
         }
 
         const giacenza = await giacenzeModel.findByProdottoIdAndUbicazioneId(prodotto_id, ubicazione_id, client);
@@ -219,6 +270,14 @@ const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione
             riferimento,
             note
         }, client);
+
+        if (quantitaPrecedenteTotale !== null) {
+            await createSottoScortaNotificationsIfNeeded({
+                prodotto_id,
+                client,
+                quantitaPrecedenteTotale
+            });
+        }
 
         if (shouldManageTransaction) {
             await client.query('COMMIT');

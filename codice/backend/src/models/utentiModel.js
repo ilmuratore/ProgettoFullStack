@@ -43,6 +43,29 @@ const findByEmail = (email) =>
         [email]
     );
 
+const findAttiviByPermessi = (codiciPermesso, client) =>
+    (client || pool).query(
+        `SELECT utenti.id,
+                utenti.nome,
+                utenti.cognome,
+                utenti.email,
+                utenti.ruolo_id,
+                ruoli.nome AS ruolo,
+                utenti.attivo,
+                utenti.created_at,
+                utenti.updated_at
+         FROM utenti
+         JOIN ruoli ON utenti.ruolo_id = ruoli.id
+         JOIN ruoli_permessi rp ON rp.ruolo_id = utenti.ruolo_id
+         JOIN permessi p ON p.id = rp.permesso_id
+         WHERE utenti.attivo = true
+           AND p.codice = ANY($1::text[])
+         GROUP BY utenti.id, utenti.nome, utenti.cognome, utenti.email, utenti.ruolo_id, ruoli.nome, utenti.attivo, utenti.created_at, utenti.updated_at
+         HAVING COUNT(DISTINCT p.codice) = $2
+         ORDER BY utenti.id`,
+        [codiciPermesso, codiciPermesso.length]
+    );
+
 const findPasswordHash = (id) =>
     pool.query(
         `SELECT id, password_hash, attivo FROM utenti WHERE id = $1`,
@@ -96,5 +119,6 @@ const remove = (id) =>
 
 module.exports = {
     findAll, findById, findByEmail, findPasswordHash,
+    findAttiviByPermessi,
     create, update, updatePassword, remove
 };

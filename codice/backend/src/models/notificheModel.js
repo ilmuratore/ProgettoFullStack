@@ -64,8 +64,8 @@ const findAll = () =>
          ORDER  BY created_at DESC`
     );
 
-const create = ({ utente_id, tipo, messaggio, riferimento_tipo, riferimento_id, letto = false }) =>
-    pool.query(
+const create = ({ utente_id, tipo, messaggio, riferimento_tipo, riferimento_id, letto = false }, client) =>
+    (client || pool).query(
         `INSERT INTO notifiche (utente_id, tipo, messaggio, letto, riferimento_tipo, riferimento_id)
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING ${SELECT_COLS}`,
