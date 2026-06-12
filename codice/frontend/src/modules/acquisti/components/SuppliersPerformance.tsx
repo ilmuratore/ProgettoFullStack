@@ -37,21 +37,39 @@ const computeStato = (completionRate: number, ordiniInRitardo: number): Stato =>
   return 'Da Migliorare';
 };
 
+const normalizeDateOnly = (value: string) => {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getTodayLocalDateOnly = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export function SuppliersPerformance() {
   const [suppliers, setSuppliers] = useState<SupplierRow[] | null>(null);
 
   useEffect(() => {
     Promise.all([acquistiApi.list(), fornitoriApi.list()])
       .then(([ordini, fornitori]: [OrdineAcquistoLista[], Fornitore[]]) => {
-        const oggi = new Date();
+        const oggi = getTodayLocalDateOnly();
         const rows = fornitori
           .map((f) => {
             const ordiniFornitore = ordini.filter((o) => o.fornitore_id === f.id);
             const ordiniCompletati = ordiniFornitore.filter((o) => o.stato === 'COMPLETATO').length;
             const ordiniInRitardo = ordiniFornitore.filter((o) =>
-              o.stato !== 'COMPLETATO' && o.stato !== 'ANNULLATO' && o.data_prevista && new Date(o.data_prevista) < oggi
+              o.stato !== 'ANNULLATO' && o.stato !== 'COMPLETATO' && o.data_prevista && normalizeDateOnly(o.data_prevista) < oggi
             ).length;
-            const importoAcquisti = ordiniFornitore.reduce((sum, o) => sum + Number(o.importo_totale ?? 0), 0);
+            const importoAcquisti = ordiniFornitore
+              .filter((o) => o.stato === 'CONFERMATO')
+              .reduce((sum, o) => sum + Number(o.importo_totale ?? 0), 0);
             const completionRate = ordiniFornitore.length ? (ordiniCompletati / ordiniFornitore.length) * 100 : 0;
 
             return {

@@ -26,6 +26,7 @@ interface OrderLine {
 }
 
 export function NewPurchaseOrderModal({ isOpen, onClose, onCreated }: NewPurchaseOrderModalProps) {
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [fornitori, setFornitori] = useState<Fornitore[]>([]);
   const [loadingFornitori, setLoadingFornitori] = useState(false);
@@ -112,6 +113,14 @@ export function NewPurchaseOrderModal({ isOpen, onClose, onCreated }: NewPurchas
   const totaleOrdine = orderLines.reduce((sum, line) => sum + (line.quantita * line.prezzoUnitario), 0);
 
   const handleNext = () => {
+    if (currentStep === 3 && !dataPrevista) {
+      toast.error('Inserisci data consegna prevista');
+      return;
+    }
+    if (currentStep === 3 && dataPrevista < today) {
+      toast.error('Data consegna prevista non puo essere precedente a oggi');
+      return;
+    }
     if (currentStep < 4) {
       setCurrentStep((currentStep + 1) as Step);
     }
@@ -139,11 +148,19 @@ export function NewPurchaseOrderModal({ isOpen, onClose, onCreated }: NewPurchas
       toast.error('Aggiungi almeno una riga valida');
       return;
     }
+    if (!dataPrevista) {
+      toast.error('Inserisci data consegna prevista');
+      return;
+    }
+    if (dataPrevista < today) {
+      toast.error('Data consegna prevista non puo essere precedente a oggi');
+      return;
+    }
     setSubmitting(true);
     try {
       await acquistiApi.create({
         fornitore_id: selectedSupplier.id,
-        data_prevista: dataPrevista || undefined,
+        data_prevista: dataPrevista,
         note: note || undefined,
         righe,
       });
@@ -398,11 +415,12 @@ export function NewPurchaseOrderModal({ isOpen, onClose, onCreated }: NewPurchas
 
               <div>
                 <label className="text-sm font-medium text-[#2D2D2D] mb-2 block">Data Consegna Prevista</label>
-                <input
-                  type="date"
-                  value={dataPrevista}
-                  onChange={(e) => setDataPrevista(e.target.value)}
-                  className="w-full h-11 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20"
+                  <input
+                    type="date"
+                    min={today}
+                    value={dataPrevista}
+                    onChange={(e) => setDataPrevista(e.target.value)}
+                    className="w-full h-11 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20"
                 />
               </div>
 
@@ -486,6 +504,7 @@ export function NewPurchaseOrderModal({ isOpen, onClose, onCreated }: NewPurchas
             disabled={
               (currentStep === 1 && !selectedSupplier) ||
               (currentStep === 2 && orderLines.length === 0) ||
+              (currentStep === 3 && !dataPrevista) ||
               (currentStep === 4 && submitting)
             }
             className="px-6 py-2.5 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"

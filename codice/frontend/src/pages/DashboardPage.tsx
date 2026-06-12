@@ -66,6 +66,14 @@ export function DashboardPage() {
   const [warehouseCapacity, setWarehouseCapacity] = useState({ capacity: 0, occupied: 0, available: 0 });
 
   useEffect(() => {
+    const requestedTab = sessionStorage.getItem('dashboard-tab');
+    if (requestedTab === 'alert') {
+      setDashboardTab('alert');
+      sessionStorage.removeItem('dashboard-tab');
+    }
+  }, []);
+
+  useEffect(() => {
     Promise.all([
       giacenzeApi.list(),
       prodottiApi.list(),

@@ -12,7 +12,7 @@ const STATI = ['BOZZA', 'INVIATO', 'CONFERMATO', 'IN_RICEZIONE', 'COMPLETATO', '
 
 const createBlueprint = {
     fornitore_id: { required: true, type: 'number', integer: true, min: 1 },
-    data_prevista: { required: false, type: 'string' },
+    data_prevista: { required: true, type: 'string' },
     note: { required: false, type: 'string' },
     // utente_id rimosso (issue31)
 };

@@ -9,6 +9,7 @@ const formatCurrency = (n: number) =>
   new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 
 const ATTIVI: ReadonlySet<StatoOrdineAcquisto> = new Set(['BOZZA', 'INVIATO', 'CONFERMATO', 'IN_RICEZIONE']);
+const STATI_RITARDO: ReadonlySet<StatoOrdineAcquisto> = new Set(['BOZZA', 'INVIATO', 'CONFERMATO', 'IN_RICEZIONE']);
 
 const STATO_CONFIG: Record<StatoOrdineAcquisto, { label: string; color: string }> = {
   BOZZA:        { label: 'Bozza',        color: '#6B7280' },
@@ -22,8 +23,24 @@ const STATO_CONFIG: Record<StatoOrdineAcquisto, { label: string; color: string }
 const sameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
-const giorniRitardo = (dataPrevista: string, oggi: Date) =>
-  Math.max(1, Math.ceil((oggi.getTime() - new Date(dataPrevista).getTime()) / (1000 * 60 * 60 * 24)));
+const normalizeDateOnly = (value: string) => {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getTodayLocalDateOnly = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const giorniRitardo = (dataPrevista: string, oggi: string) =>
+  Math.max(1, Math.ceil((new Date(`${oggi}T00:00:00Z`).getTime() - new Date(`${normalizeDateOnly(dataPrevista)}T00:00:00Z`).getTime()) / (1000 * 60 * 60 * 24)));
 
 export function PurchaseWidgets() {
   const [ordini, setOrdini] = useState<OrdineAcquistoLista[] | null>(null);
@@ -43,11 +60,12 @@ export function PurchaseWidgets() {
   }
 
   const oggi = new Date();
+  const oggiDateOnly = getTodayLocalDateOnly();
   const domani = new Date(oggi.getTime() + 24 * 60 * 60 * 1000);
 
   const ordiniInRitardo = ordini
-    .filter((o) => ATTIVI.has(o.stato) && o.data_prevista && new Date(o.data_prevista) < oggi)
-    .sort((a, b) => giorniRitardo(b.data_prevista!, oggi) - giorniRitardo(a.data_prevista!, oggi));
+    .filter((o) => STATI_RITARDO.has(o.stato) && o.data_prevista && normalizeDateOnly(o.data_prevista) < oggiDateOnly)
+    .sort((a, b) => giorniRitardo(b.data_prevista!, oggiDateOnly) - giorniRitardo(a.data_prevista!, oggiDateOnly));
 
   const statusData = (Object.keys(STATO_CONFIG) as StatoOrdineAcquisto[])
     .map((stato) => ({ name: STATO_CONFIG[stato].label, value: ordini.filter((o) => o.stato === stato).length, color: STATO_CONFIG[stato].color }))
@@ -101,8 +119,8 @@ export function PurchaseWidgets() {
                   <div className="font-medium text-sm text-[#92400E] font-mono">OA-{String(order.id).padStart(4, '0')}</div>
                   <div className="text-xs text-[#92400E]/70 mt-0.5">{order.fornitore}</div>
                 </div>
-                <div className="px-2 py-1 bg-[#EF4444] text-white rounded-lg text-xs font-medium">
-                  {giorniRitardo(order.data_prevista!, oggi)}gg
+                  <div className="px-2 py-1 bg-[#EF4444] text-white rounded-lg text-xs font-medium">
+                  {giorniRitardo(order.data_prevista!, oggiDateOnly)}gg
                 </div>
               </div>
             </div>

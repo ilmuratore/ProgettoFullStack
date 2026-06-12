@@ -5,6 +5,8 @@ const righeRicezioneModel = require('../models/righe_ricezioneModel');
 const ricezioniModel = require('../models/ricezioniModel');
 const movimentiStockService = require('./movimenti_stockService');
 const prodottiModel = require('../models/prodottiModel');
+const notificheModel = require('../models/notificheModel');
+const utentiModel = require('../models/utentiModel');
 
 const throwError = (code, message) => {
     const err = new Error(message);
@@ -12,7 +14,45 @@ const throwError = (code, message) => {
     throw err;
 };
 
+const getTodayDateString = () => new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Rome',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+}).format(new Date());
+
+const normalizeDateOnly = (value) => {
+    if (!value) {
+        return null;
+    }
+
+    if (typeof value === 'string') {
+        const isoMatch = value.match(/^(\d{4}-\d{2}-\d{2})/);
+        if (isoMatch) {
+            return isoMatch[1];
+        }
+    }
+
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return null;
+    }
+
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const addDaysToDateOnly = (dateOnly, days) => {
+    const date = new Date(`${dateOnly}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + days);
+    return normalizeDateOnly(date);
+};
+
 const STATI_VALIDI = ['BOZZA', 'INVIATO', 'CONFERMATO', 'IN_RICEZIONE', 'COMPLETATO', 'ANNULLATO'];
+const PERMESSI_NOTIFICA_PO_IN_RITARDO = ['acquisti:read', 'notifiche:read'];
+const STATI_NOTIFICA_PO_IN_RITARDO = ['INVIATO', 'CONFERMATO', 'IN_RICEZIONE'];
 
 const canTransitionStato = (from, to) => {
     switch (from) {
@@ -26,9 +66,87 @@ const canTransitionStato = (from, to) => {
     }
 };
 
+const createNotificaCambioEsitoOrdineAcquisto = async ({ ordine, nuovoStato, client }) => {
+    if (ordine.utente_id == null || ordine.stato !== 'INVIATO') {
+        return;
+    }
+
+    let tipo;
+    let messaggio;
+
+    if (nuovoStato === 'CONFERMATO') {
+        tipo = notificheModel.TIPI.RICHIESTA_ACCETTATA;
+        messaggio = `Ordine di acquisto #${ordine.id} per ${ordine.fornitore} accettato.`;
+    } else if (nuovoStato === 'ANNULLATO') {
+        tipo = notificheModel.TIPI.RICHIESTA_RIFIUTATA;
+        messaggio = `Ordine di acquisto #${ordine.id} per ${ordine.fornitore} rifiutato.`;
+    } else {
+        return;
+    }
+
+    await notificheModel.create({
+        utente_id: ordine.utente_id,
+        tipo,
+        messaggio,
+        riferimento_tipo: 'ordine_acquisto',
+        riferimento_id: Number(ordine.id)
+    }, client);
+};
+
+const isOrdineAcquistoInRitardo = (ordine) =>
+    Boolean(
+        normalizeDateOnly(ordine?.data_prevista) &&
+        addDaysToDateOnly(normalizeDateOnly(ordine.data_prevista), 1) === normalizeDateOnly(getTodayDateString()) &&
+        STATI_NOTIFICA_PO_IN_RITARDO.includes(ordine.stato)
+    );
+
+const getDestinatariNotificaPoInRitardo = async (ordine, client) => {
+    if (ordine.utente_id != null) {
+        return [{ id: ordine.utente_id }];
+    }
+
+    const destinatariResult = await utentiModel.findAttiviByPermessi(PERMESSI_NOTIFICA_PO_IN_RITARDO, client);
+    return destinatariResult.rows;
+};
+
+const createNotificaPoInRitardoIfNeeded = async (ordine, client) => {
+    if (!isOrdineAcquistoInRitardo(ordine)) {
+        return;
+    }
+
+    const destinatari = await getDestinatariNotificaPoInRitardo(ordine, client);
+    const dataPrevista = normalizeDateOnly(ordine.data_prevista);
+    const messaggio = `Ordine di acquisto #${ordine.id} per ${ordine.fornitore} in ritardo. Data prevista ${dataPrevista}.`;
+
+    for (const utente of destinatari) {
+        const existing = await notificheModel.findByUtenteTipoRiferimento(
+            utente.id,
+            notificheModel.TIPI.PO_IN_RITARDO,
+            'ordine_acquisto',
+            Number(ordine.id),
+            client
+        );
+
+        if (existing.rowCount > 0) {
+            continue;
+        }
+
+        await notificheModel.create({
+            utente_id: utente.id,
+            tipo: notificheModel.TIPI.PO_IN_RITARDO,
+            messaggio,
+            riferimento_tipo: 'ordine_acquisto',
+            riferimento_id: Number(ordine.id)
+        }, client);
+    }
+};
+
 const getAll = async (query) => {
     const { stato, fornitore_id } = query || {};
     const result = await ordiniAcquistoModel.findAllFiltered({ stato, fornitore_id });
+    for (const ordine of result.rows) {
+        await createNotificaPoInRitardoIfNeeded(ordine);
+    }
     return result.rows;
 };
 
@@ -37,6 +155,7 @@ const getOrdineAcquistoById = async (id) => {
     if (!result.ordine) {
         throwError('RESOURCE_NOT_FOUND', 'Ordine di acquisto non trovato');
     }
+    await createNotificaPoInRitardoIfNeeded(result.ordine);
     return result;
 };
 
@@ -46,6 +165,13 @@ const createOrdineAcquisto = async (data) => {
         await client.query('BEGIN');
 
         const { fornitore_id, data_prevista, note, utente_id, righe } = data;
+
+        if (!data_prevista || !String(data_prevista).trim()) {
+            throwError('VALIDATION_ERROR', 'Data consegna prevista obbligatoria');
+        }
+        if (normalizeDateOnly(data_prevista) < normalizeDateOnly(getTodayDateString())) {
+            throwError('VALIDATION_ERROR', 'Data consegna prevista non puo essere precedente a oggi');
+        }
 
         if (!righe || righe.length === 0) {
             throwError('VALIDATION_ERROR', 'Un ordine deve contenere almeno una riga');
@@ -76,6 +202,9 @@ const createOrdineAcquisto = async (data) => {
                 prezzo_unitario: r.prezzo_unitario
             }, client);
         }
+
+        const ordineCompletoRes = await ordiniAcquistoModel.findById(ordine.id, client);
+        await createNotificaPoInRitardoIfNeeded(ordineCompletoRes.rows[0], client);
 
         await client.query('COMMIT');
         return ordine;
@@ -113,6 +242,9 @@ const updateOrdineAcquisto = async (id, data) => {
             client
         );
 
+        const ordineAggiornatoRes = await ordiniAcquistoModel.findById(id, client);
+        await createNotificaPoInRitardoIfNeeded(ordineAggiornatoRes.rows[0], client);
+
         await client.query('COMMIT');
         return result.rows[0];
 
@@ -129,21 +261,43 @@ const updateStatoOrdineAcquisto = async (id, stato) => {
         throwError('VALIDATION_ERROR', 'Stato non valido');
     }
 
-    const ordineRes = await ordiniAcquistoModel.findById(id);
-    if (ordineRes.rowCount === 0) {
-        throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato');
-    }
+    const client = await pool.connect();
 
-    const ordine = ordineRes.rows[0];
-    if (!canTransitionStato(ordine.stato, stato)) {
-        throwError('STATE_TRANSITION_INVALID', `Transizione ${ordine.stato} -> ${stato} non consentita`);
-    }
+    try {
+        await client.query('BEGIN');
 
-    const result = await ordiniAcquistoModel.updateStato(id, stato);
-    if (result.rowCount === 0) {
-        throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato');
+        const ordineRes = await ordiniAcquistoModel.findById(id, client);
+        if (ordineRes.rowCount === 0) {
+            throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato');
+        }
+
+        const ordine = ordineRes.rows[0];
+        if (!canTransitionStato(ordine.stato, stato)) {
+            throwError('STATE_TRANSITION_INVALID', `Transizione ${ordine.stato} -> ${stato} non consentita`);
+        }
+
+        const result = await ordiniAcquistoModel.updateStato(id, stato, client);
+        if (result.rowCount === 0) {
+            throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato');
+        }
+
+        await createNotificaCambioEsitoOrdineAcquisto({
+            ordine,
+            nuovoStato: stato,
+            client
+        });
+
+        const ordineAggiornatoRes = await ordiniAcquistoModel.findById(id, client);
+        await createNotificaPoInRitardoIfNeeded(ordineAggiornatoRes.rows[0], client);
+
+        await client.query('COMMIT');
+        return result.rows[0];
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
     }
-    return result.rows[0];
 };
 
 const addRigaOrdineAcquisto = async (ordineId, data) => {

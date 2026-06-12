@@ -64,6 +64,18 @@ const findAll = () =>
          ORDER  BY created_at DESC`
     );
 
+const findByUtenteTipoRiferimento = (utente_id, tipo, riferimento_tipo, riferimento_id, client) =>
+    (client || pool).query(
+        `SELECT ${SELECT_COLS}
+         FROM   notifiche
+         WHERE  utente_id = $1
+           AND  tipo = $2
+           AND  riferimento_tipo = $3
+           AND  riferimento_id = $4
+         ORDER  BY created_at DESC`,
+        [utente_id, tipo, riferimento_tipo, riferimento_id]
+    );
+
 const create = ({ utente_id, tipo, messaggio, riferimento_tipo, riferimento_id, letto = false }, client) =>
     (client || pool).query(
         `INSERT INTO notifiche (utente_id, tipo, messaggio, letto, riferimento_tipo, riferimento_id)
@@ -116,6 +128,7 @@ module.exports = {
     findAll,
     findById,
     findByUtenteId,
+    findByUtenteTipoRiferimento,
     findNonLette,
     countNonLette,
     create,
