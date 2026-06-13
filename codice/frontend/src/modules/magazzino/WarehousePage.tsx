@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Plus, GitMerge, Package, ArrowLeftRight,
-  Tag, PackageCheck, Download, Upload, ListChecks, MapPin, CheckSquare, Clock,
+  Tag, PackageCheck, Download, Upload, ListChecks, MapPin, CheckSquare, Clock, X, ClipboardList, ChevronRight, ArrowRight,
 } from 'lucide-react';
 import { WarehouseKPIs } from './components/WarehouseKPIs';
 import { WarehouseTreeView } from './components/WarehouseTreeView';
@@ -74,6 +74,15 @@ type PickingOrderView = {
   operatore: string;
 };
 
+type PickingStartLine = {
+  id: number;
+  prodotto_id: number;
+  prodotto: string;
+  sku: string;
+  quantita_ordinata: number;
+  quantita_da_prelevare: number;
+};
+
 const fmtDataOra = (iso: string | null): string =>
   iso ? new Date(iso).toLocaleString('it-IT') : '—';
 
@@ -85,6 +94,23 @@ const getPickingLabel = (stato: StatoPickingVendita): string => {
     case 'NON_AVVIATO': return 'NON AVVIATO';
     case 'IN_PICKING': return 'IN PICKING';
     case 'PICKING_COMPLETATO': return 'PICKING COMPLETATO';
+  }
+};
+
+const getOrderStateBadge = (stato: string) => {
+  switch (stato) {
+    case 'CONFERMATO': return 'bg-[#DBEAFE] text-[#2563EB]';
+    case 'SPEDITO': return 'bg-[#DCFCE7] text-[#16A34A]';
+    case 'ANNULLATO': return 'bg-[#FEE2E2] text-[#DC2626]';
+    default: return 'bg-[#F3F4F6] text-[#6B7280]';
+  }
+};
+
+const getPickingStateBadge = (stato: StatoPickingVendita) => {
+  switch (stato) {
+    case 'NON_AVVIATO': return 'bg-[#F3F4F6] text-[#6B7280]';
+    case 'IN_PICKING': return 'bg-[#FEF3C7] text-[#D97706]';
+    case 'PICKING_COMPLETATO': return 'bg-[#DCFCE7] text-[#16A34A]';
   }
 };
 
@@ -162,7 +188,12 @@ export function WarehousePage() {
   const [pickingOrders, setPickingOrders] = useState<PickingOrderView[]>([]);
   const [loadingPicking, setLoadingPicking] = useState(false);
   const [startPickingOpen, setStartPickingOpen] = useState(false);
+  const [startPickingStep, setStartPickingStep] = useState<1 | 2 | 3>(1);
   const [startingPickingId, setStartingPickingId] = useState<number | null>(null);
+  const [selectedPickingOrder, setSelectedPickingOrder] = useState<PickingOrderView | null>(null);
+  const [selectedPickingDetail, setSelectedPickingDetail] = useState<OrdineVenditaDettaglio | null>(null);
+  const [pickingStartLines, setPickingStartLines] = useState<PickingStartLine[]>([]);
+  const [loadingPickingStartDetail, setLoadingPickingStartDetail] = useState(false);
 
   const fetchMagazzini = useCallback(async () => {
     setLoading(true);
@@ -310,27 +341,105 @@ export function WarehousePage() {
       case 'movimenti':
         return { label: 'Nuovo Movimento', show: true, action: () => setIsMovementModalOpen(true) };
       case 'picking':
-        return { label: 'Avvia Picking', show: canApproveOrders, action: () => setStartPickingOpen(true) };
+        return {
+          label: 'Avvia Picking',
+          show: canApproveOrders,
+          action: () => {
+            setStartPickingStep(1);
+            setSelectedPickingOrder(null);
+            setSelectedPickingDetail(null);
+            setPickingStartLines([]);
+            setStartPickingOpen(true);
+          }
+        };
       case 'ricezioni':
         return { label: 'Registra Ricezione', show: true, action: () => setIsRicezioneModalOpen(true) };
     }
   };
 
   const action = getActionButton();
+  const nonStartedPickingOrders = pickingOrders.filter((item) => item.stato === 'NON_AVVIATO');
   const activePickingOrders = pickingOrders.filter((item) => item.stato === 'IN_PICKING' || item.stato === 'PICKING_COMPLETATO');
   const startablePickingOrders = pickingOrders.filter((item) => item.stato === 'NON_AVVIATO' || item.stato === 'IN_PICKING');
+  const pickingStartActiveLines = pickingStartLines.filter((line) => line.quantita_da_prelevare > 0);
+
+  const handleOpenStartPickingDetail = async (ordineId: number) => {
+    const ordine = startablePickingOrders.find((item) => item.ordineId === ordineId) ?? null;
+    setSelectedPickingOrder(ordine);
+    setLoadingPickingStartDetail(true);
+    try {
+      const detail = await ordiniApi.getById(ordineId);
+      setSelectedPickingDetail(detail);
+      setPickingStartLines(
+        detail.righe.map((riga) => ({
+          id: riga.id,
+          prodotto_id: riga.prodotto_id,
+          prodotto: riga.prodotto ?? `Prodotto ${riga.prodotto_id}`,
+          sku: riga.sku ?? '',
+          quantita_ordinata: Number(riga.quantita ?? 0),
+          quantita_da_prelevare: Number(riga.quantita ?? 0),
+        }))
+      );
+      setStartPickingStep(2);
+    } catch (err: any) {
+      toast.error('Errore caricamento ordine', { description: err?.message });
+      setSelectedPickingOrder(null);
+      setSelectedPickingDetail(null);
+      setPickingStartLines([]);
+    } finally {
+      setLoadingPickingStartDetail(false);
+    }
+  };
 
   const handleStartPicking = async (ordineId: number) => {
     setStartingPickingId(ordineId);
     try {
       await ordiniApi.updatePicking(ordineId, { stato_picking: 'IN_PICKING' });
       toast.success(`Picking avviato per SO-${String(ordineId).padStart(4, '0')}`);
+      setStartPickingOpen(false);
+      setStartPickingStep(1);
+      setSelectedPickingOrder(null);
+      setSelectedPickingDetail(null);
+      setPickingStartLines([]);
       await fetchPickingOrders();
+      setExpandedPicking(`PCK-${String(ordineId).padStart(4, '0')}`);
     } catch (err: any) {
       toast.error('Errore avvio picking', { description: err?.message });
     } finally {
       setStartingPickingId(null);
     }
+  };
+
+  const updatePickingStartLine = (id: number, value: number) => {
+    setPickingStartLines((prev) => prev.map((line) => (
+      line.id === id
+        ? { ...line, quantita_da_prelevare: Math.max(0, Math.min(line.quantita_ordinata, value)) }
+        : line
+    )));
+  };
+
+  const handleBackToStartPickingList = () => {
+    setStartPickingStep(1);
+    setSelectedPickingOrder(null);
+    setSelectedPickingDetail(null);
+    setPickingStartLines([]);
+  };
+
+  const handleGoToPickingSummary = () => {
+    if (pickingStartLines.length === 0 || pickingStartActiveLines.length === 0) return;
+    setStartPickingStep(3);
+  };
+
+  const handleBackToPickingProducts = () => {
+    setStartPickingStep(2);
+  };
+
+  const handleCloseStartPickingDetail = () => {
+    setStartPickingOpen(false);
+    setStartPickingStep(1);
+    setSelectedPickingOrder(null);
+    setSelectedPickingDetail(null);
+    setPickingStartLines([]);
   };
 
   const handleExportGiacenze = async () => {
@@ -723,6 +832,7 @@ export function WarehousePage() {
               <div className="flex items-center justify-between">
                 <p className="text-sm text-[#6B7280]">Lista picking attivi - ordina per ubicazione per ottimizzare il percorso</p>
                 <div className="flex items-center gap-2 text-xs">
+                  <span className="flex items-center gap-1 text-[#6B7280]"><ListChecks className="w-3 h-3" /> NON_AVVIATO</span>
                   <span className="flex items-center gap-1 text-[#D97706]"><Clock className="w-3 h-3" /> IN_PICKING</span>
                   <span className="flex items-center gap-1 text-[#22C55E]"><CheckSquare className="w-3 h-3" /> PICKING_COMPLETATO</span>
                 </div>
@@ -732,11 +842,39 @@ export function WarehousePage() {
                 <div className="border border-[#E5EAF2] rounded-xl px-5 py-8 text-sm text-[#6B7280] text-center">
                   Caricamento picking...
                 </div>
-              ) : activePickingOrders.length === 0 ? (
+              ) : (nonStartedPickingOrders.length === 0 && activePickingOrders.length === 0) ? (
                 <div className="border border-[#E5EAF2] rounded-xl px-5 py-8 text-sm text-[#6B7280] text-center">
-                  Nessun ordine in picking o con picking completato.
+                  Nessun ordine confermato disponibile per il picking.
                 </div>
-              ) : activePickingOrders.map((pick) => {
+              ) : (
+                <>
+                  {nonStartedPickingOrders.length > 0 && (
+                    <div className="border border-[#E5EAF2] rounded-xl overflow-hidden">
+                      <div className="px-5 py-3 bg-[#F7F9FC] border-b border-[#E5EAF2]">
+                        <p className="text-sm font-medium text-[#2D2D2D]">Ordini confermati con picking non avviato</p>
+                      </div>
+                      <div className="divide-y divide-[#E5EAF2]">
+                        {nonStartedPickingOrders.map((pick) => (
+                          <div key={pick.id} className="px-5 py-4 flex items-center justify-between gap-4 hover:bg-[#FAFAFA] transition-colors">
+                            <div className="flex items-center gap-4">
+                              <span className="text-sm font-semibold text-[#17E88F]">{pick.ordine}</span>
+                              <span className="text-sm text-[#374151]">{pick.cliente}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getOrderStateBadge('CONFERMATO')}`}>
+                                CONFERMATO
+                              </span>
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getPickingStateBadge(pick.stato)}`}>
+                                {getPickingLabel(pick.stato)}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {activePickingOrders.map((pick) => {
                 const completate = pick.righe.filter(r => r.completato).length;
                 const pct = pick.righe.length > 0 ? Math.round((completate / pick.righe.length) * 100) : 0;
                 const isExpanded = expandedPicking === pick.id;
@@ -807,6 +945,8 @@ export function WarehousePage() {
                   </div>
                 );
               })}
+                </>
+              )}
             </div>
           )}
 
@@ -867,57 +1007,258 @@ export function WarehousePage() {
         onCreated={() => setRicezioniReloadKey((k) => k + 1)}
       />
 
-      <Dialog open={startPickingOpen} onOpenChange={setStartPickingOpen}>
-        <DialogContent className="sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Avvia Picking</DialogTitle>
-          </DialogHeader>
-          <div className="border border-[#E5EAF2] rounded-xl overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-[#F7F9FC] border-b border-[#E5EAF2]">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Ordine</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Cliente</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Consegna</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Picking</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Azione</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E5EAF2]">
-                {loadingPicking ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-[#6B7280]">Caricamento ordini...</td>
-                  </tr>
-                ) : startablePickingOrders.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-[#6B7280]">Nessun ordine confermato disponibile.</td>
-                  </tr>
-                ) : startablePickingOrders.map((item) => (
-                  <tr key={item.ordineId} className="hover:bg-[#F7F9FC] transition-colors">
-                    <td className="px-4 py-3 text-sm font-medium text-[#17E88F]">{item.ordine}</td>
-                    <td className="px-4 py-3 text-sm text-[#374151]">{item.cliente}</td>
-                    <td className="px-4 py-3 text-sm text-[#6B7280]">{item.dataConsegna}</td>
-                    <td className="px-4 py-3 text-sm text-[#374151]">{getPickingLabel(item.stato)}</td>
-                    <td className="px-4 py-3 text-right">
-                      {item.stato === 'NON_AVVIATO' ? (
-                        <button
-                          onClick={() => void handleStartPicking(item.ordineId)}
-                          disabled={startingPickingId === item.ordineId}
-                          className="px-3 py-2 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-lg text-sm font-medium disabled:opacity-60"
-                        >
-                          {startingPickingId === item.ordineId ? 'Avvio...' : 'Avvia'}
-                        </button>
-                      ) : (
-                        <span className="text-xs font-medium text-[#D97706]">Già avviato</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {startPickingOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl animate-in fade-in duration-200 max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-[#E5EAF2]">
+              <div>
+                <h2 className="text-xl font-semibold text-[#2D2D2D]">Avvia Picking</h2>
+                <p className="text-sm text-[#6B7280] mt-1">Step {startPickingStep} di 3</p>
+              </div>
+              <button
+                onClick={handleCloseStartPickingDetail}
+                className="w-10 h-10 flex items-center justify-center hover:bg-[#F7F9FC] rounded-xl transition-all"
+              >
+                <X className="w-5 h-5 text-[#6B7280]" />
+              </button>
+            </div>
+
+            <div className="p-6 border-b border-[#E5EAF2]">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center flex-1">
+                  <div className="flex flex-col items-center flex-1">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                      startPickingStep > 1 ? 'bg-[#17E88F] text-white' : 'bg-[#F0FDF7] text-[#17E88F] border-2 border-[#17E88F]'
+                    }`}>
+                      <ClipboardList className="w-5 h-5" />
+                    </div>
+                    <div className={`text-xs mt-2 font-medium ${startPickingStep === 1 ? 'text-[#17E88F]' : 'text-[#22C55E]'}`}>
+                      Ordine
+                    </div>
+                  </div>
+                  <ChevronRight className={`w-5 h-5 mx-2 ${startPickingStep > 1 ? 'text-[#17E88F]' : 'text-[#E5EAF2]'}`} />
+                </div>
+                <div className="flex flex-col items-center flex-1">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                    startPickingStep > 2 ? 'bg-[#17E88F] text-white' : startPickingStep === 2 ? 'bg-[#F0FDF7] text-[#17E88F] border-2 border-[#17E88F]' : 'bg-[#F7F9FC] text-[#6B7280]'
+                  }`}>
+                    <Package className="w-5 h-5" />
+                  </div>
+                  <div className={`text-xs mt-2 font-medium ${startPickingStep === 2 ? 'text-[#17E88F]' : startPickingStep > 2 ? 'text-[#22C55E]' : 'text-[#6B7280]'}`}>
+                    Prodotti
+                  </div>
+                </div>
+                <div className="flex items-center flex-1">
+                  <ChevronRight className={`w-5 h-5 mx-2 ${startPickingStep > 2 ? 'text-[#17E88F]' : 'text-[#E5EAF2]'}`} />
+                  <div className="flex flex-col items-center flex-1">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                      startPickingStep === 3 ? 'bg-[#F0FDF7] text-[#17E88F] border-2 border-[#17E88F]' : 'bg-[#F7F9FC] text-[#6B7280]'
+                    }`}>
+                      <CheckSquare className="w-5 h-5" />
+                    </div>
+                    <div className={`text-xs mt-2 font-medium ${startPickingStep === 3 ? 'text-[#17E88F]' : 'text-[#6B7280]'}`}>
+                      Riepilogo
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {startPickingStep === 1 && (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-semibold text-[#2D2D2D] mb-2">Seleziona Ordine da Mettere in Picking</h3>
+                    <p className="text-sm text-[#6B7280]">Ordini confermati con picking non avviato o gi&agrave; in corso.</p>
+                  </div>
+                  <div className="border border-[#E5EAF2] rounded-xl overflow-hidden">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-[#F7F9FC] border-b border-[#E5EAF2]">
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Ordine</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Cliente</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Consegna</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Picking</th>
+                          <th className="text-right px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Azione</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#E5EAF2]">
+                        {loadingPicking ? (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-8 text-center text-sm text-[#6B7280]">Caricamento ordini...</td>
+                          </tr>
+                        ) : startablePickingOrders.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-8 text-center text-sm text-[#6B7280]">Nessun ordine confermato disponibile.</td>
+                          </tr>
+                        ) : startablePickingOrders.map((item) => (
+                          <tr key={item.ordineId} className="hover:bg-[#F7F9FC] transition-colors">
+                            <td className="px-4 py-3 text-sm font-medium text-[#17E88F]">{item.ordine}</td>
+                            <td className="px-4 py-3 text-sm text-[#374151]">{item.cliente}</td>
+                            <td className="px-4 py-3 text-sm text-[#6B7280]">{item.dataConsegna}</td>
+                            <td className="px-4 py-3 text-sm text-[#374151]">{getPickingLabel(item.stato)}</td>
+                            <td className="px-4 py-3 text-right">
+                              <button
+                                type="button"
+                                onClick={() => void handleOpenStartPickingDetail(item.ordineId)}
+                                disabled={startingPickingId === item.ordineId}
+                                className={`min-w-[100px] px-3 py-2 rounded-lg text-sm font-medium disabled:opacity-60 ${
+                                  item.stato === 'NON_AVVIATO'
+                                    ? 'bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white'
+                                    : 'bg-white border border-[#E5EAF2] text-[#D97706] hover:bg-[#F7F9FC]'
+                                }`}
+                              >
+                                {item.stato === 'NON_AVVIATO' ? 'Avvia' : 'Continua'}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {startPickingStep === 2 && (
+                <div className="space-y-4">
+                  <div className="bg-[#F7F9FC] rounded-xl p-4">
+                    <div className="text-sm text-[#6B7280] mb-1">Ordine Selezionato</div>
+                    <div className="font-medium text-[#2D2D2D]">
+                      {selectedPickingOrder?.ordine ?? '-'} - {selectedPickingOrder?.cliente ?? ''}
+                    </div>
+                    <div className="text-xs text-[#9CA3AF] mt-1">
+                      Righe: {selectedPickingDetail?.righe.length ?? 0}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-[#2D2D2D] mb-3">Prodotti</h3>
+                    {loadingPickingStartDetail ? (
+                      <div className="rounded-2xl border border-[#E5EAF2] bg-[#F7F9FC] p-6 text-center text-sm text-[#6B7280]">
+                        Caricamento righe ordine...
+                      </div>
+                    ) : pickingStartLines.length === 0 ? (
+                      <div className="rounded-2xl border border-[#E5EAF2] bg-[#F7F9FC] p-6 text-center text-sm text-[#6B7280]">
+                        Questo ordine non contiene righe prodotto.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {pickingStartLines.map((line) => (
+                          <div key={line.id} className="p-4 bg-[#F7F9FC] rounded-xl">
+                            <div className="grid grid-cols-12 gap-3 items-end">
+                              <div className="col-span-6">
+                                <label className="text-xs text-[#6B7280] mb-1 block">Prodotto</label>
+                                <div className="h-9 px-3 bg-white border border-[#E5EAF2] rounded-lg text-sm flex items-center">
+                                  {line.prodotto} {line.sku ? `(${line.sku})` : ''}
+                                </div>
+                              </div>
+                              <div className="col-span-3">
+                                <label className="text-xs text-[#6B7280] mb-1 block">Qta Ordinata</label>
+                                <div className="h-9 px-3 bg-white border border-[#E5EAF2] rounded-lg text-sm flex items-center text-[#6B7280]">
+                                  {line.quantita_ordinata}
+                                </div>
+                              </div>
+                              <div className="col-span-3">
+                                <label className="text-xs text-[#6B7280] mb-1 block">Qta da Prelevare</label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={line.quantita_ordinata}
+                                  value={line.quantita_da_prelevare}
+                                  onChange={(e) => updatePickingStartLine(line.id, Number(e.target.value) || 0)}
+                                  className="w-full h-9 px-3 bg-white border border-[#E5EAF2] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {startPickingStep === 3 && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-[#F7F9FC] rounded-xl p-4">
+                      <div className="text-xs text-[#9CA3AF] mb-1">Ordine</div>
+                      <div className="text-lg font-semibold text-[#2D2D2D]">{selectedPickingOrder?.ordine ?? '-'}</div>
+                    </div>
+                    <div className="bg-[#F7F9FC] rounded-xl p-4">
+                      <div className="text-xs text-[#9CA3AF] mb-1">Cliente</div>
+                      <div className="text-lg font-semibold text-[#2D2D2D]">{selectedPickingOrder?.cliente ?? '-'}</div>
+                    </div>
+                    <div className="bg-[#F7F9FC] rounded-xl p-4">
+                      <div className="text-xs text-[#9CA3AF] mb-1">Righe Attive</div>
+                      <div className="text-lg font-semibold text-[#17E88F]">{pickingStartActiveLines.length}</div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-[#2D2D2D] mb-3">Riepilogo</h3>
+                    <div className="space-y-3">
+                      {pickingStartActiveLines.map((line) => (
+                        <div key={line.id} className="p-5 bg-[#F7F9FC] rounded-xl border border-[#E5EAF2]">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <div className="text-sm font-semibold text-[#2D2D2D]">
+                                {line.prodotto}
+                              </div>
+                              <div className="text-xs text-[#9CA3AF] mt-1">
+                                {line.sku || 'SKU non disponibile'}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white border border-[#E5EAF2] text-[#6B7280]">
+                                Ordinati: {line.quantita_ordinata}
+                              </span>
+                              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#DCFCE7] text-[#16A34A]">
+                                Da prelevare: {line.quantita_da_prelevare}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between p-6 border-t border-[#E5EAF2]">
+              <button
+                type="button"
+                onClick={startPickingStep === 1 ? handleCloseStartPickingDetail : startPickingStep === 2 ? handleBackToStartPickingList : handleBackToPickingProducts}
+                className="px-6 py-2.5 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-[#F7F9FC] transition-all font-medium"
+              >
+                {startPickingStep === 1 ? 'Annulla' : 'Indietro'}
+              </button>
+              {startPickingStep === 3 ? (
+                <button
+                  type="button"
+                  onClick={() => void handleStartPicking(selectedPickingOrder?.ordineId ?? 0)}
+                  disabled={!selectedPickingOrder || startingPickingId === selectedPickingOrder.ordineId || loadingPickingStartDetail || pickingStartLines.length === 0 || pickingStartActiveLines.length === 0}
+                  className="px-6 py-2.5 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {startingPickingId === selectedPickingOrder?.ordineId ? 'Esecuzione...' : <>Effettua Picking <ArrowRight className="w-4 h-4" /></>}
+                </button>
+              ) : startPickingStep === 2 ? (
+                <button
+                  type="button"
+                  onClick={handleGoToPickingSummary}
+                  disabled={loadingPickingStartDetail || pickingStartLines.length === 0 || pickingStartActiveLines.length === 0}
+                  className="px-6 py-2.5 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <>Riepilogo <ArrowRight className="w-4 h-4" /></>
+                </button>
+              ) : (
+                <div />
+              )}
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
 
       {/* componente dettaglio prodotto */}
       <ProductDetailDrawer
@@ -1101,3 +1442,4 @@ export function WarehousePage() {
     </div>
   );
 }
+

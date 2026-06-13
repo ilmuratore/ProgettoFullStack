@@ -607,7 +607,7 @@ export function NewSalesOrderModal({ isOpen, onClose, onCreated }: NewSalesOrder
               className="px-5 py-2.5 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-40"
             >
               <CheckCircle className="w-4 h-4" />
-              {submitting ? 'Creazione...' : 'Conferma Ordine'}
+              {submitting ? 'Creazione...' : 'Conferma Bozza'}
             </button>
           ) : (
             <button
