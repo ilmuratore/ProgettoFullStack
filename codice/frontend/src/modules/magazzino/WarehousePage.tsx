@@ -1145,17 +1145,23 @@ export function WarehousePage() {
                       <div className="space-y-3">
                         {pickingStartLines.map((line) => (
                           <div key={line.id} className="p-4 bg-[#F7F9FC] rounded-xl">
-                            <div className="grid grid-cols-12 gap-3 items-end">
-                              <div className="col-span-6">
+                            <div className="grid grid-cols-12 gap-4 items-start">
+                              <div className="col-span-5">
                                 <label className="text-xs text-[#6B7280] mb-1 block">Prodotto</label>
-                                <div className="h-9 px-3 bg-white border border-[#E5EAF2] rounded-lg text-sm flex items-center">
+                                <div className="min-h-[44px] text-sm text-[#2D2D2D] leading-5 flex items-start pt-1">
                                   {line.prodotto} {line.sku ? `(${line.sku})` : ''}
                                 </div>
                               </div>
-                              <div className="col-span-3">
+                              <div className="col-span-2">
                                 <label className="text-xs text-[#6B7280] mb-1 block">Qta Ordinata</label>
-                                <div className="h-9 px-3 bg-white border border-[#E5EAF2] rounded-lg text-sm flex items-center text-[#6B7280]">
+                                <div className="h-11 text-sm text-[#2D2D2D] flex items-center pt-1">
                                   {line.quantita_ordinata}
+                                </div>
+                              </div>
+                              <div className="col-span-2">
+                                <label className="text-xs text-[#6B7280] mb-1 block">Qta Prelevata</label>
+                                <div className="h-11 text-sm text-[#9CA3AF] flex items-center pt-1">
+                                  0
                                 </div>
                               </div>
                               <div className="col-span-3">
