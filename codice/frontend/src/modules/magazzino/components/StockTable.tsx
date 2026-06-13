@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, Filter, ArrowUpDown } from "lucide-react";
 import { giacenzeApi } from "../../../api/giacenzeApi";
 import { magazzinoApi } from "../../../api/magazzinoApi";
+import { ordiniApi } from "../../../api/ordiniApi";
 import type { Giacenza, Magazzino } from "../../../types/magazzino";
+import type { DisponibilitaOrdineVendita } from "../../../types/ordini";
 
 type Filters = {
   magazzino: string;
@@ -20,6 +22,9 @@ type ProductStockRow = {
   attivo: Giacenza["attivo"];
   categoria: Giacenza["categoria"];
   quantita_totale: number;
+  quantita_impegnata: number;
+  quantita_disponibile: number;
+  disponibilita_reale_loaded: boolean;
   scorta_minima: number;
   ubicazioni_count: number;
   ultimo_movimento?: Giacenza["ultimo_movimento"];
@@ -55,6 +60,8 @@ type ProductSortKey =
   | "categoria"
   | "ubicazioni_count"
   | "quantita_totale"
+  | "quantita_impegnata"
+  | "quantita_disponibile"
   | "scorta_minima"
   | "stato"
   | "ultimo_movimento";
@@ -76,15 +83,18 @@ const EMPTY_FILTERS: Filters = {
 };
 
 const buildParams = (
-  values: Record<string, string | null | undefined>
+  values: Record<string, string | null | undefined>,
 ): Record<string, string> => {
-  return Object.entries(values).reduce<Record<string, string>>((params, [key, value]) => {
-    if (value !== "" && value !== null && value !== undefined) {
-      params[key] = value;
-    }
+  return Object.entries(values).reduce<Record<string, string>>(
+    (params, [key, value]) => {
+      if (value !== "" && value !== null && value !== undefined) {
+        params[key] = value;
+      }
 
-    return params;
-  }, {});
+      return params;
+    },
+    {},
+  );
 };
 
 const toNumber = (value: number | string | null | undefined) => {
@@ -94,7 +104,7 @@ const toNumber = (value: number | string | null | undefined) => {
 
 const getLatestMovement = (
   current?: Giacenza["ultimo_movimento"],
-  next?: Giacenza["ultimo_movimento"]
+  next?: Giacenza["ultimo_movimento"],
 ) => {
   if (!next) return current;
   if (!current) return next;
@@ -165,14 +175,18 @@ const compareDate = (a: unknown, b: unknown) => {
   return safeATime - safeBTime;
 };
 
-const SortableHeader = <T extends string,>({
+const SortableHeader = <T extends string>({
   label,
   sortKey,
   sortConfig,
   onSort,
 }: SortableHeaderProps<T>) => {
   const isActive = sortConfig.key === sortKey;
-  const directionLabel = isActive ? (sortConfig.direction === "asc" ? "↑" : "↓") : "";
+  const directionLabel = isActive
+    ? sortConfig.direction === "asc"
+      ? "↑"
+      : "↓"
+    : "";
 
   return (
     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">
@@ -182,11 +196,19 @@ const SortableHeader = <T extends string,>({
         className={`flex items-center gap-2 hover:text-[#2D2D2D] ${
           isActive ? "text-[#2D2D2D]" : ""
         }`}
-        aria-sort={isActive ? (sortConfig.direction === "asc" ? "ascending" : "descending") : "none"}
+        aria-sort={
+          isActive
+            ? sortConfig.direction === "asc"
+              ? "ascending"
+              : "descending"
+            : "none"
+        }
       >
         {label}
         <ArrowUpDown className="w-3 h-3" />
-        {directionLabel && <span className="text-xs font-semibold">{directionLabel}</span>}
+        {directionLabel && (
+          <span className="text-xs font-semibold">{directionLabel}</span>
+        )}
       </button>
     </th>
   );
@@ -194,7 +216,7 @@ const SortableHeader = <T extends string,>({
 
 const sortLocationRows = (
   rows: Giacenza[],
-  sortConfig: SortConfig<LocationSortKey>
+  sortConfig: SortConfig<LocationSortKey>,
 ) => {
   return [...rows].sort((a, b) => {
     let result = 0;
@@ -228,7 +250,7 @@ const sortLocationRows = (
 
 const sortProductRows = (
   rows: ProductStockRow[],
-  sortConfig: SortConfig<ProductSortKey>
+  sortConfig: SortConfig<ProductSortKey>,
 ) => {
   return [...rows].sort((a, b) => {
     let result = 0;
@@ -236,6 +258,8 @@ const sortProductRows = (
     switch (sortConfig.key) {
       case "ubicazioni_count":
       case "quantita_totale":
+      case "quantita_impegnata":
+      case "quantita_disponibile":
       case "scorta_minima":
         result = a[sortConfig.key] - b[sortConfig.key];
         break;
@@ -244,8 +268,8 @@ const sortProductRows = (
         break;
       case "stato":
         result =
-          getStatoOrder(a.quantita_totale, a.scorta_minima) -
-          getStatoOrder(b.quantita_totale, b.scorta_minima);
+          getStatoOrder(a.quantita_disponibile, a.scorta_minima) -
+          getStatoOrder(b.quantita_disponibile, b.scorta_minima);
         break;
       case "ultimo_movimento":
         result = compareDate(a.ultimo_movimento, b.ultimo_movimento);
@@ -259,9 +283,9 @@ const sortProductRows = (
   });
 };
 
-const getNextSortConfig = <T extends string,>(
+const getNextSortConfig = <T extends string>(
   current: SortConfig<T>,
-  key: T
+  key: T,
 ): SortConfig<T> => {
   if (current.key !== key) {
     return { key, direction: "asc" };
@@ -276,22 +300,30 @@ const getNextSortConfig = <T extends string,>(
 export function StockTable() {
   const [locationRows, setLocationRows] = useState<Giacenza[]>([]);
   const [productSourceRows, setProductSourceRows] = useState<Giacenza[]>([]);
+  const [disponibilitaByProduct, setDisponibilitaByProduct] = useState<
+    Record<number, DisponibilitaOrdineVendita>
+  >({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [magazzini, setMagazzini] = useState<Magazzino[]>([]);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [locationSort, setLocationSort] = useState<SortConfig<LocationSortKey>>({
-    key: "sku",
-    direction: "asc",
-  });
+  const [locationSort, setLocationSort] = useState<SortConfig<LocationSortKey>>(
+    {
+      key: "sku",
+      direction: "asc",
+    },
+  );
   const [productSort, setProductSort] = useState<SortConfig<ProductSortKey>>({
     key: "sku",
     direction: "asc",
   });
 
   useEffect(() => {
-    magazzinoApi.list().then(setMagazzini).catch(() => setMagazzini([]));
+    magazzinoApi
+      .list()
+      .then(setMagazzini)
+      .catch(() => setMagazzini([]));
   }, []);
 
   useEffect(() => {
@@ -310,7 +342,10 @@ export function StockTable() {
       categoria: filters.categoria,
     });
 
-    Promise.all([giacenzeApi.list(locationParams), giacenzeApi.list(productParams)])
+    Promise.all([
+      giacenzeApi.list(locationParams),
+      giacenzeApi.list(productParams),
+    ])
       .then(([locationRes, productRes]) => {
         setLocationRows(locationRes);
         setProductSourceRows(productRes);
@@ -329,7 +364,9 @@ export function StockTable() {
       const productKey = String(item.prodotto_id ?? item.sku ?? item.prodotto);
       const quantita = toNumber(item.quantita);
       const scortaMinima = toNumber(item.scorta_minima);
-      const locationKey = [item.magazzino, item.ubicazione].filter(Boolean).join(" / ");
+      const locationKey = [item.magazzino, item.ubicazione]
+        .filter(Boolean)
+        .join(" / ");
       const existing = grouped.get(productKey);
 
       if (!existing) {
@@ -340,6 +377,9 @@ export function StockTable() {
           attivo: item.attivo,
           categoria: item.categoria,
           quantita_totale: quantita,
+          quantita_impegnata: 0,
+          quantita_disponibile: quantita,
+          disponibilita_reale_loaded: false,
           scorta_minima: scortaMinima,
           ubicazioni_count: locationKey ? 1 : 0,
           ubicazioni_set: new Set(locationKey ? [locationKey] : []),
@@ -352,7 +392,7 @@ export function StockTable() {
       existing.scorta_minima = Math.max(existing.scorta_minima, scortaMinima);
       existing.ultimo_movimento = getLatestMovement(
         existing.ultimo_movimento,
-        item.ultimo_movimento
+        item.ultimo_movimento,
       );
 
       if (locationKey) {
@@ -361,29 +401,100 @@ export function StockTable() {
       }
     });
 
-    return Array.from(grouped.values()).map(({ ubicazioni_set, ...item }) => item);
+    return Array.from(grouped.values()).map(
+      ({ ubicazioni_set, ...item }) => item,
+    );
   }, [productSourceRows]);
+
+  useEffect(() => {
+    const productIds = Array.from(
+      new Set(
+        productRows
+          .map((item) => item.prodotto_id)
+          .filter(
+            (id): id is number => typeof id === "number" && Number.isFinite(id),
+          ),
+      ),
+    );
+
+    if (productIds.length === 0) {
+      setDisponibilitaByProduct({});
+      return;
+    }
+
+    let cancelled = false;
+
+    Promise.allSettled(productIds.map((id) => ordiniApi.getDisponibilita(id)))
+      .then((results) => {
+        if (cancelled) return;
+
+        const next: Record<number, DisponibilitaOrdineVendita> = {};
+
+        results.forEach((result, index) => {
+          if (result.status === "fulfilled") {
+            next[productIds[index]] = result.value;
+          }
+        });
+
+        setDisponibilitaByProduct(next);
+      })
+      .catch(() => {
+        if (!cancelled) setDisponibilitaByProduct({});
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [productRows]);
+
+  const productRowsWithAvailability = useMemo<ProductStockRow[]>(() => {
+    return productRows.map((item) => {
+      const disponibilita = item.prodotto_id
+        ? disponibilitaByProduct[item.prodotto_id]
+        : undefined;
+
+      if (!disponibilita) {
+        return item;
+      }
+
+      return {
+        ...item,
+        quantita_totale: toNumber(disponibilita.totale),
+        quantita_impegnata: toNumber(disponibilita.impegnato),
+        quantita_disponibile: toNumber(disponibilita.disponibile),
+        disponibilita_reale_loaded: true,
+      };
+    });
+  }, [productRows, disponibilitaByProduct]);
 
   const filteredProductRows = useMemo(() => {
     const qMin = filters.q_min !== "" ? toNumber(filters.q_min) : null;
     const qMax = filters.q_max !== "" ? toNumber(filters.q_max) : null;
 
-    return productRows.filter((item) => {
-      if (filters.scorta === "sotto" && item.quantita_totale > item.scorta_minima) {
+    return productRowsWithAvailability.filter((item) => {
+      if (
+        filters.scorta === "sotto" &&
+        item.quantita_disponibile > item.scorta_minima
+      ) {
         return false;
       }
 
-      if (qMin !== null && item.quantita_totale < qMin) {
+      if (qMin !== null && item.quantita_disponibile < qMin) {
         return false;
       }
 
-      if (qMax !== null && item.quantita_totale > qMax) {
+      if (qMax !== null && item.quantita_disponibile > qMax) {
         return false;
       }
 
       return true;
     });
-  }, [productRows, filters.scorta, filters.q_min, filters.q_max]);
+  }, [
+    productRowsWithAvailability,
+    filters.scorta,
+    filters.q_min,
+    filters.q_max,
+  ]);
 
   const sortedLocationRows = useMemo(() => {
     return sortLocationRows(locationRows, locationSort);
@@ -420,7 +531,9 @@ export function StockTable() {
     { label: "Stato Prodotto", key: "attivo" },
     { label: "Categoria", key: "categoria" },
     { label: "Ubicazioni", key: "ubicazioni_count" },
-    { label: "Quantità Totale", key: "quantita_totale" },
+    { label: "Giacenza Totale", key: "quantita_totale" },
+    { label: "Impegnato", key: "quantita_impegnata" },
+    { label: "Disponibile Reale", key: "quantita_disponibile" },
     { label: "Scorta Min.", key: "scorta_minima" },
     { label: "Stato", key: "stato" },
     { label: "Ultimo Mov.", key: "ultimo_movimento" },
@@ -431,7 +544,9 @@ export function StockTable() {
       <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h3 className="font-semibold text-[#2D2D2D]">Ricerca e filtri giacenze</h3>
+            <h3 className="font-semibold text-[#2D2D2D]">
+              Ricerca e filtri giacenze
+            </h3>
             <p className="text-sm text-[#6B7280] mt-1">
               Ricerca e filtri sono condivisi tra le due viste.
             </p>
@@ -467,10 +582,14 @@ export function StockTable() {
           <div className="mt-4 p-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg text-sm text-[#6B7280] space-y-4">
             {/* MAGAZZINO */}
             <div className="flex items-center gap-3">
-              <label className="w-32 font-medium text-[#2D2D2D]">Magazzino</label>
+              <label className="w-32 font-medium text-[#2D2D2D]">
+                Magazzino
+              </label>
               <select
                 value={filters.magazzino}
-                onChange={(e) => setFilters({ ...filters, magazzino: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, magazzino: e.target.value })
+                }
                 className="h-9 px-3 bg-white border border-[#E5EAF2] rounded-lg"
               >
                 <option value="">Tutti</option>
@@ -484,11 +603,15 @@ export function StockTable() {
 
             {/* CATEGORIA */}
             <div className="flex items-center gap-3">
-              <label className="w-32 font-medium text-[#2D2D2D]">Categoria</label>
+              <label className="w-32 font-medium text-[#2D2D2D]">
+                Categoria
+              </label>
               <input
                 type="text"
                 value={filters.categoria}
-                onChange={(e) => setFilters({ ...filters, categoria: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, categoria: e.target.value })
+                }
                 className="h-9 px-3 bg-white border border-[#E5EAF2] rounded-lg"
                 placeholder="Es. Alimentari"
               />
@@ -496,11 +619,15 @@ export function StockTable() {
 
             {/* UBICAZIONE */}
             <div className="flex items-center gap-3">
-              <label className="w-32 font-medium text-[#2D2D2D]">Ubicazione</label>
+              <label className="w-32 font-medium text-[#2D2D2D]">
+                Ubicazione
+              </label>
               <input
                 type="text"
                 value={filters.ubicazione}
-                onChange={(e) => setFilters({ ...filters, ubicazione: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, ubicazione: e.target.value })
+                }
                 className="h-9 px-3 bg-white border border-[#E5EAF2] rounded-lg"
                 placeholder="Es. A-01-03"
               />
@@ -508,31 +635,42 @@ export function StockTable() {
 
             {/* SOTTO SCORTA */}
             <div className="flex items-center gap-3">
-              <label className="w-32 font-medium text-[#2D2D2D]">Sotto Scorta</label>
+              <label className="w-32 font-medium text-[#2D2D2D]">
+                Sotto Scorta
+              </label>
               <input
                 type="checkbox"
                 checked={filters.scorta === "sotto"}
                 onChange={(e) =>
-                  setFilters({ ...filters, scorta: e.target.checked ? "sotto" : "" })
+                  setFilters({
+                    ...filters,
+                    scorta: e.target.checked ? "sotto" : "",
+                  })
                 }
               />
             </div>
 
             {/* RANGE QUANTITÀ */}
             <div className="flex items-center gap-3">
-              <label className="w-32 font-medium text-[#2D2D2D]">Quantità</label>
+              <label className="w-32 font-medium text-[#2D2D2D]">
+                Quantità
+              </label>
               <input
                 type="number"
                 placeholder="Min"
                 value={filters.q_min}
-                onChange={(e) => setFilters({ ...filters, q_min: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, q_min: e.target.value })
+                }
                 className="h-9 w-24 px-3 bg-white border border-[#E5EAF2] rounded-lg"
               />
               <input
                 type="number"
                 placeholder="Max"
                 value={filters.q_max}
-                onChange={(e) => setFilters({ ...filters, q_max: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, q_max: e.target.value })
+                }
                 className="h-9 w-24 px-3 bg-white border border-[#E5EAF2] rounded-lg"
               />
             </div>
@@ -543,7 +681,9 @@ export function StockTable() {
       <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
         {/* HEADER */}
         <div className="flex items-center justify-between mb-6">
-          <h3 className="font-semibold text-[#2D2D2D]">Giacenze per Ubicazione</h3>
+          <h3 className="font-semibold text-[#2D2D2D]">
+            Giacenze per Ubicazione
+          </h3>
         </div>
 
         {/* LOADING */}
@@ -648,7 +788,10 @@ export function StockTable() {
         {!loading && (
           <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#E5EAF2]">
             <div className="text-sm text-[#6B7280]">
-              Mostrando <span className="font-medium text-[#2D2D2D]">{sortedLocationRows.length}</span>{" "}
+              Mostrando{" "}
+              <span className="font-medium text-[#2D2D2D]">
+                {sortedLocationRows.length}
+              </span>{" "}
               risultati
             </div>
           </div>
@@ -658,10 +801,13 @@ export function StockTable() {
       <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
         {/* HEADER */}
         <div className="flex items-center justify-between mb-6">
-          <h3 className="font-semibold text-[#2D2D2D]">Giacenze per Prodotto</h3>
+          <h3 className="font-semibold text-[#2D2D2D]">
+            Giacenze per Prodotto
+          </h3>
 
           <div className="text-sm text-[#6B7280]">
-            Totale aggregato su tutte le ubicazioni
+            Disponibile reale = giacenza totale - quantità impegnata su ordini
+            non evasi
           </div>
         </div>
 
@@ -699,12 +845,17 @@ export function StockTable() {
 
               <tbody>
                 {sortedProductRows.map((item, index) => {
-                  const badge = getStatoBadge(item.quantita_totale, item.scorta_minima);
+                  const badge = getStatoBadge(
+                    item.quantita_disponibile,
+                    item.scorta_minima,
+                  );
                   const attivoBadge = getAttivoBadge(item.attivo);
 
                   return (
                     <tr
-                      key={String(item.prodotto_id ?? item.sku ?? item.prodotto)}
+                      key={String(
+                        item.prodotto_id ?? item.sku ?? item.prodotto,
+                      )}
                       className={`border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${
                         index % 2 === 0 ? "bg-white" : "bg-[#FAFBFC]"
                       }`}
@@ -737,6 +888,16 @@ export function StockTable() {
                       <td className="py-3 px-4 text-sm font-medium text-[#2D2D2D]">
                         {item.quantita_totale}
                       </td>
+                      <td className="py-3 px-4 text-sm text-[#F59E0B] font-medium">
+                        {item.disponibilita_reale_loaded
+                          ? item.quantita_impegnata
+                          : "-"}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-[#22C55E] font-semibold">
+                        {item.disponibilita_reale_loaded
+                          ? item.quantita_disponibile
+                          : item.quantita_totale}
+                      </td>
                       <td className="py-3 px-4 text-sm text-[#6B7280]">
                         {item.scorta_minima}
                       </td>
@@ -763,7 +924,9 @@ export function StockTable() {
           <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#E5EAF2]">
             <div className="text-sm text-[#6B7280]">
               Mostrando{" "}
-              <span className="font-medium text-[#2D2D2D]">{sortedProductRows.length}</span>{" "}
+              <span className="font-medium text-[#2D2D2D]">
+                {sortedProductRows.length}
+              </span>{" "}
               prodotti
             </div>
           </div>
