@@ -34,6 +34,13 @@ type ProductStockAggregation = ProductStockRow & {
   ubicazioni_set: Set<string>;
 };
 
+type LocationStockRow = Giacenza & {
+  quantita_totale: number;
+  quantita_impegnata: number;
+  quantita_disponibile: number;
+  disponibilita_reale_loaded: boolean;
+};
+
 type SortDirection = "asc" | "desc";
 
 type SortConfig<T extends string> = {
@@ -48,7 +55,9 @@ type LocationSortKey =
   | "categoria"
   | "magazzino"
   | "ubicazione"
-  | "quantita"
+  | "quantita_totale"
+  | "quantita_impegnata"
+  | "quantita_disponibile"
   | "scorta_minima"
   | "stato"
   | "ultimo_movimento";
@@ -118,6 +127,14 @@ const getLatestMovement = (
 
   return nextTime > currentTime ? next : current;
 };
+
+const getLocationAvailabilityKey = (item: Pick<Giacenza, "prodotto_id" | "ubicazione_id" | "magazzino" | "ubicazione">) =>
+  [
+    item.prodotto_id ?? "",
+    item.ubicazione_id ?? "",
+    item.magazzino ?? "",
+    item.ubicazione ?? "",
+  ].join("|");
 
 const getStatoBadge = (quantita: number, scortaMinima: number) => {
   if (quantita <= scortaMinima) {
@@ -215,15 +232,17 @@ const SortableHeader = <T extends string>({
 };
 
 const sortLocationRows = (
-  rows: Giacenza[],
+  rows: LocationStockRow[],
   sortConfig: SortConfig<LocationSortKey>,
 ) => {
   return [...rows].sort((a, b) => {
     let result = 0;
 
     switch (sortConfig.key) {
-      case "quantita":
-        result = toNumber(a.quantita) - toNumber(b.quantita);
+      case "quantita_totale":
+      case "quantita_impegnata":
+      case "quantita_disponibile":
+        result = a[sortConfig.key] - b[sortConfig.key];
         break;
       case "attivo":
         result = Number(a.attivo) - Number(b.attivo);
@@ -233,8 +252,8 @@ const sortLocationRows = (
         break;
       case "stato":
         result =
-          getStatoOrder(toNumber(a.quantita), toNumber(a.scorta_minima)) -
-          getStatoOrder(toNumber(b.quantita), toNumber(b.scorta_minima));
+          getStatoOrder(a.quantita_disponibile, toNumber(a.scorta_minima)) -
+          getStatoOrder(b.quantita_disponibile, toNumber(b.scorta_minima));
         break;
       case "ultimo_movimento":
         result = compareDate(a.ultimo_movimento, b.ultimo_movimento);
@@ -300,6 +319,7 @@ const getNextSortConfig = <T extends string>(
 export function StockTable() {
   const [locationRows, setLocationRows] = useState<Giacenza[]>([]);
   const [productSourceRows, setProductSourceRows] = useState<Giacenza[]>([]);
+  const [availabilitySourceRows, setAvailabilitySourceRows] = useState<Giacenza[]>([]);
   const [disponibilitaByProduct, setDisponibilitaByProduct] = useState<
     Record<number, DisponibilitaOrdineVendita>
   >({});
@@ -329,9 +349,14 @@ export function StockTable() {
   useEffect(() => {
     setLoading(true);
 
+    // Non passo scorta/q_min/q_max al backend, perché quei filtri lavorano
+    // sulla quantità fisica. Qui devono invece lavorare sulla disponibilità
+    // effettiva calcolata lato UI dopo aver letto gli ordini impegnati.
     const locationParams = buildParams({
       search,
-      ...filters,
+      magazzino: filters.magazzino,
+      categoria: filters.categoria,
+      ubicazione: filters.ubicazione,
     });
 
     // Per la tabella prodotto non passo filtri di riga/ubicazione,
@@ -342,17 +367,28 @@ export function StockTable() {
       categoria: filters.categoria,
     });
 
+    // Per distribuire l'impegnato sulle ubicazioni uso una sorgente globale
+    // del prodotto. L'endpoint /ordini/disponibilita/:prodotto_id non espone
+    // ancora l'impegnato per singolo magazzino/ubicazione.
+    const availabilityParams = buildParams({
+      search,
+      categoria: filters.categoria,
+    });
+
     Promise.all([
       giacenzeApi.list(locationParams),
       giacenzeApi.list(productParams),
+      giacenzeApi.list(availabilityParams),
     ])
-      .then(([locationRes, productRes]) => {
+      .then(([locationRes, productRes, availabilityRes]) => {
         setLocationRows(locationRes);
         setProductSourceRows(productRes);
+        setAvailabilitySourceRows(availabilityRes);
       })
       .catch(() => {
         setLocationRows([]);
         setProductSourceRows([]);
+        setAvailabilitySourceRows([]);
       })
       .finally(() => setLoading(false));
   }, [search, filters]);
@@ -431,8 +467,10 @@ export function StockTable() {
         const next: Record<number, DisponibilitaOrdineVendita> = {};
 
         results.forEach((result, index) => {
-          if (result.status === "fulfilled") {
-            next[productIds[index]] = result.value;
+          const productId = productIds[index] as number | undefined;
+
+          if (result.status === "fulfilled" && productId !== undefined) {
+            next[productId] = result.value;
           }
         });
 
@@ -467,6 +505,110 @@ export function StockTable() {
     });
   }, [productRows, disponibilitaByProduct]);
 
+  const locationRowsWithAvailability = useMemo<LocationStockRow[]>(() => {
+    const availabilityByLocation = new Map<
+      string,
+      Pick<
+        LocationStockRow,
+        | "quantita_totale"
+        | "quantita_impegnata"
+        | "quantita_disponibile"
+        | "disponibilita_reale_loaded"
+      >
+    >();
+
+    const rowsByProduct = new Map<number, Giacenza[]>();
+
+    availabilitySourceRows.forEach((item) => {
+      if (typeof item.prodotto_id !== "number") return;
+
+      const existing = rowsByProduct.get(item.prodotto_id) ?? [];
+      existing.push(item);
+      rowsByProduct.set(item.prodotto_id, existing);
+    });
+
+    rowsByProduct.forEach((rows, prodottoId) => {
+      const disponibilita = disponibilitaByProduct[prodottoId];
+
+      if (!disponibilita) return;
+
+      let impegnatoResiduo = Math.max(0, toNumber(disponibilita.impegnato));
+      const orderedRows = [...rows].sort((a, b) => {
+        const magazzinoCompare = compareString(a.magazzino, b.magazzino);
+        if (magazzinoCompare !== 0) return magazzinoCompare;
+
+        const ubicazioneCompare = compareString(a.ubicazione, b.ubicazione);
+        if (ubicazioneCompare !== 0) return ubicazioneCompare;
+
+        return toNumber(a.ubicazione_id) - toNumber(b.ubicazione_id);
+      });
+
+      orderedRows.forEach((item) => {
+        const quantitaFisica = toNumber(item.quantita);
+        const quantitaImpegnata = Math.min(quantitaFisica, impegnatoResiduo);
+        const quantitaDisponibile = Math.max(
+          0,
+          quantitaFisica - quantitaImpegnata,
+        );
+
+        impegnatoResiduo -= quantitaImpegnata;
+
+        availabilityByLocation.set(getLocationAvailabilityKey(item), {
+          quantita_totale: quantitaFisica,
+          quantita_impegnata: quantitaImpegnata,
+          quantita_disponibile: quantitaDisponibile,
+          disponibilita_reale_loaded: true,
+        });
+      });
+    });
+
+    return locationRows.map((item) => {
+      const availability = availabilityByLocation.get(
+        getLocationAvailabilityKey(item),
+      );
+      const quantitaFisica = toNumber(item.quantita);
+
+      return {
+        ...item,
+        quantita_totale: availability?.quantita_totale ?? quantitaFisica,
+        quantita_impegnata: availability?.quantita_impegnata ?? 0,
+        quantita_disponibile:
+          availability?.quantita_disponibile ?? quantitaFisica,
+        disponibilita_reale_loaded:
+          availability?.disponibilita_reale_loaded ?? false,
+      };
+    });
+  }, [locationRows, availabilitySourceRows, disponibilitaByProduct]);
+
+  const filteredLocationRows = useMemo(() => {
+    const qMin = filters.q_min !== "" ? toNumber(filters.q_min) : null;
+    const qMax = filters.q_max !== "" ? toNumber(filters.q_max) : null;
+
+    return locationRowsWithAvailability.filter((item) => {
+      if (
+        filters.scorta === "sotto" &&
+        item.quantita_disponibile > item.scorta_minima
+      ) {
+        return false;
+      }
+
+      if (qMin !== null && item.quantita_disponibile < qMin) {
+        return false;
+      }
+
+      if (qMax !== null && item.quantita_disponibile > qMax) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [
+    locationRowsWithAvailability,
+    filters.scorta,
+    filters.q_min,
+    filters.q_max,
+  ]);
+
   const filteredProductRows = useMemo(() => {
     const qMin = filters.q_min !== "" ? toNumber(filters.q_min) : null;
     const qMax = filters.q_max !== "" ? toNumber(filters.q_max) : null;
@@ -497,8 +639,8 @@ export function StockTable() {
   ]);
 
   const sortedLocationRows = useMemo(() => {
-    return sortLocationRows(locationRows, locationSort);
-  }, [locationRows, locationSort]);
+    return sortLocationRows(filteredLocationRows, locationSort);
+  }, [filteredLocationRows, locationSort]);
 
   const sortedProductRows = useMemo(() => {
     return sortProductRows(filteredProductRows, productSort);
@@ -519,7 +661,9 @@ export function StockTable() {
     { label: "Categoria", key: "categoria" },
     { label: "Magazzino", key: "magazzino" },
     { label: "Ubicazione", key: "ubicazione" },
-    { label: "Quantità", key: "quantita" },
+    { label: "Giacenza Fisica", key: "quantita_totale" },
+    { label: "Impegnato", key: "quantita_impegnata" },
+    { label: "Disponibile Effettivo", key: "quantita_disponibile" },
     { label: "Scorta Min.", key: "scorta_minima" },
     { label: "Stato", key: "stato" },
     { label: "Ultimo Mov.", key: "ultimo_movimento" },
@@ -684,6 +828,10 @@ export function StockTable() {
           <h3 className="font-semibold text-[#2D2D2D]">
             Giacenze per Ubicazione
           </h3>
+
+          <div className="text-sm text-[#6B7280]">
+            Disponibile effettivo = giacenza fisica - quantità impegnata
+          </div>
         </div>
 
         {/* LOADING */}
@@ -720,9 +868,11 @@ export function StockTable() {
 
               <tbody>
                 {sortedLocationRows.map((item, index) => {
-                  const quantita = toNumber(item.quantita);
                   const scortaMinima = toNumber(item.scorta_minima);
-                  const badge = getStatoBadge(quantita, scortaMinima);
+                  const badge = getStatoBadge(
+                    item.quantita_disponibile,
+                    scortaMinima,
+                  );
                   const attivoBadge = getAttivoBadge(item.attivo);
 
                   return (
@@ -761,7 +911,17 @@ export function StockTable() {
                         {item.ubicazione}
                       </td>
                       <td className="py-3 px-4 text-sm font-medium text-[#2D2D2D]">
-                        {quantita}
+                        {item.quantita_totale}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-[#F59E0B] font-medium">
+                        {item.disponibilita_reale_loaded
+                          ? item.quantita_impegnata
+                          : "-"}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-[#22C55E] font-semibold">
+                        {item.disponibilita_reale_loaded
+                          ? item.quantita_disponibile
+                          : item.quantita_totale}
                       </td>
                       <td className="py-3 px-4 text-sm text-[#6B7280]">
                         {scortaMinima}
