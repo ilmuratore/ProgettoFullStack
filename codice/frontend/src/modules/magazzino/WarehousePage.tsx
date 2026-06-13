@@ -25,6 +25,8 @@ import { magazzinoApi } from '../../api/magazzinoApi';
 import { prodottiApi } from '../../api/prodottiApi';
 import { categorieApi } from '../../api/categorieApi';
 import { ricezioniApi } from '../../api/ricezioniApi';
+import { ordiniApi } from '../../api/ordiniApi';
+import { giacenzeApi } from '../../api/giacenzeApi';
 import { downloadBlob } from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
 import type {
@@ -37,6 +39,8 @@ import type {
 import type { Prodotto, ProdottoListino, ProdottoCreateRequest, ProdottoUpdateRequest } from '../../types/prodotti';
 import type { Categoria, CategoriaCreateRequest, CategoriaUpdateRequest } from '../../types/categorie';
 import type { Ricezione, StatoOrdineAcquisto } from '../../types/acquisti';
+import type { Giacenza } from '../../types/magazzino';
+import type { OrdineVenditaDettaglio, StatoPickingVendita } from '../../types/ordini';
 
 type WarehouseTab = 'prodotti' | 'categorie' | 'struttura' | 'giacenze' | 'movimenti' | 'picking' | 'ricezioni';
 
@@ -50,10 +54,39 @@ const tabs: TabConfig[] = [
   { id: 'ricezioni', label: 'Ricezioni', icon: PackageCheck },
 ];
 
-const pickingData: {id:string;ordine:string;cliente:string;dataConsegna:string;righe:{sku:string;prodotto:string;ubicazione:string;qtaRichiesta:number;qtaPrelevata:number;completato:boolean}[];stato:string;operatore:string}[] = [];
+type PickingRigaView = {
+  sku: string;
+  prodotto: string;
+  ubicazione: string;
+  qtaRichiesta: number;
+  qtaPrelevata: number;
+  completato: boolean;
+};
+
+type PickingOrderView = {
+  id: string;
+  ordineId: number;
+  ordine: string;
+  cliente: string;
+  dataConsegna: string;
+  righe: PickingRigaView[];
+  stato: StatoPickingVendita;
+  operatore: string;
+};
 
 const fmtDataOra = (iso: string | null): string =>
   iso ? new Date(iso).toLocaleString('it-IT') : '—';
+
+const fmtData = (iso: string | null): string =>
+  iso ? new Date(iso).toLocaleDateString('it-IT') : '-';
+
+const getPickingLabel = (stato: StatoPickingVendita): string => {
+  switch (stato) {
+    case 'NON_AVVIATO': return 'NON AVVIATO';
+    case 'IN_PICKING': return 'IN PICKING';
+    case 'PICKING_COMPLETATO': return 'PICKING COMPLETATO';
+  }
+};
 
 const statoLabel: Record<StatoOrdineAcquisto, { bg: string; text: string; label: string }> = {
   BOZZA: { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', label: 'Bozza' },
@@ -100,6 +133,7 @@ export function WarehousePage() {
 
   const canWrite = hasPermesso('magazzino:write');
   const canWriteProdotti = hasPermesso('prodotti:write');
+  const canApproveOrders = hasPermesso('ordini:approve');
 
   const [prodotti, setProdotti] = useState<ProdottoListino[]>([]);
   const [loadingProdotti, setLoadingProdotti] = useState(false);
@@ -124,7 +158,11 @@ export function WarehousePage() {
   const [ricezioniReloadKey, setRicezioniReloadKey] = useState(0);
   const [exportingGiacenze, setExportingGiacenze] = useState(false);
   const [movimentiPendingTick, setMovimentiPendingTick] = useState(0);
-  const [expandedPicking, setExpandedPicking] = useState<string | null>('PCK-001');
+  const [expandedPicking, setExpandedPicking] = useState<string | null>(null);
+  const [pickingOrders, setPickingOrders] = useState<PickingOrderView[]>([]);
+  const [loadingPicking, setLoadingPicking] = useState(false);
+  const [startPickingOpen, setStartPickingOpen] = useState(false);
+  const [startingPickingId, setStartingPickingId] = useState<number | null>(null);
 
   const fetchMagazzini = useCallback(async () => {
     setLoading(true);
@@ -151,6 +189,78 @@ export function WarehousePage() {
     finally { setLoadingCategorie(false); }
   }, []);
 
+  const fetchPickingOrders = useCallback(async () => {
+    setLoadingPicking(true);
+    try {
+      const [ordini, giacenze] = await Promise.all([
+        ordiniApi.list({ stato: 'CONFERMATO' }),
+        giacenzeApi.list(),
+      ]);
+
+      const candidati = ordini.filter((ordine) =>
+        ['NON_AVVIATO', 'IN_PICKING', 'PICKING_COMPLETATO'].includes(ordine.stato_picking)
+      );
+
+      const dettagli = await Promise.all(
+        candidati.map(async (ordine) => {
+          const detail = await ordiniApi.getById(ordine.id);
+          return [ordine.id, detail] as const;
+        })
+      );
+
+      const dettaglioMap = new Map<number, OrdineVenditaDettaglio>(dettagli);
+      const giacenzeByProdotto = new Map<number, Giacenza[]>();
+
+      giacenze.forEach((item) => {
+        const current = giacenzeByProdotto.get(item.prodotto_id) ?? [];
+        current.push(item);
+        giacenzeByProdotto.set(item.prodotto_id, current);
+      });
+
+      const rows = candidati.map((ordine): PickingOrderView => {
+        const detail = dettaglioMap.get(ordine.id);
+        const righe = (detail?.righe ?? []).map((riga) => {
+          const ubicazioni = (giacenzeByProdotto.get(riga.prodotto_id) ?? [])
+            .filter((item) => item.quantita > 0)
+            .sort((left, right) => right.quantita - left.quantita)
+            .slice(0, 3)
+            .map((item) => item.ubicazione)
+            .join(', ');
+
+          const completato = ordine.stato_picking === 'PICKING_COMPLETATO';
+
+          return {
+            sku: riga.sku ?? '-',
+            prodotto: riga.prodotto ?? `Prodotto ${riga.prodotto_id}`,
+            ubicazione: ubicazioni || 'N/D',
+            qtaRichiesta: Number(riga.quantita ?? 0),
+            qtaPrelevata: completato ? Number(riga.quantita ?? 0) : 0,
+            completato,
+          };
+        });
+
+        return {
+          id: `PCK-${String(ordine.id).padStart(4, '0')}`,
+          ordineId: ordine.id,
+          ordine: `SO-${String(ordine.id).padStart(4, '0')}`,
+          cliente: ordine.cliente ?? '-',
+          dataConsegna: fmtData(ordine.data_consegna_richiesta),
+          righe,
+          stato: ordine.stato_picking,
+          operatore: ordine.utente ?? '-',
+        };
+      });
+
+      setPickingOrders(rows);
+      setExpandedPicking((current) => current ?? rows.find((item) => item.stato === 'IN_PICKING')?.id ?? null);
+    } catch (err: any) {
+      toast.error('Errore caricamento picking', { description: err?.message });
+      setPickingOrders([]);
+    } finally {
+      setLoadingPicking(false);
+    }
+  }, []);
+
   const fetchedTabs = useRef(new Set<WarehouseTab>());
   const fetchForTab = useCallback((tab: WarehouseTab) => {
     if (fetchedTabs.current.has(tab)) return;
@@ -162,6 +272,10 @@ export function WarehousePage() {
 
   useEffect(() => { fetchForTab('struttura'); }, []);
   useEffect(() => { fetchForTab(activeTab); }, [activeTab, fetchForTab]);
+  useEffect(() => {
+    if (activeTab !== 'picking') return;
+    void fetchPickingOrders();
+  }, [activeTab, fetchPickingOrders]);
   useEffect(() => {
     if (activeTab !== 'ricezioni') return;
     let alive = true;
@@ -196,13 +310,28 @@ export function WarehousePage() {
       case 'movimenti':
         return { label: 'Nuovo Movimento', show: true, action: () => setIsMovementModalOpen(true) };
       case 'picking':
-        return { label: 'Avvia Picking', show: false, action: () => {} };
+        return { label: 'Avvia Picking', show: canApproveOrders, action: () => setStartPickingOpen(true) };
       case 'ricezioni':
         return { label: 'Registra Ricezione', show: true, action: () => setIsRicezioneModalOpen(true) };
     }
   };
 
   const action = getActionButton();
+  const activePickingOrders = pickingOrders.filter((item) => item.stato === 'IN_PICKING' || item.stato === 'PICKING_COMPLETATO');
+  const startablePickingOrders = pickingOrders.filter((item) => item.stato === 'NON_AVVIATO' || item.stato === 'IN_PICKING');
+
+  const handleStartPicking = async (ordineId: number) => {
+    setStartingPickingId(ordineId);
+    try {
+      await ordiniApi.updatePicking(ordineId, { stato_picking: 'IN_PICKING' });
+      toast.success(`Picking avviato per SO-${String(ordineId).padStart(4, '0')}`);
+      await fetchPickingOrders();
+    } catch (err: any) {
+      toast.error('Errore avvio picking', { description: err?.message });
+    } finally {
+      setStartingPickingId(null);
+    }
+  };
 
   const handleExportGiacenze = async () => {
     setExportingGiacenze(true);
@@ -599,9 +728,17 @@ export function WarehousePage() {
                 </div>
               </div>
 
-              {pickingData.map((pick) => {
+              {loadingPicking ? (
+                <div className="border border-[#E5EAF2] rounded-xl px-5 py-8 text-sm text-[#6B7280] text-center">
+                  Caricamento picking...
+                </div>
+              ) : activePickingOrders.length === 0 ? (
+                <div className="border border-[#E5EAF2] rounded-xl px-5 py-8 text-sm text-[#6B7280] text-center">
+                  Nessun ordine in picking o con picking completato.
+                </div>
+              ) : activePickingOrders.map((pick) => {
                 const completate = pick.righe.filter(r => r.completato).length;
-                const pct = Math.round((completate / pick.righe.length) * 100);
+                const pct = pick.righe.length > 0 ? Math.round((completate / pick.righe.length) * 100) : 0;
                 const isExpanded = expandedPicking === pick.id;
                 return (
                   <div key={pick.id} className="border border-[#E5EAF2] rounded-xl overflow-hidden">
@@ -619,7 +756,7 @@ export function WarehousePage() {
                             : 'bg-[#FEF3C7] text-[#D97706]'
                         }`}>
                           {pick.stato === 'PICKING_COMPLETATO' ? <CheckSquare className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                          {pick.stato.replace('_', ' ')}
+                          {getPickingLabel(pick.stato)}
                         </span>
                       </div>
                       <div className="flex items-center gap-4">
@@ -729,6 +866,58 @@ export function WarehousePage() {
         onClose={() => setIsRicezioneModalOpen(false)}
         onCreated={() => setRicezioniReloadKey((k) => k + 1)}
       />
+
+      <Dialog open={startPickingOpen} onOpenChange={setStartPickingOpen}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Avvia Picking</DialogTitle>
+          </DialogHeader>
+          <div className="border border-[#E5EAF2] rounded-xl overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-[#F7F9FC] border-b border-[#E5EAF2]">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Ordine</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Cliente</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Consegna</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Picking</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Azione</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E5EAF2]">
+                {loadingPicking ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-[#6B7280]">Caricamento ordini...</td>
+                  </tr>
+                ) : startablePickingOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-[#6B7280]">Nessun ordine confermato disponibile.</td>
+                  </tr>
+                ) : startablePickingOrders.map((item) => (
+                  <tr key={item.ordineId} className="hover:bg-[#F7F9FC] transition-colors">
+                    <td className="px-4 py-3 text-sm font-medium text-[#17E88F]">{item.ordine}</td>
+                    <td className="px-4 py-3 text-sm text-[#374151]">{item.cliente}</td>
+                    <td className="px-4 py-3 text-sm text-[#6B7280]">{item.dataConsegna}</td>
+                    <td className="px-4 py-3 text-sm text-[#374151]">{getPickingLabel(item.stato)}</td>
+                    <td className="px-4 py-3 text-right">
+                      {item.stato === 'NON_AVVIATO' ? (
+                        <button
+                          onClick={() => void handleStartPicking(item.ordineId)}
+                          disabled={startingPickingId === item.ordineId}
+                          className="px-3 py-2 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-lg text-sm font-medium disabled:opacity-60"
+                        >
+                          {startingPickingId === item.ordineId ? 'Avvio...' : 'Avvia'}
+                        </button>
+                      ) : (
+                        <span className="text-xs font-medium text-[#D97706]">Già avviato</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* componente dettaglio prodotto */}
       <ProductDetailDrawer

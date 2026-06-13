@@ -552,7 +552,7 @@ export function NewSalesOrderModal({ isOpen, onClose, onCreated }: NewSalesOrder
                   </div>
                   <div>
                     <h3 className="font-semibold text-[#2D2D2D]">Ordine pronto per la conferma</h3>
-                    <p className="text-sm text-[#6B7280] mt-1">Verranno generate automaticamente le righe di picking</p>
+                    <p className="text-sm text-[#6B7280] mt-1">Il picking potra essere avviato dalla tab Picking del magazzino</p>
                   </div>
                   <div className="bg-[#F7F9FC] rounded-xl p-4 w-full text-left space-y-2">
                     <div className="flex justify-between text-sm">
@@ -572,7 +572,7 @@ export function NewSalesOrderModal({ isOpen, onClose, onCreated }: NewSalesOrder
                   </div>
                   <div>
                     <h3 className="font-semibold text-[#2D2D2D]">Ordine creato</h3>
-                    <p className="text-sm text-[#6B7280] mt-1">Il picking è stato avviato automaticamente</p>
+                    <p className="text-sm text-[#6B7280] mt-1">Il picking non viene avviato automaticamente</p>
                   </div>
                 </>
               )}
