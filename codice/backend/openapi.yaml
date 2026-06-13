@@ -2,9 +2,9 @@ openapi: 3.0.3
 
 info:
   title: LogiChain ERP — API
-  version: "2.2.0"
+  version: "2.3.0"
   description: |
-    API REST per LogiChain ERP — milestone M01–M09 + PDF e invio email ordini di acquisto.
+    API REST per LogiChain ERP — milestone M01–M16 (M12 Dashboard escluso, endpoints non ancora implementati).
 
     ## Autenticazione
     Tutte le rotte (eccetto `POST /auth/login`) richiedono un token JWT nell'header:
@@ -75,11 +75,11 @@ info:
     | `ordini:read` | Visualizza ordini di vendita | ✅ M09 |
     | `ordini:write` | Crea/modifica ordini e gestisce picking | ✅ M09 |
     | `ordini:approve` | Approva ordini commerciali e picking | ✅ M09 |
-    | `spedizioni:read` | Visualizza spedizioni e DDT | ⬜ M10 |
-    | `spedizioni:write` | Gestisce spedizioni e DDT | ⬜ M10 |
-    | `notifiche:read` | Visualizza notifiche | ⬜ M11 |
+    | `spedizioni:read` | Visualizza spedizioni e DDT | ✅ M10 |
+    | `spedizioni:write` | Gestisce spedizioni e DDT | ✅ M10 |
+    | `notifiche:read` | Visualizza notifiche | ✅ M11 |
     | `dashboard:read` | Visualizza dashboard e KPI | ⬜ M12 |
-    | `ecosystem:read` | Ricerca nell'ecosistema globale | ⬜ M13–M16 |
+    | `ecosystem:read` | Ricerca nell'ecosistema globale | ✅ M13–M16 |
 
     ## RBAC — Matrice ruoli → permessi
     Fonte: `seed_ruoli_permessi.js`. Legenda: ✅ ha il permesso · — non ce l'ha.
@@ -179,6 +179,16 @@ tags:
     description: Ordini in uscita / Sales Orders — ciclo BOZZA→SPEDITO + macchina stato picking, permessi ordini:* (M09)
   - name: Destinazioni
     description: Destinazioni di consegna per cliente — sotto-risorsa di Clienti, permessi clienti:* (M04 ext)
+  - name: ContattiFornitore
+    description: Contatti aziendali di un fornitore — sotto-risorsa di Fornitori, permessi fornitori:* (M03 ext)
+  - name: Spedizioni
+    description: Spedizioni e DDT — ciclo IN_PREPARAZIONE→CONSEGNATA, permessi spedizioni:* (M10)
+  - name: Notifiche
+    description: Notifiche utente — generate automaticamente dal sistema, permesso notifiche:read (M11)
+  - name: Ecosystem
+    description: Ricerca globale ecosistema, schede fornitore e prodotto — permesso ecosystem:read (M13)
+  - name: RichiesteAcquisto
+    description: Richieste di acquisto — ciclo BOZZA→ACCETTATA/RIFIUTATA, permessi acquisti:* (M16)
 
 # ─────────────────────────────────────────────
 # COMPONENTI RIUTILIZZABILI
@@ -1155,6 +1165,351 @@ components:
         totale:      { type: integer, example: 125, description: "Somma giacenze di tutte le ubicazioni" }
         impegnato:   { type: integer, example: 30, description: "Quantità impegnata su ordini non evasi" }
         disponibile: { type: integer, example: 95, description: "totale - impegnato" }
+
+    # ── CONTATTI FORNITORE (M03 ext) ──────────
+
+    ContattoFornitore:
+      type: object
+      properties:
+        id:           { type: integer, example: 1 }
+        fornitore_id: { type: integer, example: 1 }
+        nome:         { type: string, example: Mario Verdi }
+        ruolo:        { type: string, example: Responsabile commerciale, nullable: true }
+        email:        { type: string, format: email, example: mario.verdi@tecnofluid.it, nullable: true }
+        telefono:     { type: string, example: "02 9876540", nullable: true }
+        created_at:   { type: string, format: date-time }
+        updated_at:   { type: string, format: date-time }
+
+    ContattoFornitoreDettaglio:
+      description: Dettaglio con ragione sociale fornitore (GET /:id/contatti/:contattoId).
+      allOf:
+        - $ref: '#/components/schemas/ContattoFornitore'
+        - type: object
+          properties:
+            fornitore: { type: string, example: "Tecnofluid S.r.l." }
+
+    ContattoFornitoreCreateRequest:
+      type: object
+      required: [nome]
+      properties:
+        nome:     { type: string, minLength: 1, example: Mario Verdi }
+        ruolo:    { type: string, example: Responsabile commerciale }
+        email:    { type: string, format: email, example: mario.verdi@tecnofluid.it }
+        telefono: { type: string, example: "02 9876540" }
+
+    ContattoFornitoreUpdateRequest:
+      type: object
+      description: Tutti i campi sono opzionali.
+      properties:
+        nome:     { type: string, minLength: 1, example: Mario Verdi }
+        ruolo:    { type: string, example: Direttore commerciale }
+        email:    { type: string, format: email, example: m.verdi@tecnofluid.it }
+        telefono: { type: string, example: "02 9876599" }
+
+    # ── SPEDIZIONI & DDT (M10) ────────────────
+
+    StatoSpedizione:
+      type: string
+      enum: [IN_PREPARAZIONE, SPEDITA, CONSEGNATA, PROBLEMA]
+      example: IN_PREPARAZIONE
+      description: |
+        Ciclo di vita spedizione. Transizioni: IN_PREPARAZIONE→SPEDITA→CONSEGNATA.
+        Da qualsiasi stato è possibile passare a PROBLEMA.
+
+    Spedizione:
+      type: object
+      properties:
+        id:              { type: integer, example: 1 }
+        ordine_id:       { type: integer, example: 88 }
+        cliente_id:      { type: integer, example: 1 }
+        cliente:         { type: string, example: "Officine Manzoni S.r.l." }
+        destinazione_id: { type: integer, example: 5 }
+        destinazione:    { type: string, example: "Sede operativa", nullable: true }
+        corriere_id:     { type: integer, example: 2, nullable: true }
+        corriere:        { type: string, example: "BRT Bartolini", nullable: true }
+        codice_corriere: { type: string, example: BRT, nullable: true }
+        stato:           { $ref: '#/components/schemas/StatoSpedizione' }
+        tracking_number: { type: string, example: BRT123456789IT, nullable: true }
+        created_at:      { type: string, format: date-time }
+        updated_at:      { type: string, format: date-time }
+
+    SpedizioneCreateRequest:
+      type: object
+      required: [ordine_id, cliente_id, destinazione_id]
+      properties:
+        ordine_id:       { type: integer, minimum: 1, example: 88 }
+        cliente_id:      { type: integer, minimum: 1, example: 1 }
+        destinazione_id: { type: integer, minimum: 1, example: 5 }
+        corriere_id:     { type: integer, minimum: 1, example: 2, description: "Opzionale — assegnabile in seguito" }
+        tracking_number: { type: string, example: BRT123456789IT }
+
+    SpedizioneStatoRequest:
+      type: object
+      required: [stato]
+      properties:
+        stato: { $ref: '#/components/schemas/StatoSpedizione' }
+
+    Ddt:
+      type: object
+      properties:
+        id:            { type: integer, example: 3 }
+        spedizione_id: { type: integer, example: 1 }
+        ordine_id:     { type: integer, example: 88, description: "Presente solo nel dettaglio (GET /:id/ddt) con JOIN" }
+        numero_ddt:    { type: string, example: "2026/0045" }
+        data_ddt:      { type: string, format: date, example: "2026-06-15" }
+        trasportatore: { type: string, example: "BRT Bartolini", nullable: true }
+        note:          { type: string, example: "Consegna piano terra", nullable: true }
+        created_at:    { type: string, format: date-time }
+        updated_at:    { type: string, format: date-time }
+
+    DdtCreateRequest:
+      type: object
+      required: [numero_ddt]
+      properties:
+        numero_ddt:    { type: string, example: "2026/0045" }
+        data_ddt:      { type: string, format: date, example: "2026-06-15", description: "Default CURRENT_DATE se omesso" }
+        trasportatore: { type: string, example: "BRT Bartolini" }
+        note:          { type: string, example: "Consegna piano terra" }
+
+    DdtUpdateRequest:
+      type: object
+      description: Tutti i campi sono opzionali.
+      properties:
+        numero_ddt:    { type: string, example: "2026/0045-REV" }
+        data_ddt:      { type: string, format: date, example: "2026-06-16" }
+        trasportatore: { type: string, example: "BRT Bartolini" }
+        note:          { type: string, example: "Consegna al primo piano" }
+
+    # ── NOTIFICHE (M11) ───────────────────────
+
+    TipoNotifica:
+      type: string
+      enum:
+        - SOTTO_SCORTA
+        - PO_IN_RITARDO
+        - RICEZIONE_PARZIALE
+        - CAMBIO_STATO_SPEDIZIONE
+        - RICHIESTA_ACCETTATA
+        - RICHIESTA_RIFIUTATA
+        - MESSAGGIO_FORNITORE
+        - ALTRO
+      example: SOTTO_SCORTA
+
+    Notifica:
+      type: object
+      properties:
+        id:               { type: integer, example: 10 }
+        utente_id:        { type: integer, example: 2 }
+        tipo:             { $ref: '#/components/schemas/TipoNotifica' }
+        messaggio:        { type: string, example: "Prodotto VLV-001 sotto scorta: disponibilità 20, scorta minima 50." }
+        letto:            { type: boolean, example: false }
+        riferimento_tipo: { type: string, example: prodotto, nullable: true, description: "Tipo entità collegata (prodotto, ordine_acquisto, spedizione, richiesta_acquisto)" }
+        riferimento_id:   { type: integer, example: 7, nullable: true, description: "ID entità collegata" }
+        created_at:       { type: string, format: date-time, example: "2026-06-10T09:30:00.000Z" }
+
+    # ── ECOSYSTEM (M13) ───────────────────────
+
+    EcosystemSearchResult:
+      type: object
+      properties:
+        prodotti:
+          type: array
+          items:
+            type: object
+            properties:
+              id:               { type: integer, example: 7 }
+              sku:              { type: string, example: VLV-001 }
+              nome:             { type: string, example: "Valvola a sfera 1/2\"" }
+              prezzo:           { type: number, example: 12.50 }
+              giacenza_totale:  { type: integer, example: 125 }
+        fornitori:
+          type: array
+          items:
+            type: object
+            properties:
+              id:               { type: integer, example: 1 }
+              ragione_sociale:  { type: string, example: "Tecnofluid S.r.l." }
+              piva:             { type: string, example: "02345678901", nullable: true }
+              source:           { type: string, enum: [manual, ecosystem], example: manual }
+              email:            { type: string, example: acquisti@tecnofluid.it, nullable: true }
+              sito_web:         { type: string, example: "https://www.tecnofluid.it", nullable: true }
+
+    SchedaFornitore:
+      type: object
+      properties:
+        id:                    { type: integer, example: 1 }
+        ragione_sociale:       { type: string, example: "Tecnofluid S.r.l." }
+        piva:                  { type: string, example: "02345678901", nullable: true }
+        indirizzo:             { type: string, nullable: true }
+        email:                 { type: string, nullable: true }
+        telefono:              { type: string, nullable: true }
+        sito_web:              { type: string, nullable: true }
+        descrizione_aziendale: { type: string, nullable: true }
+        lead_time_giorni:      { type: integer, nullable: true }
+        source:                { type: string, enum: [manual, ecosystem] }
+        contatti:
+          type: array
+          items:
+            type: object
+            properties:
+              id:       { type: integer }
+              nome:     { type: string }
+              ruolo:    { type: string, nullable: true }
+              email:    { type: string, nullable: true }
+              telefono: { type: string, nullable: true }
+        catalogo_prodotti:
+          type: array
+          items:
+            type: object
+            properties:
+              id:     { type: integer }
+              sku:    { type: string }
+              nome:   { type: string }
+              prezzo: { type: number }
+              attivo: { type: boolean }
+        storico_richieste:
+          type: array
+          description: Ultime 10 richieste di acquisto verso questo fornitore
+          items:
+            type: object
+            properties:
+              id:             { type: integer }
+              stato:          { $ref: '#/components/schemas/StatoRichiestaAcquisto' }
+              data_richiesta: { type: string, format: date-time }
+              note:           { type: string, nullable: true }
+
+    CatalogoProdottoFornitore:
+      type: object
+      properties:
+        id:               { type: integer, example: 7 }
+        sku:              { type: string, example: VLV-001 }
+        nome:             { type: string, example: "Valvola a sfera 1/2\"" }
+        descrizione:      { type: string, nullable: true }
+        prezzo:           { type: number, example: 12.50 }
+        unita_misura:     { type: string, nullable: true }
+        lead_time_giorni: { type: integer, example: 7, nullable: true }
+        giacenza_interna: { type: integer, example: 125 }
+
+    SchedaProdotto:
+      type: object
+      properties:
+        id:              { type: integer, example: 7 }
+        sku:             { type: string, example: VLV-001 }
+        nome:            { type: string, example: "Valvola a sfera 1/2\"" }
+        descrizione:     { type: string, nullable: true }
+        unita_misura:    { type: string, nullable: true }
+        peso_kg:         { type: number, nullable: true }
+        scorta_minima:   { type: integer, example: 50 }
+        prezzo:          { type: number, example: 12.50 }
+        data_agg_prezzo: { type: string, format: date-time }
+        attivo:          { type: boolean }
+        categoria:       { type: string, nullable: true }
+        giacenza_totale: { type: integer, example: 125 }
+        disponibilita_magazzini:
+          type: array
+          items:
+            type: object
+            properties:
+              magazzino_id:          { type: integer }
+              magazzino_codice:      { type: string }
+              magazzino_nome:        { type: string }
+              quantita_disponibile:  { type: integer }
+        fornitore_principale:
+          type: object
+          nullable: true
+          properties:
+            id:               { type: integer }
+            ragione_sociale:  { type: string }
+            email:            { type: string, nullable: true }
+            lead_time_giorni: { type: integer, nullable: true }
+
+    DisponibilitaDettaglio:
+      description: Giacenza per singola ubicazione (GET /ecosystem/prodotti/:id/disponibilita).
+      type: object
+      properties:
+        magazzino_id:      { type: integer, example: 1 }
+        magazzino_codice:  { type: string, example: MAG-A }
+        magazzino_nome:    { type: string, example: "Magazzino principale Sesto" }
+        ubicazione_id:     { type: integer, example: 12 }
+        ubicazione_codice: { type: string, example: 1-02-05 }
+        quantita:          { type: integer, example: 85 }
+
+    # ── RICHIESTE ACQUISTO (M16) ──────────────
+
+    StatoRichiestaAcquisto:
+      type: string
+      enum: [BOZZA, INVIATA, IN_VALUTAZIONE, ACCETTATA, RIFIUTATA]
+      example: BOZZA
+      description: |
+        Macchina a stati richiesta acquisto. Transizioni:
+        BOZZA→INVIATA→IN_VALUTAZIONE→ACCETTATA|RIFIUTATA.
+        ACCETTATA e RIFIUTATA sono stati terminali.
+
+    RichiestaAcquisto:
+      type: object
+      properties:
+        id:             { type: integer, example: 5 }
+        fornitore_id:   { type: integer, example: 3 }
+        fornitore_nome: { type: string, example: "Acciaierie Lombarde S.p.A." }
+        stato:          { $ref: '#/components/schemas/StatoRichiestaAcquisto' }
+        data_richiesta: { type: string, format: date-time, example: "2026-06-10T08:00:00.000Z" }
+        note:           { type: string, nullable: true }
+        utente_id:      { type: integer, example: 2, nullable: true }
+        created_at:     { type: string, format: date-time }
+        updated_at:     { type: string, format: date-time }
+
+    RigaRichiesta:
+      type: object
+      properties:
+        id:                  { type: integer, example: 12 }
+        richiesta_id:        { type: integer, example: 5 }
+        prodotto_id:         { type: integer, example: 7 }
+        prodotto_sku:        { type: string, example: VLV-001 }
+        prodotto_nome:       { type: string, example: "Valvola a sfera 1/2\"" }
+        prodotto_prezzo:     { type: number, example: 12.50 }
+        quantita_richiesta:  { type: integer, example: 50 }
+        created_at:          { type: string, format: date-time }
+
+    RichiestaAcquistoDettaglio:
+      type: object
+      properties:
+        id:             { type: integer, example: 5 }
+        fornitore_id:   { type: integer, example: 3 }
+        fornitore_nome: { type: string, example: "Acciaierie Lombarde S.p.A." }
+        fornitore_email: { type: string, nullable: true, example: acquisti@acciaierie.it }
+        fornitore_telefono: { type: string, nullable: true }
+        stato:          { $ref: '#/components/schemas/StatoRichiestaAcquisto' }
+        data_richiesta: { type: string, format: date-time }
+        note:           { type: string, nullable: true }
+        utente_id:      { type: integer, nullable: true }
+        created_at:     { type: string, format: date-time }
+        updated_at:     { type: string, format: date-time }
+        righe:
+          type: array
+          items: { $ref: '#/components/schemas/RigaRichiesta' }
+
+    RichiestaAcquistoCreateRequest:
+      type: object
+      required: [fornitore_id]
+      properties:
+        fornitore_id: { type: integer, minimum: 1, example: 3 }
+        note:         { type: string, example: "Urgente — stock sotto scorta" }
+        righe:
+          type: array
+          description: Opzionale — le righe si possono aggiungere in seguito
+          items:
+            type: object
+            required: [prodotto_id, quantita_richiesta]
+            properties:
+              prodotto_id:        { type: integer, minimum: 1, example: 7 }
+              quantita_richiesta: { type: integer, minimum: 1, example: 50 }
+
+    RigaRichiestaCreateRequest:
+      type: object
+      required: [prodotto_id, quantita_richiesta]
+      properties:
+        prodotto_id:        { type: integer, minimum: 1, example: 7 }
+        quantita_richiesta: { type: integer, minimum: 1, example: 50 }
 
 
     # ─── M08 (ext) — EMAIL ORDINE DI ACQUISTO ───
@@ -4580,3 +4935,1046 @@ paths:
         "403": { $ref: '#/components/responses/Forbidden' }
         "404": { $ref: '#/components/responses/NotFound' }
 
+
+  # ══════════════════════════════════════════
+  # M03 (ext) — CONTATTI FORNITORI
+  # ══════════════════════════════════════════
+
+  /fornitori/{id}/contatti:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 1
+    get:
+      tags: [ContattiFornitore]
+      summary: Lista contatti di un fornitore
+      description: Restituisce i contatti aziendali del fornitore. Richiede permesso `fornitori:read`.
+      x-required-permission: fornitori:read
+      responses:
+        "200":
+          description: Lista contatti
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ContattoFornitore' }
+              example:
+                status: success
+                data:
+                  - id: 1
+                    fornitore_id: 1
+                    nome: Mario Verdi
+                    ruolo: Responsabile commerciale
+                    email: mario.verdi@tecnofluid.it
+                    telefono: "02 9876540"
+                    created_at: "2026-02-10T10:00:00.000Z"
+                    updated_at: "2026-02-10T10:00:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [ContattiFornitore]
+      summary: Crea contatto fornitore
+      description: Aggiunge un contatto al fornitore. Richiede permesso `fornitori:write`.
+      x-required-permission: fornitori:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ContattoFornitoreCreateRequest' }
+            example:
+              nome: Laura Bianchi
+              ruolo: Ufficio acquisti
+              email: laura.bianchi@tecnofluid.it
+              telefono: "02 9876541"
+      responses:
+        "201":
+          description: Contatto creato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/ContattoFornitore' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /fornitori/{id}/contatti/{contattoId}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 1
+      - name: contattoId
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 1
+    get:
+      tags: [ContattiFornitore]
+      summary: Dettaglio contatto fornitore
+      x-required-permission: fornitori:read
+      responses:
+        "200":
+          description: Contatto
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/ContattoFornitoreDettaglio' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [ContattiFornitore]
+      summary: Aggiorna contatto fornitore
+      x-required-permission: fornitori:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ContattoFornitoreUpdateRequest' }
+            example:
+              telefono: "02 9876599"
+      responses:
+        "200":
+          description: Contatto aggiornato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/ContattoFornitore' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  # ══════════════════════════════════════════
+  # M10 — SPEDIZIONI & DDT
+  # ══════════════════════════════════════════
+
+  /spedizioni:
+    get:
+      tags: [Spedizioni]
+      summary: Lista spedizioni
+      description: Restituisce tutte le spedizioni con dati cliente, destinazione e corriere. Richiede permesso `spedizioni:read`.
+      x-required-permission: spedizioni:read
+      responses:
+        "200":
+          description: Lista spedizioni
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Spedizione' }
+              example:
+                status: success
+                data:
+                  - id: 1
+                    ordine_id: 88
+                    cliente_id: 1
+                    cliente: "Officine Manzoni S.r.l."
+                    destinazione_id: 5
+                    destinazione: "Sede operativa"
+                    corriere_id: 2
+                    corriere: "BRT Bartolini"
+                    codice_corriere: BRT
+                    stato: IN_PREPARAZIONE
+                    tracking_number: null
+                    created_at: "2026-06-10T09:00:00.000Z"
+                    updated_at: "2026-06-10T09:00:00.000Z"
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Spedizioni]
+      summary: Crea spedizione
+      description: |
+        Crea una spedizione in stato `IN_PREPARAZIONE`. L'ordine deve essere in stato `CONFERMATO` o `SPEDITO`.
+        Richiede permesso `spedizioni:write`.
+      x-required-permission: spedizioni:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SpedizioneCreateRequest' }
+            example:
+              ordine_id: 88
+              cliente_id: 1
+              destinazione_id: 5
+              corriere_id: 2
+              tracking_number: null
+      responses:
+        "201":
+          description: Spedizione creata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/Spedizione' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /spedizioni/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 1
+    get:
+      tags: [Spedizioni]
+      summary: Dettaglio spedizione
+      x-required-permission: spedizioni:read
+      responses:
+        "200":
+          description: Dettaglio spedizione
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/Spedizione' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /spedizioni/{id}/stato:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 1
+    patch:
+      tags: [Spedizioni]
+      summary: Cambia stato spedizione
+      description: |
+        Transizioni consentite: `IN_PREPARAZIONE→SPEDITA→CONSEGNATA`. Da qualsiasi stato è possibile passare a `PROBLEMA`.
+        Alla transizione in `SPEDITA` viene creata una notifica `CAMBIO_STATO_SPEDIZIONE` agli utenti con `spedizioni:read`.
+        Richiede permesso `spedizioni:write`.
+      x-required-permission: spedizioni:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SpedizioneStatoRequest' }
+            example:
+              stato: SPEDITA
+      responses:
+        "200":
+          description: Stato aggiornato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/Spedizione' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409":
+          description: Transizione di stato non valida
+          content:
+            application/json:
+              example: { status: error, code: STATE_TRANSITION_INVALID, message: Transizione di stato non valida, details: [] }
+
+  /spedizioni/{id}/tracking:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 1
+    patch:
+      tags: [Spedizioni]
+      summary: Aggiorna tracking number
+      description: Imposta o aggiorna il numero di tracking della spedizione. Richiede permesso `spedizioni:write`.
+      x-required-permission: spedizioni:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tracking_number]
+              properties:
+                tracking_number: { type: string, example: BRT123456789IT }
+      responses:
+        "200":
+          description: Tracking aggiornato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/Spedizione' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /spedizioni/{id}/ddt:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 1
+    get:
+      tags: [Spedizioni]
+      summary: DDT di una spedizione
+      description: Restituisce il DDT collegato alla spedizione (uno per spedizione, constraint UNIQUE). Richiede permesso `spedizioni:read`.
+      x-required-permission: spedizioni:read
+      responses:
+        "200":
+          description: DDT della spedizione
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/Ddt' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [Spedizioni]
+      summary: Crea DDT per spedizione
+      description: |
+        Crea il Documento di Trasporto collegato alla spedizione.
+        Una spedizione può avere al massimo un DDT (unique constraint).
+        Richiede permesso `spedizioni:write`.
+      x-required-permission: spedizioni:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DdtCreateRequest' }
+            example:
+              numero_ddt: "2026/0045"
+              data_ddt: "2026-06-15"
+              trasportatore: "BRT Bartolini"
+              note: "Consegna piano terra"
+      responses:
+        "201":
+          description: DDT creato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/Ddt' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409":
+          description: DDT già esistente per questa spedizione
+          content:
+            application/json:
+              example: { status: error, code: DUPLICATE_ENTRY, message: DDT già esistente per questa spedizione, details: [] }
+    patch:
+      tags: [Spedizioni]
+      summary: Aggiorna DDT
+      description: Aggiorna i campi del DDT. Tutti i campi sono opzionali. Richiede permesso `spedizioni:write`.
+      x-required-permission: spedizioni:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DdtUpdateRequest' }
+            example:
+              note: "Consegna al primo piano"
+      responses:
+        "200":
+          description: DDT aggiornato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/Ddt' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /spedizioni/{id}/ddt/pdf:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 1
+    get:
+      tags: [Spedizioni]
+      summary: Genera PDF del DDT
+      description: Restituisce il PDF del DDT (`Content-Type: application/pdf`). Richiede permesso `spedizioni:read`.
+      x-required-permission: spedizioni:read
+      responses:
+        "200":
+          description: PDF DDT
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  # ══════════════════════════════════════════
+  # M11 — NOTIFICHE
+  # ══════════════════════════════════════════
+
+  /notifiche:
+    get:
+      tags: [Notifiche]
+      summary: Lista notifiche dell'utente autenticato
+      description: |
+        Restituisce tutte le notifiche dell'utente autenticato, ordinate per `created_at DESC`.
+        Le notifiche sono generate automaticamente dal sistema (sotto scorta, PO in ritardo, cambio stato spedizione ecc).
+        Richiede permesso `notifiche:read`.
+      x-required-permission: notifiche:read
+      responses:
+        "200":
+          description: Lista notifiche
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Notifica' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  /notifiche/non-lette:
+    get:
+      tags: [Notifiche]
+      summary: Notifiche non lette dell'utente
+      description: Filtra le sole notifiche con `letto=false`. Richiede permesso `notifiche:read`.
+      x-required-permission: notifiche:read
+      responses:
+        "200":
+          description: Lista notifiche non lette
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Notifica' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  /notifiche/count:
+    get:
+      tags: [Notifiche]
+      summary: Conteggio notifiche non lette
+      description: Restituisce il solo conteggio delle notifiche non lette dell'utente. Usato per il badge header. Richiede permesso `notifiche:read`.
+      x-required-permission: notifiche:read
+      responses:
+        "200":
+          description: Conteggio
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: object
+                    properties:
+                      count: { type: integer, example: 3 }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  /notifiche/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 10
+    get:
+      tags: [Notifiche]
+      summary: Dettaglio notifica
+      x-required-permission: notifiche:read
+      responses:
+        "200":
+          description: Notifica
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/Notifica' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /notifiche/{id}/letta:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 10
+    patch:
+      tags: [Notifiche]
+      summary: Segna notifica come letta
+      description: Imposta `letto=true` sulla notifica. Restituisce solo l'id. Richiede permesso `notifiche:read`.
+      x-required-permission: notifiche:read
+      responses:
+        "200":
+          description: Notifica segnata come letta
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: object
+                    properties:
+                      id: { type: integer, example: 10 }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /notifiche/letta-tutto:
+    patch:
+      tags: [Notifiche]
+      summary: Segna tutte le notifiche come lette
+      description: Imposta `letto=true` su tutte le notifiche non lette dell'utente autenticato. Richiede permesso `notifiche:read`.
+      x-required-permission: notifiche:read
+      responses:
+        "200":
+          description: Tutte le notifiche segnate come lette
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer, example: 10 }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  # ══════════════════════════════════════════
+  # M13 — ECOSYSTEM SEARCH
+  # ══════════════════════════════════════════
+
+  /ecosystem/search:
+    get:
+      tags: [Ecosystem]
+      summary: Ricerca globale ecosistema
+      description: |
+        Ricerca full-text su prodotti (nome, SKU) e fornitori (ragione sociale, P.IVA).
+        Restituisce al massimo 10 risultati per categoria. Parametro `q` minimo 2 caratteri.
+        Richiede permesso `ecosystem:read`.
+      x-required-permission: ecosystem:read
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 2 }
+          example: valvola
+      responses:
+        "200":
+          description: Risultati ricerca
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/EcosystemSearchResult' }
+              example:
+                status: success
+                data:
+                  prodotti:
+                    - id: 7
+                      sku: VLV-001
+                      nome: "Valvola a sfera 1/2\""
+                      prezzo: 12.50
+                      giacenza_totale: 125
+                  fornitori:
+                    - id: 1
+                      ragione_sociale: "Tecnofluid S.r.l."
+                      piva: "02345678901"
+                      source: manual
+                      email: acquisti@tecnofluid.it
+                      sito_web: "https://www.tecnofluid.it"
+        "400":
+          description: Parametro q mancante o troppo corto
+          content:
+            application/json:
+              example: { status: error, code: VALIDATION_ERROR, message: "Parametro q minimo 2 caratteri", details: [] }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  /ecosystem/fornitori/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 1
+    get:
+      tags: [Ecosystem]
+      summary: Scheda fornitore ecosistema
+      description: |
+        Restituisce la scheda completa del fornitore: anagrafica, contatti, catalogo prodotti (da storico ordini)
+        e ultime 10 richieste di acquisto. Richiede permesso `ecosystem:read`.
+      x-required-permission: ecosystem:read
+      responses:
+        "200":
+          description: Scheda fornitore
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/SchedaFornitore' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /ecosystem/fornitori/{id}/catalogo:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 1
+    get:
+      tags: [Ecosystem]
+      summary: Catalogo prodotti di un fornitore
+      description: |
+        Prodotti distinti ordinati a questo fornitore (da storico `ordini_acquisto`), con giacenza interna e lead time.
+        Richiede permesso `ecosystem:read`.
+      x-required-permission: ecosystem:read
+      responses:
+        "200":
+          description: Catalogo fornitore
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/CatalogoProdottoFornitore' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /ecosystem/prodotti/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 7
+    get:
+      tags: [Ecosystem]
+      summary: Scheda prodotto ecosistema
+      description: |
+        Restituisce la scheda completa del prodotto: anagrafica, disponibilità per magazzino, giacenza totale
+        e fornitore principale (ultimo fornitore da cui è stato ordinato). Richiede permesso `ecosystem:read`.
+      x-required-permission: ecosystem:read
+      responses:
+        "200":
+          description: Scheda prodotto
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/SchedaProdotto' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /ecosystem/prodotti/{id}/disponibilita:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 7
+    get:
+      tags: [Ecosystem]
+      summary: Disponibilità prodotto per magazzino/ubicazione
+      description: |
+        Giacenza dettagliata del prodotto, rigata per magazzino e ubicazione, solo dove `quantita > 0`.
+        Richiede permesso `ecosystem:read`.
+      x-required-permission: ecosystem:read
+      responses:
+        "200":
+          description: Disponibilità prodotto
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/DisponibilitaDettaglio' }
+              example:
+                status: success
+                data:
+                  - magazzino_id: 1
+                    magazzino_codice: MAG-A
+                    magazzino_nome: "Magazzino principale Sesto"
+                    ubicazione_id: 12
+                    ubicazione_codice: 1-02-05
+                    quantita: 85
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  # ══════════════════════════════════════════
+  # M16 — RICHIESTE DI ACQUISTO
+  # ══════════════════════════════════════════
+
+  /richieste-acquisto:
+    get:
+      tags: [RichiesteAcquisto]
+      summary: Lista richieste di acquisto
+      description: |
+        Filtri opzionali via query: `stato`, `fornitore_id`, `utente_id`.
+        Richiede permesso `acquisti:read`.
+      x-required-permission: acquisti:read
+      parameters:
+        - name: stato
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/StatoRichiestaAcquisto' }
+        - name: fornitore_id
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+          example: 3
+        - name: utente_id
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1 }
+          example: 2
+      responses:
+        "200":
+          description: Lista richieste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/RichiestaAcquisto' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [RichiesteAcquisto]
+      summary: Crea richiesta di acquisto
+      description: |
+        Crea una richiesta in stato `BOZZA`. Le righe sono opzionali alla creazione.
+        Richiede permesso `acquisti:write`.
+      x-required-permission: acquisti:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RichiestaAcquistoCreateRequest' }
+            example:
+              fornitore_id: 3
+              note: "Urgente — stock sotto scorta"
+              righe:
+                - { prodotto_id: 7, quantita_richiesta: 50 }
+                - { prodotto_id: 8, quantita_richiesta: 20 }
+      responses:
+        "201":
+          description: Richiesta creata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/RichiestaAcquistoDettaglio' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /richieste-acquisto/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 5
+    get:
+      tags: [RichiesteAcquisto]
+      summary: Dettaglio richiesta di acquisto
+      x-required-permission: acquisti:read
+      responses:
+        "200":
+          description: Dettaglio richiesta
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/RichiestaAcquistoDettaglio' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [RichiesteAcquisto]
+      summary: Elimina richiesta di acquisto
+      description: |
+        Eliminazione fisica. Consentita solo su richieste in stato `BOZZA`.
+        Richiede permesso `acquisti:write`.
+      x-required-permission: acquisti:write
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409":
+          description: Eliminazione consentita solo in stato BOZZA
+          content:
+            application/json:
+              example: { status: error, code: INVALID_STATE, message: "Eliminazione consentita solo in stato BOZZA", details: [] }
+
+  /richieste-acquisto/{id}/stato:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 5
+    patch:
+      tags: [RichiesteAcquisto]
+      summary: Cambia stato richiesta
+      description: |
+        Macchina a stati: `BOZZA→INVIATA→IN_VALUTAZIONE→ACCETTATA|RIFIUTATA`.
+        Transizioni terminali: `ACCETTATA` e `RIFIUTATA` non hanno uscite.
+        Richiede permesso `acquisti:approve`.
+      x-required-permission: acquisti:approve
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [stato]
+              properties:
+                stato: { $ref: '#/components/schemas/StatoRichiestaAcquisto' }
+            example:
+              stato: INVIATA
+      responses:
+        "200":
+          description: Stato aggiornato
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/RichiestaAcquisto' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409":
+          description: Transizione di stato non ammessa
+          content:
+            application/json:
+              example: { status: error, code: INVALID_TRANSITION, message: "Transizione BOZZA → ACCETTATA non ammessa", details: [] }
+
+  /richieste-acquisto/{id}/note:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 5
+    patch:
+      tags: [RichiesteAcquisto]
+      summary: Aggiorna note richiesta
+      description: |
+        Modifica le note. Consentito solo su richieste in stato `BOZZA`.
+        Richiede permesso `acquisti:write`.
+      x-required-permission: acquisti:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                note: { type: string, example: "Priorità alta — scorte in esaurimento" }
+      responses:
+        "200":
+          description: Note aggiornate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/RichiestaAcquisto' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409":
+          description: Modifica consentita solo in stato BOZZA
+          content:
+            application/json:
+              example: { status: error, code: INVALID_STATE, message: "Note modificabili solo in stato BOZZA", details: [] }
+
+  /richieste-acquisto/{id}/righe:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 5
+    post:
+      tags: [RichiesteAcquisto]
+      summary: Aggiungi riga a richiesta
+      description: |
+        Aggiunge una riga. Consentito solo su richieste in stato `BOZZA`.
+        Richiede permesso `acquisti:write`.
+      x-required-permission: acquisti:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RigaRichiestaCreateRequest' }
+            example:
+              prodotto_id: 9
+              quantita_richiesta: 30
+      responses:
+        "201":
+          description: Riga aggiunta
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/RigaRichiesta' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409":
+          description: Righe modificabili solo in stato BOZZA
+          content:
+            application/json:
+              example: { status: error, code: INVALID_STATE, message: "Righe modificabili solo in stato BOZZA", details: [] }
+
+  /richieste-acquisto/{id}/righe/{riga_id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 5
+      - name: riga_id
+        in: path
+        required: true
+        schema: { type: integer }
+        example: 12
+    patch:
+      tags: [RichiesteAcquisto]
+      summary: Aggiorna quantità riga
+      description: |
+        Modifica `quantita_richiesta`. Consentito solo su richieste in stato `BOZZA`.
+        Richiede permesso `acquisti:write`.
+      x-required-permission: acquisti:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantita_richiesta]
+              properties:
+                quantita_richiesta: { type: integer, minimum: 1, example: 40 }
+      responses:
+        "200":
+          description: Riga aggiornata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { $ref: '#/components/schemas/RigaRichiesta' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [RichiesteAcquisto]
+      summary: Rimuovi riga da richiesta
+      description: |
+        Rimozione fisica della riga. Consentita solo su richieste in stato `BOZZA`.
+        Richiede permesso `acquisti:write`.
+      x-required-permission: acquisti:write
+      responses:
+        "204": { $ref: '#/components/responses/NoContent' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
