@@ -97,7 +97,7 @@ const createNotificaCambioEsitoOrdineAcquisto = async ({ ordine, nuovoStato, cli
 const isOrdineAcquistoInRitardo = (ordine) =>
     Boolean(
         normalizeDateOnly(ordine?.data_prevista) &&
-        addDaysToDateOnly(normalizeDateOnly(ordine.data_prevista), 1) === normalizeDateOnly(getTodayDateString()) &&
+        normalizeDateOnly(ordine.data_prevista) < normalizeDateOnly(getTodayDateString()) &&
         STATI_NOTIFICA_PO_IN_RITARDO.includes(ordine.stato)
     );
 
@@ -228,6 +228,10 @@ const updateOrdineAcquisto = async (id, data) => {
             throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato');
         }
 
+        if (ordineRes.rows[0].stato !== 'BOZZA') {
+            throwError('STATE_TRANSITION_INVALID', 'Ordine modificabile solo in stato BOZZA');
+        }
+
         const righeRes = await righePoModel.findByOrdineAcquistoId(id, client);
         const importo_totale = righeRes.rows.reduce(
             (acc, r) => acc + (Number(r.quantita_ordinata) * Number(r.prezzo_unitario)),
@@ -307,6 +311,15 @@ const addRigaOrdineAcquisto = async (ordineId, data) => {
         await client.query('BEGIN');
 
         const { prodotto_id, quantita_ordinata, quantita, prezzo_unitario } = data;
+
+        const ordineCheck = await ordiniAcquistoModel.findById(ordineId, client);
+        if (ordineCheck.rowCount === 0) {
+            throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato');
+        }
+        if (ordineCheck.rows[0].stato !== 'BOZZA') {
+            throwError('STATE_TRANSITION_INVALID', 'Righe aggiungibili solo su ordini in stato BOZZA');
+        }
+
         const prodottoRes = await prodottiModel.findById(prodotto_id);
         if (prodottoRes.rowCount === 0) {
             throwError('RESOURCE_NOT_FOUND', `Prodotto ${prodotto_id} non trovato`);

@@ -103,27 +103,27 @@ const create = async (payload) => {
         throwError('VALIDATION_ERROR', 'La destinazione non appartiene al cliente indicato');
     }
 
-    const righeConPrezzo = [];
-
-    for (const r of righe) {
-        const prodottoRes = await prodottiModel.findById(r.prodotto_id);
-        if (prodottoRes.rowCount === 0) {
-            throwError('RESOURCE_NOT_FOUND', `Prodotto ${r.prodotto_id} non trovato`);
-        }
-        if (prodottoRes.rows[0].attivo !== true) {
-            throwError('VALIDATION_ERROR', `Prodotto ${r.prodotto_id} disattivato: non vendibile`);
-        }
-
-        righeConPrezzo.push({
-            prodotto_id: r.prodotto_id,
-            quantita: r.quantita,
-            prezzo_unitario: Number(prodottoRes.rows[0].prezzo || 0)
-        });
-    }
-
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+
+        const righeConPrezzo = [];
+
+        for (const r of righe) {
+            const prodottoRes = await prodottiModel.findById(r.prodotto_id);
+            if (prodottoRes.rowCount === 0) {
+                throwError('RESOURCE_NOT_FOUND', `Prodotto ${r.prodotto_id} non trovato`);
+            }
+            if (prodottoRes.rows[0].attivo !== true) {
+                throwError('VALIDATION_ERROR', `Prodotto ${r.prodotto_id} disattivato: non vendibile`);
+            }
+
+            righeConPrezzo.push({
+                prodotto_id: r.prodotto_id,
+                quantita: r.quantita,
+                prezzo_unitario: Number(prodottoRes.rows[0].prezzo || 0)
+            });
+        }
 
         const importo_totale = righeConPrezzo.reduce((sum, r) =>
             sum + Number(r.quantita || 0) * Number(r.prezzo_unitario || 0), 0);
@@ -234,6 +234,10 @@ const updateStato = async (id, nuovoStato) => {
             throwError('STATE_TRANSITION_INVALID', 'Impossibile spedire: il picking non e completato');
         }
 
+        if (nuovoStato === 'ANNULLATO' && ordine.stato_picking === 'PICKING_COMPLETATO') {
+            throwError('STATE_TRANSITION_INVALID', 'Impossibile annullare: picking completato. Gestire il rientro merce tramite movimento RESO in magazzino');
+        }
+
         const res = await ordiniModel.updateStato(id, nuovoStato, client);
 
         await client.query('COMMIT');
@@ -256,7 +260,7 @@ const updateStatoPicking = async (id, nuovoStatoPicking, prelievi) => {
     try {
         await client.query('BEGIN');
 
-        const ordineRes = await ordiniModel.findById(id, client);
+        const ordineRes = await ordiniModel.findByIdForUpdate(id, client);
         if (ordineRes.rowCount === 0) {
             throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato');
         }

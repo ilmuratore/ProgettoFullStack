@@ -38,7 +38,7 @@ const create = async (data, utente_id) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        const rResult = await richiesteModel.create({ fornitore_id, note, utente_id });
+        const rResult = await richiesteModel.create({ fornitore_id, note, utente_id }, client);
         const richiesta = rResult.rows[0];
         if (righe && righe.length > 0) {
             for (const riga of righe) {
@@ -57,12 +57,28 @@ const create = async (data, utente_id) => {
 };
 
 const updateStato = async (id, stato) => {
-    const richiesta = await getById(id);
-    const ammesse = richiesteModel.TRANSIZIONI_AMMESSE[richiesta.stato] || [];
-    if (!ammesse.includes(stato))
-        throwError('INVALID_TRANSITION', `Transizione ${richiesta.stato} → ${stato} non ammessa`);
-    const r = await richiesteModel.updateStato(id, stato);
-    return r.rows[0];
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const locked = await richiesteModel.findByIdForUpdate(id, client);
+        if (locked.rowCount === 0) throwError('RESOURCE_NOT_FOUND', 'Richiesta acquisto non trovata', 404);
+
+        const richiesta = locked.rows[0];
+        const ammesse = richiesteModel.TRANSIZIONI_AMMESSE[richiesta.stato] || [];
+        if (!ammesse.includes(stato))
+            throwError('INVALID_TRANSITION', `Transizione ${richiesta.stato} → ${stato} non ammessa`);
+
+        const r = await richiesteModel.updateStato(id, stato, client);
+
+        await client.query('COMMIT');
+        return r.rows[0];
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
 };
 
 const updateNote = async (id, note) => {

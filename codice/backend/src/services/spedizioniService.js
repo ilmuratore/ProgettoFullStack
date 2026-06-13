@@ -24,6 +24,7 @@ const canTransitionStato = (from, to) => {
     switch (from) {
         case 'IN_PREPARAZIONE': return to === 'SPEDITA';
         case 'SPEDITA': return to === 'CONSEGNATA';
+        case 'PROBLEMA': return to === 'SPEDITA';
         default: return false;
     }
 };
@@ -48,6 +49,11 @@ const create = async ({ ordine_id, cliente_id, destinazione_id, corriere_id, tra
     }
 
     const ordine = ordineRes.rows[0];
+
+    if (!['CONFERMATO', 'SPEDITO'].includes(ordine.stato)) {
+        throwError('STATE_TRANSITION_INVALID', `Impossibile creare spedizione: ordine in stato ${ordine.stato}`, 400);
+    }
+
     if (Number(ordine.cliente_id) !== Number(cliente_id)) {
         throwError('VALIDATION_ERROR', 'Il cliente non corrisponde all ordine indicato', 400);
     }
@@ -101,7 +107,7 @@ const updateStato = async (id, stato) => {
     try {
         await client.query('BEGIN');
 
-        const spedizioneResult = await spedizioniModel.findById(id);
+        const spedizioneResult = await spedizioniModel.findByIdForUpdate(id, client);
         if (spedizioneResult.rowCount === 0) {
             throwError('RESOURCE_NOT_FOUND', 'Spedizione non trovata', 404);
         }

@@ -29,13 +29,17 @@ router.get(
     ricezioniController.getById
 );
 
-// POST /api/v1/ricezioni
+// POST /api/v1/ricezioni — DEPRECATO: usare POST /api/v1/ordini-acquisto/ricezioni
 router.post(
     '/',
     auth,
     requirePermesso('acquisti:approve'),
-    validate(createBlueprint),
-    ricezioniController.create
+    (_req, _res, next) => {
+        const err = new Error('Endpoint deprecato. Usare POST /api/v1/ordini-acquisto/ricezioni');
+        err.code = 'ENDPOINT_DEPRECATED';
+        err.status = 410;
+        next(err);
+    }
 );
 
 // GET /api/v1/ricezioni/:id/righe

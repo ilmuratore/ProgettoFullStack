@@ -9,7 +9,7 @@ const throwError = (code, message) => {
 
 const assertCliente = async (cliente_id) => {
     const res = await clientiModel.findById(cliente_id);
-    if (res.rowCount === 0) {
+    if (res.rowCount === 0 || res.rows[0].attivo === false) {
         throwError('RESOURCE_NOT_FOUND', 'Cliente non trovato');
     }
     return res.rows[0];

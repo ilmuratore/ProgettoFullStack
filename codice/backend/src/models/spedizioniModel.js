@@ -47,6 +47,30 @@ const findById = (id) =>
         [id]
     );
 
+const findByIdForUpdate = (id, client) =>
+    (client || pool).query(
+        `SELECT spedizioni.id,
+                spedizioni.ordine_id,
+                spedizioni.cliente_id,
+                clienti.ragione_sociale AS cliente,
+                spedizioni.destinazione_id,
+                destinazioni_clienti.etichetta AS destinazione,
+                spedizioni.corriere_id,
+                corrieri.nome AS corriere,
+                corrieri.codice AS codice_corriere,
+                spedizioni.stato,
+                spedizioni.tracking_number,
+                spedizioni.created_at,
+                spedizioni.updated_at
+     FROM spedizioni
+     JOIN clienti ON spedizioni.cliente_id = clienti.id
+     JOIN destinazioni_clienti ON spedizioni.destinazione_id = destinazioni_clienti.id
+     LEFT JOIN corrieri ON spedizioni.corriere_id = corrieri.id
+     WHERE spedizioni.id = $1
+     FOR UPDATE OF spedizioni`,
+        [id]
+    );
+
 const findByOrdineId = (ordine_id) =>
     pool.query(
         `SELECT id, ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number, created_at, updated_at
@@ -145,6 +169,6 @@ const remove = (id) =>
 
 
 module.exports = {
-    findAll, findById, findByOrdineId, findByClienteId, findByDestinazioneId, findByCorriereId, findByStato,
+    findAll, findById, findByIdForUpdate, findByOrdineId, findByClienteId, findByDestinazioneId, findByCorriereId, findByStato,
     create, update, updateStato, updateTrackingNumber, remove
 };

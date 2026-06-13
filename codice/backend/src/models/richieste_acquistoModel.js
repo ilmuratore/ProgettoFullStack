@@ -95,16 +95,22 @@ const findById = (id) =>
         [id]
     );
 
-const create = ({ fornitore_id, note, utente_id }) =>
-    pool.query(
+const create = ({ fornitore_id, note, utente_id }, client) =>
+    (client || pool).query(
         `INSERT INTO richieste_acquisto (fornitore_id, stato, note, utente_id)
          VALUES ($1, 'BOZZA', $2, $3)
          RETURNING id, fornitore_id, stato, data_richiesta, note, utente_id, created_at`,
         [fornitore_id, note, utente_id]
     );
 
-const updateStato = (id, stato) =>
-    pool.query(
+const findByIdForUpdate = (id, client) =>
+    (client || pool).query(
+        `SELECT * FROM richieste_acquisto WHERE id = $1 FOR UPDATE`,
+        [id]
+    );
+
+const updateStato = (id, stato, client) =>
+    (client || pool).query(
         `UPDATE richieste_acquisto
          SET stato      = $1,
              updated_at = NOW()
@@ -140,6 +146,7 @@ module.exports = {
     findByStato,
     findById,
     create,
+    findByIdForUpdate,
     updateStato,
     updateNote,
     remove

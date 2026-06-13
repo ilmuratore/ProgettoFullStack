@@ -46,9 +46,8 @@ const createSottoScortaNotificationsIfNeeded = async ({ prodotto_id, client, qua
     }
 
     const enteredCriticalFromSafe = quantitaPrecedenteTotale >= scortaMinima;
-    const stillCriticalAfterFirstLoad = quantitaPrecedenteTotale === 0 && quantitaAttualeTotale > 0;
 
-    if (!enteredCriticalFromSafe && !stillCriticalAfterFirstLoad) {
+    if (!enteredCriticalFromSafe) {
         return;
     }
 
@@ -117,7 +116,13 @@ const getByRiferimento = async (riferimento) => {
     return result.rows;
 };
 
+const TIPI_SOLO_INTERNI = ['SCARICO_VENDITA', 'CARICO_ACQUISTO'];
+
 const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione_a_id, quantita, movimento_tipo, riferimento, note }, externalClient = null) => {
+    if (!externalClient && TIPI_SOLO_INTERNI.includes(movimento_tipo)) {
+        throwError('VALIDATION_ERROR', `Il tipo movimento ${movimento_tipo} non è consentito manualmente`);
+    }
+
     const prodottoResult = await prodottiModel.findById(prodotto_id);
     if (prodottoResult.rowCount === 0) {
         throwError('RESOURCE_NOT_FOUND', 'Prodotto non trovato');
@@ -146,10 +151,16 @@ const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione
         if (ubicazioneDaResult.rowCount === 0) {
             throwError('RESOURCE_NOT_FOUND', 'Ubicazione di partenza non trovata');
         }
+        if (ubicazioneDaResult.rows[0].attivo === false) {
+            throwError('VALIDATION_ERROR', 'Ubicazione di partenza non attiva');
+        }
 
         const ubicazioneAResult = await ubicazioniModel.findById(ubicazione_a_id);
         if (ubicazioneAResult.rowCount === 0) {
             throwError('RESOURCE_NOT_FOUND', 'Ubicazione di arrivo non trovata');
+        }
+        if (ubicazioneAResult.rows[0].attivo === false) {
+            throwError('VALIDATION_ERROR', 'Ubicazione di arrivo non attiva');
         }
 
         const client = externalClient || await pool.connect();
@@ -227,6 +238,9 @@ const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione
     const ubicazioneResult = await ubicazioniModel.findById(ubicazione_id);
     if (ubicazioneResult.rowCount === 0) {
         throwError('RESOURCE_NOT_FOUND', 'Ubicazione non trovata');
+    }
+    if (ubicazioneResult.rows[0].attivo === false) {
+        throwError('VALIDATION_ERROR', 'Ubicazione non attiva');
     }
 
     let delta = quantita;
