@@ -1191,6 +1191,31 @@
       "type": "string"
     },
     {
+      "key": "token_admin",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token_resp_acquisti",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token_resp_magazzino",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token_no_access",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "runId",
+      "value": "",
+      "type": "default"
+    },
+    {
       "key": "resp_acquisti_email",
       "value": "",
       "type": "string"
@@ -1221,26 +1246,6 @@
       "type": "string"
     },
     {
-      "key": "token_admin",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "token_resp_acquisti",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "token_no_access",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "token_resp_magazzino",
-      "value": "",
-      "type": "string"
-    },
-    {
       "key": "fornitore_id",
       "value": "",
       "type": "string"
@@ -1254,11 +1259,6 @@
       "key": "fornitore_eco_missing",
       "value": "false",
       "type": "string"
-    },
-    {
-      "key": "runId",
-      "value": "",
-      "type": "default"
     },
     {
       "key": "test_piva_fornitore",

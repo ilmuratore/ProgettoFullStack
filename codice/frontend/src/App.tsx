@@ -7,6 +7,7 @@ import { Header }  from './components/layout/Header';
 
 import { DashboardPage }      from './pages/DashboardPage';
 import { LoginPage }          from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
 import { UserProfilePage }    from './pages/UserProfilePage';
 import { SicurezzaPage }      from './pages/SicurezzaPage';
 import { SupportoPage }       from './pages/SupportoPage';
@@ -42,8 +43,6 @@ const PATH_TO_PAGE: Record<string, string> = Object.fromEntries(
   Object.entries(PAGE_TO_PATH).map(([k, v]) => [v, k])
 );
 
-// ─── PageProtectedRoute ───────────────────────────────────────────────────────
-// Solo RBAC: l'auth check è già in AppShell (layout padre).
 
 function PageProtectedRoute({ pageId, children }: { pageId: string; children: React.ReactNode }) {
   const { utente } = useAuthStore();
@@ -52,7 +51,6 @@ function PageProtectedRoute({ pageId, children }: { pageId: string; children: Re
   return <>{children}</>;
 }
 
-// ─── LoginWrapper ─────────────────────────────────────────────────────────────
 
 function LoginWrapper() {
   const { token, utente } = useAuthStore();
@@ -67,10 +65,6 @@ function LoginWrapper() {
   );
 }
 
-// ─── AppShell ─────────────────────────────────────────────────────────────────
-// Layout condiviso per tutte le rotte autenticate.
-// Monta UNA SOLA VOLTA per sessione — authApi.me() non si riesegue ad ogni navigazione.
-
 function AppShell() {
   const { token, utente, logout, setAuth } = useAuthStore();
   const navigate  = useNavigate();
@@ -80,7 +74,6 @@ function AppShell() {
     () => localStorage.getItem('sidebar-collapsed') === 'true'
   );
 
-  // me() chiamato una sola volta al mount del layout, non ad ogni cambio pagina.
   useEffect(() => {
     const storedToken = localStorage.getItem('lc_token');
     if (!storedToken) return;
@@ -89,8 +82,6 @@ function AppShell() {
       .catch(() => {});
   }, []);
 
-  // Zustand inizializza token/utente da localStorage al primo render,
-  // quindi questo redirect scatta solo in caso di logout o token assente.
   if (!token || !utente) return <Navigate to="/login" replace />;
 
   const ruoloNome = (
@@ -156,10 +147,12 @@ function AppRouter() {
     <Routes>
       <Route path="/login" element={<LoginWrapper />} />
 
-      {/* AppShell come layout condiviso — monta una sola volta per tutta la sessione */}
       <Route element={<AppShell />}>
 
         {/* Pagine principali con RBAC */}
+        <Route path="/register" element={
+  <PageProtectedRoute pageId="register"><RegisterPage /></PageProtectedRoute>
+} />
         <Route path="/" element={
           <PageProtectedRoute pageId="dashboard"><DashboardPage /></PageProtectedRoute>
         } />

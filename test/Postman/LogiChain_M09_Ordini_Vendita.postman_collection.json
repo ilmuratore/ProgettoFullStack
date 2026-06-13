@@ -47,7 +47,18 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{base_url}}/api/v1/auth/login",
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
@@ -84,7 +95,18 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/auth/register",
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Vendite\",\n  \"email\": \"{{vendite_email}}\",\n  \"password\": \"{{vendite_password}}\",\n  \"ruolo_id\": 6\n}",
@@ -121,7 +143,18 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/auth/register",
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nome\": \"Corr\",\n  \"cognome\": \"Iere\",\n  \"email\": \"{{corriere_email}}\",\n  \"password\": \"{{corriere_password}}\",\n  \"ruolo_id\": 10\n}",
@@ -156,7 +189,18 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{base_url}}/api/v1/auth/login",
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{vendite_email}}\",\n  \"password\": \"{{vendite_password}}\"\n}",
@@ -191,7 +235,18 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{base_url}}/api/v1/auth/login",
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{corriere_email}}\",\n  \"password\": \"{{corriere_password}}\"\n}",
@@ -230,7 +285,17 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/clienti",
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"ragione_sociale\": \"Cliente Test M09\",\n  \"piva_cf\": \"{{cliente_piva_cf}}\",\n  \"email\": \"info.m09@cliente.it\",\n  \"telefono\": \"000\"\n}",
@@ -269,7 +334,19 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/clienti/{{cliente_id}}/destinazioni",
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti/{{cliente_id}}/destinazioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti",
+                "{{cliente_id}}",
+                "destinazioni"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"etichetta\": \"Sede M09\",\n  \"indirizzo\": \"Via Test 9\",\n  \"cap\": \"20100\",\n  \"citta\": \"Milano\",\n  \"provincia\": \"MI\",\n  \"paese\": \"Italia\",\n  \"predefinita\": true\n}",
@@ -308,7 +385,17 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/prodotti",
+            "url": {
+              "raw": "{{base_url}}/api/v1/prodotti",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nome\": \"Prodotto Test M09\",\n  \"sku\": \"{{prodotto_sku}}\",\n  \"prezzo\": 12.50\n}",
@@ -347,7 +434,17 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/magazzini",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"codice\": \"{{magazzino_codice}}\",\n  \"nome\": \"Magazzino Test M09\",\n  \"indirizzo\": \"Via Test 9\"\n}",
@@ -386,7 +483,19 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini",
+                "{{magazzino_id}}",
+                "ubicazioni"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"corsia\": 1,\n  \"scaffale\": 1,\n  \"temperatura_controllata\": false\n}",
@@ -423,7 +532,17 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "url": {
+              "raw": "{{base_url}}/api/v1/movimenti-stock",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "movimenti-stock"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"prodotto_id\": {{prodotto_id}},\n  \"ubicazione_id\": {{ubicazione_id}},\n  \"quantita\": 100,\n  \"movimento_tipo\": \"CARICO_ACQUISTO\",\n  \"riferimento\": \"setup:m09\"\n}",
@@ -466,7 +585,17 @@
                 "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"destinazione_id\": {{destinazione_id}},\n  \"righe\": [ { \"prodotto_id\": {{prodotto_id}}, \"quantita\": 10, \"prezzo_unitario\": 5 } ]\n}",
@@ -504,7 +633,17 @@
                 "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"cliente_id\": {{cliente_id}},\n  \"destinazione_id\": {{destinazione_id}},\n  \"righe\": []\n}",
@@ -545,7 +684,17 @@
                 "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"cliente_id\": {{cliente_id}},\n  \"destinazione_id\": {{destinazione_id}},\n  \"data_consegna_richiesta\": \"2026-07-01\",\n  \"righe\": [ { \"prodotto_id\": {{prodotto_id}}, \"quantita\": 40, \"prezzo_unitario\": 12.50 } ]\n}",
@@ -586,7 +735,17 @@
                 "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"cliente_id\": {{cliente_id}},\n  \"destinazione_id\": {{destinazione_id}},\n  \"data_consegna_richiesta\": \"2026-07-02\",\n  \"righe\": [ { \"prodotto_id\": {{prodotto_id}}, \"quantita\": 10, \"prezzo_unitario\": 12.50 } ]\n}",
@@ -624,7 +783,19 @@
                 "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini/{{ordine_new_id}}/stato",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini/{{ordine_new_id}}/stato",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "{{ordine_new_id}}",
+                "stato"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"stato\": \"CONFERMATO\"\n}",
@@ -663,7 +834,19 @@
                 "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini/{{ordine_old_id}}/stato",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini/{{ordine_old_id}}/stato",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "{{ordine_old_id}}",
+                "stato"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"stato\": \"CONFERMATO\"\n}",
@@ -702,7 +885,19 @@
                 "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini/{{ordine_new_id}}/stato",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini/{{ordine_new_id}}/stato",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "{{ordine_new_id}}",
+                "stato"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"stato\": \"CONFERMATO\"\n}",
@@ -739,7 +934,19 @@
                 "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini/disponibilita/{{prodotto_id}}"
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini/disponibilita/{{prodotto_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "disponibilita",
+                "{{prodotto_id}}"
+              ]
+            }
           }
         },
         {
@@ -769,7 +976,17 @@
                 "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"cliente_id\": {{cliente_id}},\n  \"destinazione_id\": {{destinazione_id}},\n  \"righe\": [ { \"prodotto_id\": {{prodotto_id}}, \"quantita\": 60, \"prezzo_unitario\": 1 } ]\n}",
@@ -807,7 +1024,19 @@
                 "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini/{{ordine_big_id}}/stato",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini/{{ordine_big_id}}/stato",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "{{ordine_big_id}}",
+                "stato"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"stato\": \"CONFERMATO\"\n}",
@@ -846,7 +1075,19 @@
                 "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini/{{ordine_old_id}}/picking",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini/{{ordine_old_id}}/picking",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "{{ordine_old_id}}",
+                "picking"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"stato_picking\": \"IN_PICKING\"\n}",
@@ -886,7 +1127,19 @@
                 "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini/{{ordine_old_id}}/picking",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini/{{ordine_old_id}}/picking",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "{{ordine_old_id}}",
+                "picking"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"stato_picking\": \"PICKING_COMPLETATO\",\n  \"prelievi\": [\n    {\n      \"riga_id\": {{riga_old_id}},\n      \"ubicazioni\": [\n        { \"ubicazione_id\": {{ubicazione_id}}, \"quantita\": 40 }\n      ]\n    }\n  ]\n}",
@@ -925,7 +1178,19 @@
                 "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini/{{ordine_old_id}}/stato",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini/{{ordine_old_id}}/stato",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "{{ordine_old_id}}",
+                "stato"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"stato\": \"SPEDITO\"\n}",
@@ -964,7 +1229,19 @@
                 "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini/{{ordine_new_id}}/picking",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini/{{ordine_new_id}}/picking",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "{{ordine_new_id}}",
+                "picking"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"stato_picking\": \"IN_PICKING\"\n}",
@@ -1002,7 +1279,19 @@
                 "value": "Bearer {{token_vendite}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini/{{ordine_new_id}}/picking",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini/{{ordine_new_id}}/picking",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "{{ordine_new_id}}",
+                "picking"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"stato_picking\": \"PICKING_COMPLETATO\",\n  \"prelievi\": [\n    {\n      \"riga_id\": {{riga_new_id}},\n      \"ubicazioni\": [\n        { \"ubicazione_id\": {{ubicazione_id}}, \"quantita\": 5 }\n      ]\n    }\n  ]\n}",
@@ -1020,31 +1309,18 @@
   "variable": [
     {
       "key": "base_url",
-      "value": "http://localhost:3000"
+      "value": "http://localhost:3000",
+      "type": "default"
     },
     {
       "key": "admin_email",
-      "value": "admin@logichain.it"
+      "value": "admin@logichain.it",
+      "type": "default"
     },
     {
       "key": "admin_password",
-      "value": "Admin123!"
-    },
-    {
-      "key": "vendite_email",
-      "value": ""
-    },
-    {
-      "key": "vendite_password",
-      "value": "Test1234!"
-    },
-    {
-      "key": "corriere_email",
-      "value": ""
-    },
-    {
-      "key": "corriere_password",
-      "value": "Test1234!"
+      "value": "Admin123!",
+      "type": "default"
     },
     {
       "key": "token_admin",
@@ -1061,6 +1337,22 @@
     {
       "key": "runId",
       "value": ""
+    },
+    {
+      "key": "vendite_email",
+      "value": ""
+    },
+    {
+      "key": "vendite_password",
+      "value": "Test1234!"
+    },
+    {
+      "key": "corriere_email",
+      "value": ""
+    },
+    {
+      "key": "corriere_password",
+      "value": "Test1234!"
     },
     {
       "key": "cliente_id",

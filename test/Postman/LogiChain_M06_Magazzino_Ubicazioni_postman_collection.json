@@ -25,6 +25,30 @@
       "type": "default"
     },
     {
+      "id": "148b59a8-45af-4c75-badb-fab067a96632",
+      "key": "token_admin",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "d210ac14-5bcf-4a58-8ea5-ef3075a4b4d3",
+      "key": "token_resp_mag",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "5ab0e250-f73e-41bc-9ee5-6b924b5b0169",
+      "key": "token_no_access",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "4cc73d27-5e90-4e33-b2ae-0564ed81b400",
+      "key": "runId",
+      "value": "",
+      "type": "default"
+    },
+    {
       "id": "798a02f5-2c34-4b34-927a-b88a5f6328dd",
       "key": "resp_magazzino_email",
       "value": "",
@@ -49,24 +73,6 @@
       "type": "default"
     },
     {
-      "id": "148b59a8-45af-4c75-badb-fab067a96632",
-      "key": "token_admin",
-      "value": "",
-      "type": "default"
-    },
-    {
-      "id": "d210ac14-5bcf-4a58-8ea5-ef3075a4b4d3",
-      "key": "token_resp_mag",
-      "value": "",
-      "type": "default"
-    },
-    {
-      "id": "5ab0e250-f73e-41bc-9ee5-6b924b5b0169",
-      "key": "token_no_access",
-      "value": "",
-      "type": "default"
-    },
-    {
       "id": "039e6b56-b713-43b3-8f9c-e012c3b44fd5",
       "key": "magazzino_id",
       "value": "",
@@ -75,12 +81,6 @@
     {
       "id": "79ce7973-edc9-47a9-9d44-2f2c2cd32120",
       "key": "ubicazione_id",
-      "value": "",
-      "type": "default"
-    },
-    {
-      "id": "4cc73d27-5e90-4e33-b2ae-0564ed81b400",
-      "key": "runId",
       "value": "",
       "type": "default"
     },
@@ -376,7 +376,17 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/magazzini",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -405,7 +415,17 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/v1/magazzini",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -439,7 +459,17 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/v1/magazzini",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -473,7 +503,17 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/v1/magazzini",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -508,7 +548,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini",
+                "{{magazzino_id}}"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -534,7 +585,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/magazzini/99999",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini/99999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini",
+                "99999"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -561,7 +623,18 @@
           ],
           "request": {
             "method": "PATCH",
-            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini",
+                "{{magazzino_id}}"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -595,7 +668,18 @@
           ],
           "request": {
             "method": "PATCH",
-            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini",
+                "{{magazzino_id}}"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -629,7 +713,18 @@
           ],
           "request": {
             "method": "PATCH",
-            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini",
+                "{{magazzino_id}}"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -663,7 +758,19 @@
           ],
           "request": {
             "method": "PATCH",
-            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/toggle",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/toggle",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini",
+                "{{magazzino_id}}",
+                "toggle"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -689,7 +796,19 @@
           ],
           "request": {
             "method": "PATCH",
-            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/toggle",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/toggle",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini",
+                "{{magazzino_id}}",
+                "toggle"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -713,7 +832,17 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/magazzini"
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini"
+              ]
+            }
           }
         },
         {
@@ -733,7 +862,17 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/v1/magazzini",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -777,7 +916,19 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini",
+                "{{magazzino_id}}",
+                "ubicazioni"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -811,7 +962,19 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini",
+                "{{magazzino_id}}",
+                "ubicazioni"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -845,7 +1008,19 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/v1/magazzini/99999/ubicazioni",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini/99999/ubicazioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini",
+                "99999",
+                "ubicazioni"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -879,7 +1054,19 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini",
+                "{{magazzino_id}}",
+                "ubicazioni"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -914,7 +1101,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/ubicazioni/{{ubicazione_id}}",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ubicazioni/{{ubicazione_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ubicazioni",
+                "{{ubicazione_id}}"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -940,7 +1138,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/ubicazioni/99999",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ubicazioni/99999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ubicazioni",
+                "99999"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -970,7 +1179,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini",
+                "{{magazzino_id}}"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -997,7 +1217,18 @@
           ],
           "request": {
             "method": "PATCH",
-            "url": "{{base_url}}/api/v1/ubicazioni/{{ubicazione_id}}",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ubicazioni/{{ubicazione_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ubicazioni",
+                "{{ubicazione_id}}"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -1032,7 +1263,19 @@
           ],
           "request": {
             "method": "PATCH",
-            "url": "{{base_url}}/api/v1/ubicazioni/{{ubicazione_id}}/toggle",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ubicazioni/{{ubicazione_id}}/toggle",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ubicazioni",
+                "{{ubicazione_id}}",
+                "toggle"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -1058,7 +1301,19 @@
           ],
           "request": {
             "method": "PATCH",
-            "url": "{{base_url}}/api/v1/ubicazioni/{{ubicazione_id}}/toggle",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ubicazioni/{{ubicazione_id}}/toggle",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ubicazioni",
+                "{{ubicazione_id}}",
+                "toggle"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -1082,7 +1337,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/ubicazioni/{{ubicazione_id}}"
+            "url": {
+              "raw": "{{base_url}}/api/v1/ubicazioni/{{ubicazione_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ubicazioni",
+                "{{ubicazione_id}}"
+              ]
+            }
           }
         },
         {
@@ -1102,7 +1368,19 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini",
+                "{{magazzino_id}}",
+                "ubicazioni"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",

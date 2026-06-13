@@ -500,7 +500,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}"
+            "url": {
+              "raw": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "giacenze",
+                "{{prodotto_id}}"
+              ]
+            }
           }
         },
         {
@@ -522,7 +533,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
+            "url": {
+              "raw": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "giacenze",
+                "{{prodotto_id}}"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -555,7 +577,17 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "url": {
+              "raw": "{{base_url}}/api/v1/movimenti-stock",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "movimenti-stock"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -590,7 +622,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/movimenti-stock/{{movimento_id}}",
+            "url": {
+              "raw": "{{base_url}}/api/v1/movimenti-stock/{{movimento_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "movimenti-stock",
+                "{{movimento_id}}"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -617,7 +660,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
+            "url": {
+              "raw": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "giacenze",
+                "{{prodotto_id}}"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -642,7 +696,17 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "url": {
+              "raw": "{{base_url}}/api/v1/movimenti-stock",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "movimenti-stock"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -677,7 +741,17 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "url": {
+              "raw": "{{base_url}}/api/v1/movimenti-stock",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "movimenti-stock"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -710,7 +784,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
+            "url": {
+              "raw": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "giacenze",
+                "{{prodotto_id}}"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -737,7 +822,17 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "url": {
+              "raw": "{{base_url}}/api/v1/movimenti-stock",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "movimenti-stock"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -770,7 +865,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
+            "url": {
+              "raw": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "giacenze",
+                "{{prodotto_id}}"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -799,7 +905,17 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "url": {
+              "raw": "{{base_url}}/api/v1/movimenti-stock",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "movimenti-stock"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -836,7 +952,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
+            "url": {
+              "raw": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "giacenze",
+                "{{prodotto_id}}"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -863,7 +990,19 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/movimenti-stock/riferimento/{{riferimento_spostamento}}",
+            "url": {
+              "raw": "{{base_url}}/api/v1/movimenti-stock/riferimento/{{riferimento_spostamento}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "movimenti-stock",
+                "riferimento",
+                "{{riferimento_spostamento}}"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -890,7 +1029,19 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/movimenti-stock/tipo/SPOSTAMENTO",
+            "url": {
+              "raw": "{{base_url}}/api/v1/movimenti-stock/tipo/SPOSTAMENTO",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "movimenti-stock",
+                "tipo",
+                "SPOSTAMENTO"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -915,7 +1066,17 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "url": {
+              "raw": "{{base_url}}/api/v1/movimenti-stock",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "movimenti-stock"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -951,7 +1112,17 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "url": {
+              "raw": "{{base_url}}/api/v1/movimenti-stock",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "movimenti-stock"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -976,7 +1147,19 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/movimenti-stock/tipo/TIPO_INVALIDO",
+            "url": {
+              "raw": "{{base_url}}/api/v1/movimenti-stock/tipo/TIPO_INVALIDO",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "movimenti-stock",
+                "tipo",
+                "TIPO_INVALIDO"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -1001,7 +1184,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/giacenze/99999",
+            "url": {
+              "raw": "{{base_url}}/api/v1/giacenze/99999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "giacenze",
+                "99999"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -1028,7 +1222,17 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "url": {
+              "raw": "{{base_url}}/api/v1/movimenti-stock",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "movimenti-stock"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -1064,7 +1268,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
+            "url": {
+              "raw": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "giacenze",
+                "{{prodotto_id}}"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -1091,7 +1306,17 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "url": {
+              "raw": "{{base_url}}/api/v1/movimenti-stock",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "movimenti-stock"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -1125,7 +1350,18 @@
           ],
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
+            "url": {
+              "raw": "{{base_url}}/api/v1/giacenze/{{prodotto_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "giacenze",
+                "{{prodotto_id}}"
+              ]
+            },
             "header": [
               {
                 "key": "Authorization",
@@ -1150,7 +1386,17 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "url": {
+              "raw": "{{base_url}}/api/v1/movimenti-stock",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "movimenti-stock"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -1183,7 +1429,17 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/api/v1/movimenti-stock",
+            "url": {
+              "raw": "{{base_url}}/api/v1/movimenti-stock",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "movimenti-stock"
+              ]
+            },
             "header": [
               {
                 "key": "Content-Type",
@@ -1206,31 +1462,18 @@
   "variable": [
     {
       "key": "base_url",
-      "value": "http://localhost:3000"
+      "value": "http://localhost:3000",
+      "type": "default"
     },
     {
       "key": "admin_email",
-      "value": "admin@logichain.it"
+      "value": "admin@logichain.it",
+      "type": "default"
     },
     {
       "key": "admin_password",
-      "value": "Admin123!"
-    },
-    {
-      "key": "resp_magazzino_email",
-      "value": ""
-    },
-    {
-      "key": "resp_magazzino_password",
-      "value": "Test1234!"
-    },
-    {
-      "key": "corriere_email",
-      "value": ""
-    },
-    {
-      "key": "corriere_password",
-      "value": "Test1234!"
+      "value": "Admin123!",
+      "type": "default"
     },
     {
       "key": "token_admin",
@@ -1247,6 +1490,22 @@
     {
       "key": "runId",
       "value": ""
+    },
+    {
+      "key": "resp_magazzino_email",
+      "value": ""
+    },
+    {
+      "key": "resp_magazzino_password",
+      "value": "Test1234!"
+    },
+    {
+      "key": "corriere_email",
+      "value": ""
+    },
+    {
+      "key": "corriere_password",
+      "value": "Test1234!"
     },
     {
       "key": "prodotto_id",

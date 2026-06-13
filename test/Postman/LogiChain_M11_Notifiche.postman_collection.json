@@ -46,7 +46,18 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{base_url}}/api/v1/auth/login",
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
@@ -90,7 +101,17 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/notifiche"
+            "url": {
+              "raw": "{{base_url}}/api/v1/notifiche",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifiche"
+              ]
+            }
           }
         },
         {
@@ -119,7 +140,18 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/notifiche/count"
+            "url": {
+              "raw": "{{base_url}}/api/v1/notifiche/count",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifiche",
+                "count"
+              ]
+            }
           }
         },
         {
@@ -151,7 +183,18 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/notifiche/non-lette"
+            "url": {
+              "raw": "{{base_url}}/api/v1/notifiche/non-lette",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifiche",
+                "non-lette"
+              ]
+            }
           }
         },
         {
@@ -189,7 +232,18 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/notifiche/{{notifica_id}}"
+            "url": {
+              "raw": "{{base_url}}/api/v1/notifiche/{{notifica_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifiche",
+                "{{notifica_id}}"
+              ]
+            }
           }
         },
         {
@@ -213,7 +267,18 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/notifiche/999999999"
+            "url": {
+              "raw": "{{base_url}}/api/v1/notifiche/999999999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifiche",
+                "999999999"
+              ]
+            }
           }
         },
         {
@@ -251,7 +316,19 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/notifiche/{{notifica_non_letta_id}}/letta"
+            "url": {
+              "raw": "{{base_url}}/api/v1/notifiche/{{notifica_non_letta_id}}/letta",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifiche",
+                "{{notifica_non_letta_id}}",
+                "letta"
+              ]
+            }
           }
         },
         {
@@ -280,7 +357,18 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/notifiche/count"
+            "url": {
+              "raw": "{{base_url}}/api/v1/notifiche/count",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifiche",
+                "count"
+              ]
+            }
           }
         },
         {
@@ -307,7 +395,18 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/notifiche/letta-tutto"
+            "url": {
+              "raw": "{{base_url}}/api/v1/notifiche/letta-tutto",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifiche",
+                "letta-tutto"
+              ]
+            }
           }
         },
         {
@@ -335,7 +434,18 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/notifiche/non-lette"
+            "url": {
+              "raw": "{{base_url}}/api/v1/notifiche/non-lette",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifiche",
+                "non-lette"
+              ]
+            }
           }
         },
         {
@@ -359,7 +469,19 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/notifiche/999999999/letta"
+            "url": {
+              "raw": "{{base_url}}/api/v1/notifiche/999999999/letta",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifiche",
+                "999999999",
+                "letta"
+              ]
+            }
           }
         },
         {
@@ -378,7 +500,17 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{base_url}}/api/v1/notifiche"
+            "url": {
+              "raw": "{{base_url}}/api/v1/notifiche",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifiche"
+              ]
+            }
           }
         }
       ]
@@ -387,15 +519,18 @@
   "variable": [
     {
       "key": "base_url",
-      "value": "http://localhost:3000"
+      "value": "http://localhost:3000",
+      "type": "default"
     },
     {
       "key": "admin_email",
-      "value": "admin@logichain.it"
+      "value": "admin@logichain.it",
+      "type": "default"
     },
     {
       "key": "admin_password",
-      "value": "Admin123!"
+      "value": "Admin123!",
+      "type": "default"
     },
     {
       "key": "token_admin",

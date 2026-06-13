@@ -24,6 +24,36 @@
       "type": "default"
     },
     {
+      "id": "381655a6-8027-4341-ad7d-339cbab84c16",
+      "key": "token_admin",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "b8bff636-1d3b-4975-ae98-e017ee8c3910",
+      "key": "token_resp_acquisti",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "645d24a0-8c96-4814-9998-d6593c231c50",
+      "key": "token_resp_magazzino",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "66625ce1-1467-4aff-8b4d-dca6aab8457f",
+      "key": "token_operatore",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "id": "8f0acc72-8323-4b44-94b3-0c3ffcc6400b",
+      "key": "runId",
+      "value": "",
+      "type": "default"
+    },
+    {
       "id": "1cc083c4-23d5-4de5-bcb8-2f5797266526",
       "key": "resp_acquisti_email",
       "value": "",
@@ -60,30 +90,6 @@
       "type": "default"
     },
     {
-      "id": "381655a6-8027-4341-ad7d-339cbab84c16",
-      "key": "token_admin",
-      "value": "",
-      "type": "default"
-    },
-    {
-      "id": "b8bff636-1d3b-4975-ae98-e017ee8c3910",
-      "key": "token_resp_acquisti",
-      "value": "",
-      "type": "default"
-    },
-    {
-      "id": "645d24a0-8c96-4814-9998-d6593c231c50",
-      "key": "token_resp_magazzino",
-      "value": "",
-      "type": "default"
-    },
-    {
-      "id": "66625ce1-1467-4aff-8b4d-dca6aab8457f",
-      "key": "token_operatore",
-      "value": "",
-      "type": "default"
-    },
-    {
       "id": "b5f8364f-c2b5-4a28-bf6b-4a1ea668f058",
       "key": "cliente_id",
       "value": "",
@@ -99,12 +105,6 @@
       "key": "cliente_eco_missing",
       "value": "false",
       "type": "string"
-    },
-    {
-      "id": "8f0acc72-8323-4b44-94b3-0c3ffcc6400b",
-      "key": "runId",
-      "value": "",
-      "type": "default"
     },
     {
       "key": "test_piva_cf",

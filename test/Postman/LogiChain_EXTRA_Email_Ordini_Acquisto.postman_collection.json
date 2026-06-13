@@ -1,0 +1,642 @@
+{
+  "info": {
+    "_postman_id": "d7f0025f-e2ac-47c6-95c3-2c037b0e3c37",
+    "name": "LogiChain V2 — Extra Email Ordine Acquisto",
+    "description": "Collection per testare l'invio email degli ordini di acquisto con PDF ordine generato dal backend e contabile opzionale in allegato.\n\nFlusso consigliato:\n1. Compila email/password nelle variabili della collection.\n2. Esegui Login: il token viene salvato automaticamente.\n3. Esegui Lista ordini acquisto oppure imposta manualmente ordine_acquisto_id.\n4. Esegui PDF ordine per verificare che il PDF venga generato.\n5. Esegui Invia email senza contabile oppure Invia email con contabile.\n6. Esegui Email log ordine per verificare il log dell'invio.\n\nAllineata allo standard delle milestone: base_url=http://localhost:3000, admin_email/admin_password, token_admin e URL /api/v1/... . Questa collection resta un flusso operativo/manuale: usa ordine_acquisto_id esistente oppure impostalo dopo aver eseguito M08.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "admin_email",
+      "value": "admin@logichain.it",
+      "type": "string"
+    },
+    {
+      "key": "admin_password",
+      "value": "Admin123!",
+      "type": "string"
+    },
+    {
+      "key": "token_admin",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ordine_acquisto_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "email_to",
+      "value": "fornitore@example.com",
+      "type": "string"
+    },
+    {
+      "key": "email_cc",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "email_bcc",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "email_subject",
+      "value": "Ordine di acquisto PO-{{ordine_acquisto_id}}",
+      "type": "string"
+    },
+    {
+      "key": "email_message",
+      "value": "Buongiorno,\\n\\nin allegato trasmettiamo ordine di acquisto e documentazione relativa.\\n\\nCordiali saluti.",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Auth",
+      "item": [
+        {
+          "name": "Login - salva token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Compila le collection variables email e password. Dopo il login il token viene salvato automaticamente in {{token_admin}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login OK', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "const token = json?.data?.token || json?.token;",
+                  "",
+                  "if (token) {",
+                  "  pm.collectionVariables.set('token_admin', token);",
+                  "  console.log('Token salvato nelle collection variables');",
+                  "} else {",
+                  "  console.warn('Token non trovato nella risposta. Controlla il formato della response.');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me - verifica token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Verifica che il token salvato sia valido."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Me OK', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Ordini acquisto",
+      "item": [
+        {
+          "name": "Lista ordini acquisto - imposta primo ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto"
+              ]
+            },
+            "description": "Recupera gli ordini acquisto. Se trova almeno un ordine, salva automaticamente il primo id in {{ordine_acquisto_id}}."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lista ordini OK', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "const rows = Array.isArray(json?.data) ? json.data : [];",
+                  "",
+                  "if (rows.length > 0 && rows[0].id) {",
+                  "  pm.collectionVariables.set('ordine_acquisto_id', String(rows[0].id));",
+                  "  console.log('ordine_acquisto_id impostato automaticamente:', rows[0].id);",
+                  "} else {",
+                  "  console.warn('Nessun ordine trovato. Crea un ordine oppure imposta ordine_acquisto_id manualmente.');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dettaglio ordine acquisto",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_acquisto_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_acquisto_id}}"
+              ]
+            },
+            "description": "Controlla che l'ordine esista e abbia fornitore/righe coerenti."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Dettaglio ordine OK', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PDF ordine acquisto",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_acquisto_id}}/pdf",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_acquisto_id}}",
+                "pdf"
+              ]
+            },
+            "description": "Verifica che il PDF dell'ordine venga generato correttamente. Questo è lo stesso PDF che viene allegato all'email."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('PDF generato', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Invio email ordine acquisto",
+      "item": [
+        {
+          "name": "Invia email senza contabile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_acquisto_id}}/invia-email",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_acquisto_id}}",
+                "invia-email"
+              ]
+            },
+            "description": "Invia email allegando solo il PDF ordine generato dal backend. Non impostare manualmente Content-Type: Postman gestisce il boundary multipart.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "to",
+                  "value": "{{email_to}}",
+                  "type": "text",
+                  "description": "Opzionale: se lo lasci vuoto, il backend usa fornitori.email"
+                },
+                {
+                  "key": "cc",
+                  "value": "{{email_cc}}",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "bcc",
+                  "value": "{{email_bcc}}",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "subject",
+                  "value": "{{email_subject}}",
+                  "type": "text"
+                },
+                {
+                  "key": "message",
+                  "value": "{{email_message}}",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invio email OK', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Response success', function () {",
+                  "  pm.expect(json.status).to.eql('success');",
+                  "  pm.expect(json.data).to.have.property('email_log');",
+                  "});",
+                  "",
+                  "if (json?.data?.email_log?.id) {",
+                  "  console.log('Email log id:', json.data.email_log.id);",
+                  "}",
+                  "if (json?.data?.message_id) {",
+                  "  console.log('Provider message id:', json.data.message_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invia email con contabile PDF/immagine",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_acquisto_id}}/invia-email",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_acquisto_id}}",
+                "invia-email"
+              ]
+            },
+            "description": "Invia email con PDF ordine + contabile bonifico. Dopo l'import della collection devi selezionare manualmente il file nel campo contabile.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "to",
+                  "value": "{{email_to}}",
+                  "type": "text",
+                  "description": "Opzionale: se lo lasci vuoto, il backend usa fornitori.email"
+                },
+                {
+                  "key": "cc",
+                  "value": "{{email_cc}}",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "bcc",
+                  "value": "{{email_bcc}}",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "subject",
+                  "value": "{{email_subject}}",
+                  "type": "text"
+                },
+                {
+                  "key": "message",
+                  "value": "{{email_message}}",
+                  "type": "text"
+                },
+                {
+                  "key": "contabile",
+                  "type": "file",
+                  "src": "",
+                  "description": "Seleziona un file locale: PDF, JPG, PNG o WEBP. Max default: 10 MB."
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invio email OK', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Response success', function () {",
+                  "  pm.expect(json.status).to.eql('success');",
+                  "  pm.expect(json.data).to.have.property('email_log');",
+                  "});",
+                  "",
+                  "if (json?.data?.email_log?.id) {",
+                  "  console.log('Email log id:', json.data.email_log.id);",
+                  "}",
+                  "if (json?.data?.message_id) {",
+                  "  console.log('Provider message id:', json.data.message_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Email log ordine",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_acquisto_id}}/email-log",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_acquisto_id}}",
+                "email-log"
+              ]
+            },
+            "description": "Mostra lo storico degli invii email per l'ordine selezionato."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Email log OK', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Data array', function () {",
+                  "  pm.expect(json.status).to.eql('success');",
+                  "  pm.expect(json.data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Diagnostica utile",
+      "item": [
+        {
+          "name": "Lista fornitori",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori"
+              ]
+            },
+            "description": "Utile per controllare che il fornitore collegato all'ordine abbia una email configurata."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Lista fornitori OK', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Forza destinatario usando variabile email_to",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_acquisto_id}}/invia-email",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_acquisto_id}}",
+                "invia-email"
+              ]
+            },
+            "description": "Richiesta minima per capire se SMTP, token, permessi e generazione PDF funzionano.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "to",
+                  "value": "{{email_to}}",
+                  "type": "text"
+                },
+                {
+                  "key": "subject",
+                  "value": "Test SMTP LogiChain - PO {{ordine_acquisto_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "message",
+                  "value": "Test invio SMTP da LogiChain ERP. Email generata da Postman.",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invio email OK', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "pm.test('Response success', function () {",
+                  "  pm.expect(json.status).to.eql('success');",
+                  "  pm.expect(json.data).to.have.property('email_log');",
+                  "});",
+                  "",
+                  "if (json?.data?.email_log?.id) {",
+                  "  console.log('Email log id:', json.data.email_log.id);",
+                  "}",
+                  "if (json?.data?.message_id) {",
+                  "  console.log('Provider message id:', json.data.message_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

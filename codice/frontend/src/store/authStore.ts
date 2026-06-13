@@ -93,7 +93,7 @@ const PERMESSI_PER_RUOLO: Record<number, string[]> = {
     'fornitori:read', 'clienti:read',
     'magazzino:read', 'magazzino:write',
     'giacenze:read', 'giacenze:write',
-    'acquisti:approve',
+    'acquisti:read', 'acquisti:approve',
     'ordini:read', 'ordini:approve',
     'spedizioni:read', 'spedizioni:write',
     'notifiche:read', 'dashboard:read',
@@ -102,7 +102,7 @@ const PERMESSI_PER_RUOLO: Record<number, string[]> = {
     'prodotti:read', 'fornitori:read', 'clienti:read',
     'magazzino:read',
     'giacenze:read', 'giacenze:write',
-    'ordini:read', 'ordini:write', 'ordini:approve',
+    'ordini:read',
     'spedizioni:read',
     'notifiche:read', 'dashboard:read',
   ],
@@ -113,10 +113,10 @@ const PERMESSI_PER_RUOLO: Record<number, string[]> = {
 };
 
 export const PAGINE_PER_RUOLO: Record<number, string[]> = {
-  1:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione'],
-  2:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione'],
+  1:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione', 'register'],
+  2:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione', 'register'],
   3:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica'],
-  4:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione'],
+  4:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione', 'register'],
   5:  ['dashboard', 'anagrafiche'],
   6:  ['dashboard', 'anagrafiche', 'vendite', 'magazzino'],
   7:  ['dashboard', 'anagrafiche', 'acquisti', 'magazzino'],

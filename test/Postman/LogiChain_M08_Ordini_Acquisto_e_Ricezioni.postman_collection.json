@@ -50,7 +50,18 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{base_url}}/api/v1/auth/login",
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
@@ -87,7 +98,18 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/auth/register",
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Acquisti\",\n  \"email\": \"{{acquisti_email}}\",\n  \"password\": \"{{acquisti_password}}\",\n  \"ruolo_id\": 7\n}",
@@ -124,7 +146,18 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/auth/register",
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nome\": \"Corr\",\n  \"cognome\": \"Iere\",\n  \"email\": \"{{corriere_email}}\",\n  \"password\": \"{{corriere_password}}\",\n  \"ruolo_id\": 10\n}",
@@ -159,7 +192,18 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{base_url}}/api/v1/auth/login",
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{acquisti_email}}\",\n  \"password\": \"{{acquisti_password}}\"\n}",
@@ -194,7 +238,18 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{base_url}}/api/v1/auth/login",
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{corriere_email}}\",\n  \"password\": \"{{corriere_password}}\"\n}",
@@ -233,7 +288,17 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/fornitori",
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"ragione_sociale\": \"{{fornitore_nome}}\",\n  \"piva\": \"{{fornitore_piva}}\",\n  \"email\": \"{{fornitore_email}}\"\n}",
@@ -272,7 +337,17 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/prodotti",
+            "url": {
+              "raw": "{{base_url}}/api/v1/prodotti",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nome\": \"Prodotto Test M08 A\",\n  \"sku\": \"{{prodotto1_sku}}\",\n  \"prezzo\": 12.50\n}",
@@ -311,7 +386,17 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/prodotti",
+            "url": {
+              "raw": "{{base_url}}/api/v1/prodotti",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nome\": \"Prodotto Test M08 B\",\n  \"sku\": \"{{prodotto2_sku}}\",\n  \"prezzo\": 9.90\n}",
@@ -350,7 +435,17 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/magazzini",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"codice\": \"{{magazzino_codice}}\",\n  \"nome\": \"Magazzino Test M08\",\n  \"indirizzo\": \"Via Test 8\"\n}",
@@ -389,7 +484,19 @@
                 "value": "Bearer {{token_admin}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini",
+                "{{magazzino_id}}",
+                "ubicazioni"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"corsia\": 1,\n  \"scaffale\": 1,\n  \"temperatura_controllata\": false\n}",
@@ -432,7 +539,17 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini-acquisto",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita\": 10, \"prezzo_unitario\": 5 } ]\n}",
@@ -470,7 +587,17 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini-acquisto",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"fornitore_id\": {{fornitore_id}},\n  \"righe\": []\n}",
@@ -511,7 +638,17 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini-acquisto",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"fornitore_id\": {{fornitore_id}},\n  \"data_prevista\": \"2026-06-30\",\n  \"note\": \"Ordine test M08\",\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita\": 100, \"prezzo_unitario\": 12.50 } ]\n}",
@@ -547,7 +684,17 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini-acquisto"
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto"
+              ]
+            }
           }
         },
         {
@@ -573,7 +720,23 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini-acquisto?stato=BOZZA"
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto?stato=BOZZA",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto"
+              ],
+              "query": [
+                {
+                  "key": "stato",
+                  "value": "BOZZA"
+                }
+              ]
+            }
           }
         },
         {
@@ -600,7 +763,18 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}"
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}"
+              ]
+            }
           }
         },
         {
@@ -629,7 +803,18 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"note\": \"Note aggiornate M08\"\n}",
@@ -667,7 +852,19 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}/righe",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}/righe",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}",
+                "righe"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"prodotto_id\": {{prodotto2_id}},\n  \"quantita\": 50,\n  \"prezzo_unitario\": 9.90\n}",
@@ -702,7 +899,18 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}"
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}"
+              ]
+            }
           }
         },
         {
@@ -730,7 +938,17 @@
                 "value": "Bearer {{token_no_access}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini-acquisto",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"fornitore_id\": {{fornitore_id}},\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita\": 1, \"prezzo_unitario\": 1 } ]\n}",
@@ -768,7 +986,19 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}/stato",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}/stato",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}",
+                "stato"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"stato\": \"INVIATO\"\n}",
@@ -806,7 +1036,19 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}/stato",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}/stato",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}",
+                "stato"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"stato\": \"COMPLETATO\"\n}",
@@ -844,7 +1086,19 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}/stato",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}/stato",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}",
+                "stato"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"stato\": \"CONFERMATO\"\n}",
@@ -883,7 +1137,18 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini-acquisto/ricezioni",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/ricezioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "ricezioni"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"ordine_acquisto_id\": {{ordine_id}},\n  \"note\": \"Ricezione parziale\",\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita_ricevuta\": 40, \"ubicazione_id\": {{ubicazione_id}} } ]\n}",
@@ -919,7 +1184,19 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}/ricezioni"
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}/ricezioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}",
+                "ricezioni"
+              ]
+            }
           }
         },
         {
@@ -947,7 +1224,18 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}"
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}"
+              ]
+            }
           }
         },
         {
@@ -977,7 +1265,18 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini-acquisto/ricezioni",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/ricezioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "ricezioni"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"ordine_acquisto_id\": {{ordine_id}},\n  \"note\": \"Ricezione finale\",\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita_ricevuta\": 60, \"ubicazione_id\": {{ubicazione_id}} }, { \"prodotto_id\": {{prodotto2_id}}, \"quantita_ricevuta\": 50, \"ubicazione_id\": {{ubicazione_id}} } ]\n}",
@@ -1015,7 +1314,18 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini-acquisto/ricezioni",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/ricezioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "ricezioni"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"ordine_acquisto_id\": {{ordine_id}},\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita_ricevuta\": 10, \"ubicazione_id\": {{ubicazione_id}} } ]\n}",
@@ -1052,7 +1362,18 @@
                 "value": "Bearer {{token_no_access}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ordini-acquisto/ricezioni",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/ricezioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "ricezioni"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"ordine_acquisto_id\": {{ordine_id}},\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita_ricevuta\": 1, \"ubicazione_id\": {{ubicazione_id}} } ]\n}",
@@ -1092,7 +1413,17 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ricezioni"
+            "url": {
+              "raw": "{{base_url}}/api/v1/ricezioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ricezioni"
+              ]
+            }
           }
         },
         {
@@ -1118,7 +1449,18 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ricezioni/{{ricezione_id}}"
+            "url": {
+              "raw": "{{base_url}}/api/v1/ricezioni/{{ricezione_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ricezioni",
+                "{{ricezione_id}}"
+              ]
+            }
           }
         },
         {
@@ -1144,7 +1486,19 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ricezioni/{{ricezione_id}}/righe"
+            "url": {
+              "raw": "{{base_url}}/api/v1/ricezioni/{{ricezione_id}}/righe",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ricezioni",
+                "{{ricezione_id}}",
+                "righe"
+              ]
+            }
           }
         },
         {
@@ -1175,7 +1529,17 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ricezioni",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ricezioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ricezioni"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"ordine_acquisto_id\": {{ordine_id}},\n  \"data_ricezione\": \"2026-06-20T10:00:00.000Z\",\n  \"note\": \"Testata standalone M08\"\n}",
@@ -1214,7 +1578,19 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ricezioni/{{ricezione2_id}}/righe",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ricezioni/{{ricezione2_id}}/righe",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ricezioni",
+                "{{ricezione2_id}}",
+                "righe"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"prodotto_id\": {{prodotto1_id}},\n  \"quantita\": 5,\n  \"ubicazione_id\": {{ubicazione_id}}\n}",
@@ -1249,7 +1625,19 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ricezioni/{{ricezione2_id}}/righe"
+            "url": {
+              "raw": "{{base_url}}/api/v1/ricezioni/{{ricezione2_id}}/righe",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ricezioni",
+                "{{ricezione2_id}}",
+                "righe"
+              ]
+            }
           }
         },
         {
@@ -1277,7 +1665,17 @@
                 "value": "Bearer {{token_no_access}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ricezioni",
+            "url": {
+              "raw": "{{base_url}}/api/v1/ricezioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ricezioni"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"ordine_acquisto_id\": {{ordine_id}},\n  \"data_ricezione\": \"2026-06-20T10:00:00.000Z\"\n}",
@@ -1311,7 +1709,18 @@
                 "value": "Bearer {{token_acquisti}}"
               }
             ],
-            "url": "{{base_url}}/api/v1/ricezioni/99999"
+            "url": {
+              "raw": "{{base_url}}/api/v1/ricezioni/99999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ricezioni",
+                "99999"
+              ]
+            }
           }
         }
       ]
@@ -1320,31 +1729,18 @@
   "variable": [
     {
       "key": "base_url",
-      "value": "http://localhost:3000"
+      "value": "http://localhost:3000",
+      "type": "default"
     },
     {
       "key": "admin_email",
-      "value": "admin@logichain.it"
+      "value": "admin@logichain.it",
+      "type": "default"
     },
     {
       "key": "admin_password",
-      "value": "Admin123!"
-    },
-    {
-      "key": "acquisti_email",
-      "value": ""
-    },
-    {
-      "key": "acquisti_password",
-      "value": "Test1234!"
-    },
-    {
-      "key": "corriere_email",
-      "value": ""
-    },
-    {
-      "key": "corriere_password",
-      "value": "Test1234!"
+      "value": "Admin123!",
+      "type": "default"
     },
     {
       "key": "token_admin",
@@ -1361,6 +1757,22 @@
     {
       "key": "runId",
       "value": ""
+    },
+    {
+      "key": "acquisti_email",
+      "value": ""
+    },
+    {
+      "key": "acquisti_password",
+      "value": "Test1234!"
+    },
+    {
+      "key": "corriere_email",
+      "value": ""
+    },
+    {
+      "key": "corriere_password",
+      "value": "Test1234!"
     },
     {
       "key": "fornitore_id",
@@ -1409,6 +1821,16 @@
     {
       "key": "ricezione2_id",
       "value": ""
+    },
+    {
+      "key": "fornitore_nome",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "fornitore_email",
+      "value": "",
+      "type": "default"
     }
   ]
 }
