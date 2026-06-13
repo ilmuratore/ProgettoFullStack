@@ -2,7 +2,7 @@ openapi: 3.0.3
 
 info:
   title: LogiChain ERP — API
-  version: "2.3.0"
+  version: "2.4.0"
   description: |
     API REST per LogiChain ERP — milestone M01–M16 (M12 Dashboard escluso, endpoints non ancora implementati).
 
@@ -1213,8 +1213,12 @@ components:
       enum: [IN_PREPARAZIONE, SPEDITA, CONSEGNATA, PROBLEMA]
       example: IN_PREPARAZIONE
       description: |
-        Ciclo di vita spedizione. Transizioni: IN_PREPARAZIONE→SPEDITA→CONSEGNATA.
-        Da qualsiasi stato è possibile passare a PROBLEMA.
+        Ciclo di vita spedizione.
+        Transizioni consentite:
+        - IN_PREPARAZIONE → SPEDITA
+        - SPEDITA → CONSEGNATA
+        - PROBLEMA → SPEDITA (secondo tentativo di consegna)
+        - Qualsiasi stato → PROBLEMA
 
     Spedizione:
       type: object
@@ -4351,9 +4355,11 @@ paths:
 
     post:
       tags: [Ricezioni]
-      summary: Crea testata ricezione
+      summary: Crea testata ricezione (DEPRECATO)
+      deprecated: true
       description: |
-        Crea la sola testata ricezione. Le righe si aggiungono con `POST /ricezioni/:id/righe`.
+        **DEPRECATO — risponde sempre 410 Gone.**
+        Usare `POST /ordini-acquisto/ricezioni` che registra anche le righe, aggiorna le giacenze e avanza lo stato dell'ordine.
         Richiede permesso `acquisti:approve`.
       x-required-permission: acquisti:approve
       requestBody:
@@ -4366,16 +4372,11 @@ paths:
               data_ricezione: "2026-06-18T11:00:00.000Z"
               note: "Ricevuto con DDT 2026-0031"
       responses:
-        "201":
-          description: Testata ricezione creata
+        "410":
+          description: Endpoint deprecato
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  status: { type: string, example: success }
-                  data: { $ref: '#/components/schemas/Ricezione' }
-        "400": { $ref: '#/components/responses/ValidationError' }
+              example: { status: error, code: ENDPOINT_DEPRECATED, message: "Endpoint deprecato. Usare POST /api/v1/ordini-acquisto/ricezioni" }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
 
@@ -4414,28 +4415,28 @@ paths:
         example: 5
     get:
       tags: [Ricezioni]
-      summary: Righe di una ricezione
-      description: Richiede permesso `acquisti:read`.
+      summary: Righe di una ricezione (DEPRECATO)
+      deprecated: true
+      description: |
+        **DEPRECATO — risponde sempre 410 Gone.**
+        Le righe sono incluse nel dettaglio ordine via `GET /ordini-acquisto/:id`.
+        Richiede permesso `acquisti:read`.
       x-required-permission: acquisti:read
       responses:
-        "200":
-          description: Lista righe ricezione
+        "410":
+          description: Endpoint deprecato
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  status: { type: string, example: success }
-                  data:
-                    type: array
-                    items: { $ref: '#/components/schemas/RigaRicezione' }
+              example: { status: error, code: ENDPOINT_DEPRECATED, message: "Endpoint deprecato. Usare POST /api/v1/ordini-acquisto/ricezioni" }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
     post:
       tags: [Ricezioni]
-      summary: Aggiungi riga a ricezione
+      summary: Aggiungi riga a ricezione (DEPRECATO)
+      deprecated: true
       description: |
-        Aggiunge una riga alla ricezione e genera un movimento `CARICO_ACQUISTO`.
+        **DEPRECATO — risponde sempre 410 Gone.**
+        Usare `POST /ordini-acquisto/ricezioni` che registra righe, movimenti stock e stato ordine in un'unica operazione.
         Richiede permesso `acquisti:approve`.
       x-required-permission: acquisti:approve
       requestBody:
@@ -4448,16 +4449,11 @@ paths:
               quantita: 40
               ubicazione_id: 12
       responses:
-        "201":
-          description: Riga ricezione aggiunta
+        "410":
+          description: Endpoint deprecato
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  status: { type: string, example: success }
-                  data: { $ref: '#/components/schemas/RigaRicezione' }
-        "400": { $ref: '#/components/responses/ValidationError' }
+              example: { status: error, code: ENDPOINT_DEPRECATED, message: "Endpoint deprecato. Usare POST /api/v1/ordini-acquisto/ricezioni" }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
         "404": { $ref: '#/components/responses/NotFound' }
@@ -5107,7 +5103,7 @@ paths:
       tags: [Spedizioni]
       summary: Crea spedizione
       description: |
-        Crea una spedizione in stato `IN_PREPARAZIONE`. L'ordine deve essere in stato `CONFERMATO` o `SPEDITO`.
+        Crea una spedizione in stato `IN_PREPARAZIONE`. L'ordine deve essere in stato `CONFERMATO` o `SPEDITO` (BUG-03 fix: ordine in BOZZA o ANNULLATO viene rifiutato con 409).
         Richiede permesso `spedizioni:write`.
       x-required-permission: spedizioni:write
       requestBody:
@@ -5172,8 +5168,8 @@ paths:
       tags: [Spedizioni]
       summary: Cambia stato spedizione
       description: |
-        Transizioni consentite: `IN_PREPARAZIONE→SPEDITA→CONSEGNATA`. Da qualsiasi stato è possibile passare a `PROBLEMA`.
-        Alla transizione in `SPEDITA` viene creata una notifica `CAMBIO_STATO_SPEDIZIONE` agli utenti con `spedizioni:read`.
+        Transizioni consentite: `IN_PREPARAZIONE→SPEDITA→CONSEGNATA`, `PROBLEMA→SPEDITA` (secondo tentativo). Da qualsiasi stato è possibile passare a `PROBLEMA`.
+        Ad ogni cambio stato viene creata una notifica `CAMBIO_STATO_SPEDIZIONE` agli utenti con `spedizioni:read`.
         Richiede permesso `spedizioni:write`.
       x-required-permission: spedizioni:write
       requestBody:

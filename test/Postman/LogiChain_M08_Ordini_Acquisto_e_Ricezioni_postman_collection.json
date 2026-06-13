@@ -1,0 +1,1938 @@
+{
+  "info": {
+    "_postman_id": "c9505b16-5444-4b12-a122-19edf65b7d38",
+    "name": "LogiChain V2 — M08 Ordini di Acquisto & Ricezioni (v2)",
+    "description": "Suite di verifica backend M08 (Ordini di Acquisto & Ricezioni) — aggiornata post-bugfix.\n\nCOME USARLA:\n1) Avvia il backend (npm run dev) con tutte le migration applicate.\n2) Nel .env imposta ADMIN_EMAIL e ADMIN_PASSWORD, poi:\n   npm run seed_ruoli_permessi && npm run seed_admin\n3) Allinea le variabili admin_email/admin_password al .env.\n4) Apri Runner -> seleziona questa collection -> Run (eseguire in ordine).\n\nIl Setup crea utenti (Resp. Acquisti ruolo 7, Corriere ruolo 10), fornitore, 2 prodotti, magazzino e ubicazione con nomi univoci timestamp-based (ri-eseguibile).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Setup — Autenticazione & Dati M08",
+      "item": [
+        {
+          "name": "Login Admin",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var run = Date.now().toString();",
+                  "pm.collectionVariables.set('runId', run);",
+                  "pm.collectionVariables.set('acquisti_email', 'test.m08.acq.' + run + '@logichain.it');",
+                  "pm.collectionVariables.set('corriere_email', 'test.m08.corr.' + run + '@logichain.it');",
+                  "pm.collectionVariables.set('prodotto1_sku', 'M08-SKU-A-' + run);",
+                  "pm.collectionVariables.set('prodotto2_sku', 'M08-SKU-B-' + run);",
+                  "pm.collectionVariables.set('fornitore_piva', ('800' + run).slice(0,11));",
+                  "pm.collectionVariables.set('fornitore_nome', 'Fornitore Test M08 ' + run);",
+                  "pm.collectionVariables.set('fornitore_email', 'info.m08.' + run + '@fornitore.it');",
+                  "pm.collectionVariables.set('magazzino_codice', 'MAG-M08-' + run);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Login Admin -> 200', () => pm.response.to.have.status(200));",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_admin', b.data.token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Register Resp. Acquisti (ruolo_id 7)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Setup: Register Resp. Acquisti -> 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Resp\",\n  \"cognome\": \"Acquisti\",\n  \"email\": \"{{acquisti_email}}\",\n  \"password\": \"{{acquisti_password}}\",\n  \"ruolo_id\": 7\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Register Corriere (ruolo_id 10, no acquisti)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Setup: Register Corriere -> 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Corr\",\n  \"cognome\": \"Iere\",\n  \"email\": \"{{corriere_email}}\",\n  \"password\": \"{{corriere_password}}\",\n  \"ruolo_id\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Login Resp. Acquisti (token_acquisti)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Login Resp. Acquisti -> 200', () => pm.response.to.have.status(200));",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_acquisti', b.data.token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{acquisti_email}}\",\n  \"password\": \"{{acquisti_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Login Corriere (token_no_access)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Login Corriere -> 200', () => pm.response.to.have.status(200));",
+                  "if (b.data && b.data.token) { pm.collectionVariables.set('token_no_access', b.data.token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{corriere_email}}\",\n  \"password\": \"{{corriere_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crea fornitore test (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Crea fornitore -> 201', () => pm.response.to.have.status(201));",
+                  "if (b.data && b.data.id) { pm.collectionVariables.set('fornitore_id', b.data.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/fornitori",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ragione_sociale\": \"{{fornitore_nome}}\",\n  \"piva\": \"{{fornitore_piva}}\",\n  \"email\": \"{{fornitore_email}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crea prodotto 1 (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Crea prodotto 1 -> 201', () => pm.response.to.have.status(201));",
+                  "if (b.data && b.data.id) { pm.collectionVariables.set('prodotto1_id', b.data.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/prodotti",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Prodotto Test M08 A\",\n  \"sku\": \"{{prodotto1_sku}}\",\n  \"prezzo\": 12.50\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crea prodotto 2 (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Crea prodotto 2 -> 201', () => pm.response.to.have.status(201));",
+                  "if (b.data && b.data.id) { pm.collectionVariables.set('prodotto2_id', b.data.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/prodotti",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Prodotto Test M08 B\",\n  \"sku\": \"{{prodotto2_sku}}\",\n  \"prezzo\": 9.90\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crea magazzino test (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Crea magazzino -> 201', () => pm.response.to.have.status(201));",
+                  "if (b.data && b.data.id) { pm.collectionVariables.set('magazzino_id', b.data.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codice\": \"{{magazzino_codice}}\",\n  \"nome\": \"Magazzino Test M08\",\n  \"indirizzo\": \"Via Test 8\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crea ubicazione (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "pm.test('Setup: Crea ubicazione -> 201', () => pm.response.to.have.status(201));",
+                  "if (b.data && b.data.id) { pm.collectionVariables.set('ubicazione_id', b.data.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini",
+                "{{magazzino_id}}",
+                "ubicazioni"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"corsia\": 1,\n  \"scaffale\": 1,\n  \"temperatura_controllata\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ordini Acquisto — 21 test",
+      "item": [
+        {
+          "name": "01 POST /ordini-acquisto — manca fornitore_id → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Validation', () => pm.response.to.have.status(400));",
+                  "pm.test('ha errore', () => pm.expect(pm.response.json().error || pm.response.json().code).to.exist);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita\": 10, \"prezzo_unitario\": 5 } ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "02 POST /ordini-acquisto — righe vuote → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Validation', () => pm.response.to.have.status(400));",
+                  "pm.test('ha errore', () => pm.expect(pm.response.json().error || pm.response.json().code).to.exist);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fornitore_id\": {{fornitore_id}},\n  \"righe\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "03 POST /ordini-acquisto — valido (BOZZA) → 201",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('stato BOZZA', () => pm.expect(d.data.stato).to.eql('BOZZA'));",
+                  "pm.test('importo_totale = 1250', () => pm.expect(Number(d.data.importo_totale)).to.eql(1250));",
+                  "pm.collectionVariables.set('ordine_id', d.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fornitore_id\": {{fornitore_id}},\n  \"data_prevista\": \"2026-06-30\",\n  \"note\": \"Ordine test M08\",\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita\": 100, \"prezzo_unitario\": 12.50 } ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "04 GET /ordini-acquisto — lista → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('array', () => pm.expect(d.data).to.be.an('array'));",
+                  "pm.test('contiene ordine creato', () => pm.expect(d.data.some(o => o.id === parseInt(pm.collectionVariables.get('ordine_id')))).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto"
+              ]
+            }
+          }
+        },
+        {
+          "name": "05 GET /ordini-acquisto?stato=BOZZA → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('tutti BOZZA', () => pm.expect(d.data.every(o => o.stato === 'BOZZA')).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto?stato=BOZZA",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto"
+              ],
+              "query": [
+                {
+                  "key": "stato",
+                  "value": "BOZZA"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "06 GET /ordini-acquisto/:id — dettaglio → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('ordine presente', () => pm.expect(d.data.ordine.id).to.eql(parseInt(pm.collectionVariables.get('ordine_id'))));",
+                  "pm.test('1 riga', () => pm.expect(d.data.righe.length).to.eql(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "07 PATCH /ordini-acquisto/:id — modifica note → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('note aggiornate', () => pm.expect(pm.response.json().data.note).to.eql('Note aggiornate M08'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Note aggiornate M08\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "08 POST /ordini-acquisto/:id/righe — aggiungi riga → 201",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('ordine corretto', () => pm.expect(Number(pm.response.json().data.ordine_id)).to.eql(parseInt(pm.collectionVariables.get('ordine_id'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}/righe",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}",
+                "righe"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prodotto_id\": {{prodotto2_id}},\n  \"quantita\": 50,\n  \"prezzo_unitario\": 9.90\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "09 GET /ordini-acquisto/:id — ora 2 righe → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('2 righe', () => pm.expect(d.data.righe.length).to.eql(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "10 POST /ordini-acquisto — token Corriere (no acquisti) → 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_no_access}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fornitore_id\": {{fornitore_id}},\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita\": 1, \"prezzo_unitario\": 1 } ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "11 PATCH /ordini-acquisto/:id/stato — BOZZA→INVIATO → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('stato INVIATO', () => pm.expect(pm.response.json().data.stato).to.eql('INVIATO'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}/stato",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}",
+                "stato"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato\": \"INVIATO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "12 PATCH /ordini-acquisto/:id/stato — INVIATO→COMPLETATO invalido → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('code STATE_TRANSITION_INVALID', () => pm.expect(pm.response.json().code).to.eql('STATE_TRANSITION_INVALID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}/stato",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}",
+                "stato"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato\": \"COMPLETATO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "13 PATCH /ordini-acquisto/:id/stato — INVIATO→CONFERMATO → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('stato CONFERMATO', () => pm.expect(pm.response.json().data.stato).to.eql('CONFERMATO'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}/stato",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}",
+                "stato"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato\": \"CONFERMATO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "14 POST /ordini-acquisto/ricezioni — parziale → 201 (IN_RICEZIONE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ricezione_id', d.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/ricezioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "ricezioni"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ordine_acquisto_id\": {{ordine_id}},\n  \"note\": \"Ricezione parziale\",\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita_ricevuta\": 40, \"ubicazione_id\": {{ubicazione_id}} } ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "15 GET /ordini-acquisto/:id/ricezioni → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('>=1 ricezione', () => pm.expect(d.data.length).to.be.at.least(1));",
+                  "pm.test('ha id ricezione', () => pm.expect(d.data[0].id).to.exist);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}/ricezioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}",
+                "ricezioni"
+              ]
+            }
+          }
+        },
+        {
+          "name": "16 GET /ordini-acquisto/:id — stato IN_RICEZIONE, ricevuto 40",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('stato IN_RICEZIONE', () => pm.expect(d.data.ordine.stato).to.eql('IN_RICEZIONE'));",
+                  "var r1 = d.data.righe.find(r => r.prodotto_id === parseInt(pm.collectionVariables.get('prodotto1_id')));",
+                  "pm.test('prod1 quantita_ricevuta = 40', () => pm.expect(Number(r1.quantita_ricevuta)).to.eql(40));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "17 POST /ordini-acquisto/ricezioni — completa → 201 (COMPLETATO)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('ha id ricezione', () => pm.expect(d.data.id).to.exist);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/ricezioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "ricezioni"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ordine_acquisto_id\": {{ordine_id}},\n  \"note\": \"Ricezione finale\",\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita_ricevuta\": 60, \"ubicazione_id\": {{ubicazione_id}} }, { \"prodotto_id\": {{prodotto2_id}}, \"quantita_ricevuta\": 50, \"ubicazione_id\": {{ubicazione_id}} } ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "18 POST /ordini-acquisto/ricezioni — ordine COMPLETATO → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('code STATE_TRANSITION_INVALID', () => pm.expect(pm.response.json().code).to.eql('STATE_TRANSITION_INVALID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/ricezioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "ricezioni"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ordine_acquisto_id\": {{ordine_id}},\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita_ricevuta\": 10, \"ubicazione_id\": {{ubicazione_id}} } ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "19 POST /ordini-acquisto/ricezioni — token Corriere → 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_no_access}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/ricezioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "ricezioni"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ordine_acquisto_id\": {{ordine_id}},\n  \"righe\": [ { \"prodotto_id\": {{prodotto1_id}}, \"quantita_ricevuta\": 1, \"ubicazione_id\": {{ubicazione_id}} } ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "20 PATCH /ordini-acquisto/:id — ordine non BOZZA → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('code STATE_TRANSITION_INVALID', () => pm.expect(pm.response.json().code).to.eql('STATE_TRANSITION_INVALID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Tentativo modifica su CONFERMATO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "21 POST /ordini-acquisto/:id/righe — ordine non BOZZA → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('code STATE_TRANSITION_INVALID', () => pm.expect(pm.response.json().code).to.eql('STATE_TRANSITION_INVALID'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_id}}/righe",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_id}}",
+                "righe"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prodotto_id\": {{prodotto1_id}},\n  \"quantita\": 5,\n  \"prezzo_unitario\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ricezioni — 8 test",
+      "item": [
+        {
+          "name": "01 GET /ricezioni — lista → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('array', () => pm.expect(d.data).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ricezioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ricezioni"
+              ]
+            }
+          }
+        },
+        {
+          "name": "02 GET /ricezioni/:id — dettaglio → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('id coerente', () => pm.expect(d.data.id).to.eql(parseInt(pm.collectionVariables.get('ricezione_id'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ricezioni/{{ricezione_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ricezioni",
+                "{{ricezione_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "03 GET /ricezioni/:id/righe — deprecata → 410",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('410 Gone', () => pm.response.to.have.status(410));",
+                  "pm.test('code ENDPOINT_DEPRECATED', () => pm.expect(d.code).to.eql('ENDPOINT_DEPRECATED'));",
+                  "pm.test('messaggio deprecazione', () => pm.expect(d.message).to.include('deprecato'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ricezioni/{{ricezione_id}}/righe",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ricezioni",
+                "{{ricezione_id}}",
+                "righe"
+              ]
+            }
+          }
+        },
+        {
+          "name": "04 POST /ricezioni — deprecato → 410",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('410 Gone', () => pm.response.to.have.status(410));",
+                  "pm.test('code ENDPOINT_DEPRECATED', () => pm.expect(d.code).to.eql('ENDPOINT_DEPRECATED'));",
+                  "pm.test('messaggio deprecazione', () => pm.expect(d.message).to.include('deprecato'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ricezioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ricezioni"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ordine_acquisto_id\": {{ordine_id}},\n  \"data_ricezione\": \"2026-06-20T10:00:00.000Z\",\n  \"note\": \"Testata standalone M08\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "05 POST /ricezioni/:id/righe — deprecata → 410",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('410 Gone', () => pm.response.to.have.status(410));",
+                  "pm.test('code ENDPOINT_DEPRECATED', () => pm.expect(d.code).to.eql('ENDPOINT_DEPRECATED'));",
+                  "pm.test('messaggio deprecazione', () => pm.expect(d.message).to.include('deprecato'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ricezioni/{{ricezione_id}}/righe",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ricezioni",
+                "{{ricezione_id}}",
+                "righe"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prodotto_id\": {{prodotto1_id}},\n  \"quantita\": 5,\n  \"ubicazione_id\": {{ubicazione_id}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "06 GET /ricezioni/:id/righe — deprecata → 410",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var d = pm.response.json();",
+                  "pm.test('410 Gone', () => pm.response.to.have.status(410));",
+                  "pm.test('code ENDPOINT_DEPRECATED', () => pm.expect(d.code).to.eql('ENDPOINT_DEPRECATED'));",
+                  "pm.test('messaggio deprecazione', () => pm.expect(d.message).to.include('deprecato'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ricezioni/{{ricezione_id}}/righe",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ricezioni",
+                "{{ricezione_id}}",
+                "righe"
+              ]
+            }
+          }
+        },
+        {
+          "name": "07 POST /ricezioni — token Corriere → 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_no_access}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ricezioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ricezioni"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ordine_acquisto_id\": {{ordine_id}},\n  \"data_ricezione\": \"2026-06-20T10:00:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "08 GET /ricezioni/99999 — inesistente → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('code RESOURCE_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('RESOURCE_NOT_FOUND'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_acquisti}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ricezioni/99999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ricezioni",
+                "99999"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "default"
+    },
+    {
+      "key": "admin_email",
+      "value": "admin@logichain.it",
+      "type": "default"
+    },
+    {
+      "key": "admin_password",
+      "value": "Admin123!",
+      "type": "default"
+    },
+    {
+      "key": "token_admin",
+      "value": ""
+    },
+    {
+      "key": "token_acquisti",
+      "value": ""
+    },
+    {
+      "key": "token_no_access",
+      "value": ""
+    },
+    {
+      "key": "runId",
+      "value": ""
+    },
+    {
+      "key": "acquisti_email",
+      "value": ""
+    },
+    {
+      "key": "acquisti_password",
+      "value": "Test1234!"
+    },
+    {
+      "key": "corriere_email",
+      "value": ""
+    },
+    {
+      "key": "corriere_password",
+      "value": "Test1234!"
+    },
+    {
+      "key": "fornitore_id",
+      "value": ""
+    },
+    {
+      "key": "fornitore_piva",
+      "value": ""
+    },
+    {
+      "key": "prodotto1_id",
+      "value": ""
+    },
+    {
+      "key": "prodotto1_sku",
+      "value": ""
+    },
+    {
+      "key": "prodotto2_id",
+      "value": ""
+    },
+    {
+      "key": "prodotto2_sku",
+      "value": ""
+    },
+    {
+      "key": "magazzino_id",
+      "value": ""
+    },
+    {
+      "key": "magazzino_codice",
+      "value": ""
+    },
+    {
+      "key": "ubicazione_id",
+      "value": ""
+    },
+    {
+      "key": "ordine_id",
+      "value": ""
+    },
+    {
+      "key": "ricezione_id",
+      "value": ""
+    },
+    {
+      "key": "ricezione2_id",
+      "value": ""
+    },
+    {
+      "key": "fornitore_nome",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "fornitore_email",
+      "value": "",
+      "type": "default"
+    }
+  ]
+}
