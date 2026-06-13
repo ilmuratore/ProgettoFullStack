@@ -65,32 +65,9 @@ const fmtDateTime = (iso: string | null | undefined): string =>
 
 export function ShipmentsTable({ onShipmentClick, shipments, loading }: ShipmentsTableProps) {
   const [search, setSearch] = useState('');
-  const [shipmentsState, setShipmentsState] = useState<Spedizione[]>([]);
-  const [loadingState, setLoadingState] = useState(true);
   const [sort, setSort] = useState<SortConfig<SortKey> | null>(null);
-  const useExternalData = shipmentsProp !== undefined && loadingProp !== undefined;
 
   const handleSort = (key: SortKey) => setSort((prev) => toggleSort(prev, key));
-
-  useEffect(() => {
-    if (useExternalData) return;
-    let alive = true;
-    setLoadingState(true);
-    spedizioniApi
-      .list()
-      .then((data) => { if (alive) setShipmentsState(Array.isArray(data) ? data : []); })
-      .catch((err: any) => {
-        if (alive) setShipmentsState([]);
-        if (err?.status !== 404) {
-          toast.error('Errore caricamento spedizioni', { description: err?.message });
-        }
-      })
-      .finally(() => { if (alive) setLoadingState(false); });
-    return () => { alive = false; };
-  }, [reloadKey, useExternalData]);
-
-  const shipments = shipmentsProp ?? shipmentsState;
-  const loading = loadingProp ?? loadingState;
 
   const filtered = applySort(
     shipments.filter((ship) => {
