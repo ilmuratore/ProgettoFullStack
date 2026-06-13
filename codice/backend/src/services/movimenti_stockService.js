@@ -185,6 +185,7 @@ const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione
                 ubicazione_id: ubicazione_da_id,
                 quantita,
                 movimento_tipo,
+                direzione: 'OUT',
                 riferimento,
                 note
             }, client);
@@ -194,6 +195,7 @@ const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione
                 ubicazione_id: ubicazione_a_id,
                 quantita,
                 movimento_tipo,
+                direzione: 'IN',
                 riferimento,
                 note
             }, client);

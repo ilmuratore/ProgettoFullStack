@@ -27,11 +27,41 @@ const TIPO_STYLE: Record<string, { icon: React.ElementType; color: string; bg: s
 const isPositivo = (tipo: string) =>
   ['CARICO_ACQUISTO', 'RETTIFICA_POSITIVA', 'RESO'].includes(tipo);
 
+const isMovimentoPositivo = (movimento: MovimentoStock) => {
+  const direzione = movimento.direzione?.trim();
+  if (direzione === 'IN') return true;
+  if (direzione === 'OUT') return false;
+  return isPositivo(movimento.tipo);
+};
+
 const formatOra = (iso: string) =>
   new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
 const formatData = (iso: string) =>
   new Date(iso).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+
+const sortMovimenti = (items: MovimentoStock[]) =>
+  [...items].sort((left, right) => {
+    const timeDiff = new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+    if (timeDiff !== 0) return timeDiff;
+
+    const sameTransferGroup =
+      left.tipo === 'SPOSTAMENTO' &&
+      right.tipo === 'SPOSTAMENTO' &&
+      (left.riferimento ?? null) === (right.riferimento ?? null);
+
+    if (sameTransferGroup) {
+      const leftDirezione = left.direzione?.trim();
+      const rightDirezione = right.direzione?.trim();
+
+      if (leftDirezione !== rightDirezione) {
+        if (leftDirezione === 'IN') return -1;
+        if (rightDirezione === 'IN') return 1;
+      }
+    }
+
+    return right.id - left.id;
+  });
 
 export function StockMovementsTimeline({ refreshTrigger, pendingIncrementTrigger }: { refreshTrigger?: number; pendingIncrementTrigger?: number }) {
   const [movimenti, setMovimenti] = useState<MovimentoStock[]>([]);
@@ -49,7 +79,7 @@ export function StockMovementsTimeline({ refreshTrigger, pendingIncrementTrigger
     setLoading(true);
     try {
       const data = await fetchMovimenti();
-      setMovimenti(data);
+      setMovimenti(sortMovimenti(data));
       loadedIdsRef.current = new Set(data.map((item) => item.id));
       setPendingCount(0);
     } finally {
@@ -135,7 +165,7 @@ export function StockMovementsTimeline({ refreshTrigger, pendingIncrementTrigger
           const label = TIPO_LABEL[m.tipo] ?? m.tipo;
           const style = TIPO_STYLE[label] ?? TIPO_STYLE['Spostamento'];
           const Icon  = style.icon;
-          const positivo = isPositivo(m.tipo);
+          const positivo = isMovimentoPositivo(m);
 
           return (
             <div
