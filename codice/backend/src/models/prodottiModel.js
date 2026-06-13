@@ -44,11 +44,13 @@ const findListino = () =>
              p.id,
              p.sku,
              p.nome,
+             c.nome AS categoria,
              p.prezzo,
              p.data_agg_prezzo,
              p.attivo,
              p.created_at
          FROM   prodotti p
+         LEFT JOIN categorie c ON c.id = p.categoria_id
          ORDER  BY p.nome ASC`
     );
 

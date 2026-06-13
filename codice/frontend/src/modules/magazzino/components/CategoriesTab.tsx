@@ -65,6 +65,12 @@ export function CategoriesTab({
 }: CategoriesTabProps) {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
 
+  const formatProdottiLabel = (totale: number, disattivi: number) => {
+    const base = `${totale} prodott${totale !== 1 ? 'i' : 'o'} total${totale !== 1 ? 'i' : 'e'}`;
+    if (disattivi <= 0) return base;
+    return `${base} (${disattivi} disattivat${disattivi !== 1 ? 'i' : 'o'})`;
+  };
+
   const toggleExpanded = (id: number) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
@@ -74,7 +80,7 @@ export function CategoriesTab({
   };
 
   const filteredCategorie = filterCategorieTree(categorie, search);
-const categorieRadice = filteredCategorie.filter((c) => c.categoria_padre_id === null);
+  const categorieRadice = filteredCategorie.filter((c) => c.categoria_padre_id === null);
 
   return (
     <>
@@ -105,7 +111,8 @@ const categorieRadice = filteredCategorie.filter((c) => c.categoria_padre_id ===
           {categorieRadice.map((cat) => {
             const subcategories = filteredCategorie.filter((c) => c.categoria_padre_id === cat.id);
             const totalProdotti = cat.prodotti_count + subcategories.reduce((s, sub) => s + sub.prodotti_count, 0);
-           const isExpanded = search.trim() !== '' || expandedIds.has(cat.id);
+            const totalProdottiDisattivi = cat.prodotti_disattivi_count + subcategories.reduce((s, sub) => s + sub.prodotti_disattivi_count, 0);
+            const isExpanded = search.trim() !== '' || expandedIds.has(cat.id);
 
             return (
               <div key={cat.id} className="border border-[#E5EAF2] rounded-xl overflow-hidden">
@@ -116,13 +123,12 @@ const categorieRadice = filteredCategorie.filter((c) => c.categoria_padre_id ===
                     className="flex items-center gap-3 flex-1 text-left"
                   >
                     <ChevronRight
-                      className={`w-5 h-5 text-[#6B7280] transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''
-                        } ${subcategories.length === 0 ? 'opacity-30' : ''}`}
+                      className={`w-5 h-5 text-[#6B7280] transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''} ${subcategories.length === 0 ? 'opacity-30' : ''}`}
                     />
                     <div>
                       <h3 className="font-semibold text-[#2D2D2D]">{cat.nome}</h3>
                       <p className="text-xs text-[#6B7280] mt-0.5">
-                        {totalProdotti} prodott{totalProdotti !== 1 ? 'i' : 'o'} totali
+                        {formatProdottiLabel(totalProdotti, totalProdottiDisattivi)}
                         {subcategories.length > 0 && ` · ${subcategories.length} sottocategor${subcategories.length !== 1 ? 'ie' : 'ia'}`}
                       </p>
                     </div>
@@ -151,7 +157,7 @@ const categorieRadice = filteredCategorie.filter((c) => c.categoria_padre_id ===
                       <div className="w-1 h-8 bg-[#E5EAF2] rounded" />
                       <div>
                         <p className="text-sm font-medium text-[#2D2D2D]">{sub.nome}</p>
-                        <p className="text-xs text-[#6B7280]">{sub.prodotti_count} prodott{sub.prodotti_count !== 1 ? 'i' : 'o'}</p>
+                        <p className="text-xs text-[#6B7280]">{formatProdottiLabel(sub.prodotti_count, sub.prodotti_disattivi_count)}</p>
                       </div>
                     </div>
                     <CategoryActions

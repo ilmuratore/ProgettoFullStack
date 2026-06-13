@@ -6,6 +6,8 @@ const BASE_COLS = `
     c.categoria_padre_id,
     padre.nome  AS categoria_padre_nome,
     COUNT(pr.id)::int AS prodotti_count,
+    COUNT(pr.id) FILTER (WHERE pr.attivo = true)::int AS prodotti_attivi_count,
+    COUNT(pr.id) FILTER (WHERE pr.attivo = false)::int AS prodotti_disattivi_count,
     c.created_at,
     c.updated_at
 `;
@@ -15,7 +17,7 @@ const findAll = () =>
         SELECT ${BASE_COLS}
         FROM   categorie c
         LEFT   JOIN categorie padre ON padre.id = c.categoria_padre_id
-        LEFT   JOIN prodotti  pr    ON pr.categoria_id = c.id AND pr.attivo = true
+        LEFT   JOIN prodotti  pr    ON pr.categoria_id = c.id
         GROUP  BY c.id, padre.nome
         ORDER  BY c.categoria_padre_id NULLS FIRST, c.nome ASC
     `);
@@ -25,7 +27,7 @@ const findById = (id) =>
         SELECT ${BASE_COLS}
         FROM   categorie c
         LEFT   JOIN categorie padre ON padre.id = c.categoria_padre_id
-        LEFT   JOIN prodotti  pr    ON pr.categoria_id = c.id AND pr.attivo = true
+        LEFT   JOIN prodotti  pr    ON pr.categoria_id = c.id
         WHERE  c.id = $1
         GROUP  BY c.id, padre.nome
     `, [id]);
@@ -38,7 +40,12 @@ const findByNome = (nome, client = db) =>
 
 const countProdotti = (id) =>
     db.query(
-        `SELECT COUNT(*)::int AS cnt FROM prodotti WHERE categoria_id = $1 AND attivo = true`,
+        `SELECT
+            COUNT(*)::int AS cnt,
+            COUNT(*) FILTER (WHERE attivo = true)::int AS attivi,
+            COUNT(*) FILTER (WHERE attivo = false)::int AS disattivi
+         FROM prodotti
+         WHERE categoria_id = $1`,
         [id]
     );
 

@@ -369,6 +369,7 @@ export function WarehousePage() {
       id: prodotto.id,
       sku: prodotto.sku,
       nome: prodotto.nome,
+      categoria: prodotto.categoria ?? prodotto.categoria_nome ?? null,
       prezzo: prodotto.prezzo,
       data_agg_prezzo: prodotto.data_agg_prezzo,
       attivo: prodotto.attivo,
@@ -423,7 +424,13 @@ export function WarehousePage() {
   };
 
   const handleDeleteCategory = (id: number) => {
-    setCategoryToDelete(categorie.find(c => c.id === id) ?? null);
+    const categoria = categorie.find(c => c.id === id) ?? null;
+    setCategoryToDelete(categoria);
+    if (categoria?.prodotti_disattivi_count) {
+      toast.info('Categoria con prodotti disattivi', {
+        description: `${categoria.prodotti_disattivi_count} prodotto/i disattivato/i ancora associato/i.`,
+      });
+    }
   };
 
   const handleConfirmDeleteCategory = async () => {
