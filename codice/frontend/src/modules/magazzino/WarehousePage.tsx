@@ -120,6 +120,7 @@ export function WarehousePage() {
   const [loadingRic, setLoadingRic] = useState(false);
   const [ricezioniReloadKey, setRicezioniReloadKey] = useState(0);
   const [exportingGiacenze, setExportingGiacenze] = useState(false);
+  const [movimentiPendingTick, setMovimentiPendingTick] = useState(0);
 
   const fetchMagazzini = useCallback(async () => {
     setLoading(true);
@@ -573,7 +574,7 @@ export function WarehousePage() {
 
           {activeTab === 'giacenze' && <StockTable />}
 
-          {activeTab === 'movimenti' && <StockMovementsTimeline />}
+          {activeTab === 'movimenti' && <StockMovementsTimeline pendingIncrementTrigger={movimentiPendingTick} />}
 
           {activeTab === 'ricezioni' && (
             <div className="space-y-6">
@@ -621,7 +622,11 @@ export function WarehousePage() {
       </div>
 
       {/* ── Modali ── */}
-      <NewMovementModal isOpen={isMovementModalOpen} onClose={() => setIsMovementModalOpen(false)} />
+      <NewMovementModal
+        isOpen={isMovementModalOpen}
+        onClose={() => setIsMovementModalOpen(false)}
+        onCreated={() => setMovimentiPendingTick((k) => k + 1)}
+      />
       <NewGoodsReceiptModal
         isOpen={isRicezioneModalOpen}
         onClose={() => setIsRicezioneModalOpen(false)}

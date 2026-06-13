@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   ArrowDownCircle, ArrowUpCircle, ArrowRightCircle,
   Plus, Minus, RotateCcw, Clock, RefreshCw,
@@ -33,22 +33,55 @@ const formatOra = (iso: string) =>
 const formatData = (iso: string) =>
   new Date(iso).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
 
-export function StockMovementsTimeline({ refreshTrigger }: { refreshTrigger?: number }) {
+export function StockMovementsTimeline({ refreshTrigger, pendingIncrementTrigger }: { refreshTrigger?: number; pendingIncrementTrigger?: number }) {
   const [movimenti, setMovimenti] = useState<MovimentoStock[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingCount, setPendingCount] = useState(0);
+  const loadedIdsRef = useRef<Set<number>>(new Set());
+  const lastPendingIncrementRef = useRef<number | undefined>(pendingIncrementTrigger);
+
+  const fetchMovimenti = useCallback(async () => {
+    const data = await movimentiStockApi.list();
+    return Array.isArray(data) ? data : [];
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await movimentiStockApi.list();
+      const data = await fetchMovimenti();
       setMovimenti(data);
+      loadedIdsRef.current = new Set(data.map((item) => item.id));
+      setPendingCount(0);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchMovimenti]);
+
+  const loadPendingCount = useCallback(async () => {
+    try {
+      const data = await fetchMovimenti();
+      const loadedIds = loadedIdsRef.current;
+      setPendingCount(data.reduce((count, item) => count + (loadedIds.has(item.id) ? 0 : 1), 0));
+    } catch {}
+  }, [fetchMovimenti]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (refreshTrigger !== undefined) load(); }, [refreshTrigger, load]);
+  useEffect(() => {
+    const intervalId = window.setInterval(loadPendingCount, 60000);
+    return () => window.clearInterval(intervalId);
+  }, [loadPendingCount]);
+  useEffect(() => {
+    if (pendingIncrementTrigger === undefined) return;
+    if (lastPendingIncrementRef.current === undefined) {
+      lastPendingIncrementRef.current = pendingIncrementTrigger;
+      return;
+    }
+    if (pendingIncrementTrigger !== lastPendingIncrementRef.current) {
+      lastPendingIncrementRef.current = pendingIncrementTrigger;
+      setPendingCount((count) => count + 1);
+    }
+  }, [pendingIncrementTrigger]);
 
   return (
     <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
@@ -60,14 +93,21 @@ export function StockMovementsTimeline({ refreshTrigger }: { refreshTrigger?: nu
             <span className="text-xs font-medium text-[#17E88F]">Live</span>
           </div>
         </div>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-[#17E88F] transition-colors disabled:opacity-40"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Aggiorna
-        </button>
+        <div className="flex items-center gap-2">
+          {pendingCount > 0 && (
+            <span className="inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-[#FEE2E2] px-1.5 text-[11px] font-semibold text-[#DC2626]">
+              {pendingCount}
+            </span>
+          )}
+          <button
+            onClick={load}
+            disabled={loading}
+            className="flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-[#17E88F] transition-colors disabled:opacity-40"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Aggiorna
+          </button>
+        </div>
       </div>
 
       {loading && (
