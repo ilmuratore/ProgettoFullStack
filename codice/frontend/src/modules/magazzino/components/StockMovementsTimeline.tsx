@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   ArrowDownCircle, ArrowUpCircle, ArrowRightCircle,
   Plus, Minus, RotateCcw, Clock, RefreshCw,
@@ -27,28 +27,91 @@ const TIPO_STYLE: Record<string, { icon: React.ElementType; color: string; bg: s
 const isPositivo = (tipo: string) =>
   ['CARICO_ACQUISTO', 'RETTIFICA_POSITIVA', 'RESO'].includes(tipo);
 
+const isMovimentoPositivo = (movimento: MovimentoStock) => {
+  const direzione = movimento.direzione?.trim();
+  if (direzione === 'IN') return true;
+  if (direzione === 'OUT') return false;
+  return isPositivo(movimento.tipo);
+};
+
 const formatOra = (iso: string) =>
   new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
 const formatData = (iso: string) =>
   new Date(iso).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
 
-export function StockMovementsTimeline({ refreshTrigger }: { refreshTrigger?: number }) {
+const sortMovimenti = (items: MovimentoStock[]) =>
+  [...items].sort((left, right) => {
+    const timeDiff = new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+    if (timeDiff !== 0) return timeDiff;
+
+    const sameTransferGroup =
+      left.tipo === 'SPOSTAMENTO' &&
+      right.tipo === 'SPOSTAMENTO' &&
+      (left.riferimento ?? null) === (right.riferimento ?? null);
+
+    if (sameTransferGroup) {
+      const leftDirezione = left.direzione?.trim();
+      const rightDirezione = right.direzione?.trim();
+
+      if (leftDirezione !== rightDirezione) {
+        if (leftDirezione === 'IN') return -1;
+        if (rightDirezione === 'IN') return 1;
+      }
+    }
+
+    return right.id - left.id;
+  });
+
+export function StockMovementsTimeline({ refreshTrigger, pendingIncrementTrigger }: { refreshTrigger?: number; pendingIncrementTrigger?: number }) {
   const [movimenti, setMovimenti] = useState<MovimentoStock[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingCount, setPendingCount] = useState(0);
+  const loadedIdsRef = useRef<Set<number>>(new Set());
+  const lastPendingIncrementRef = useRef<number | undefined>(pendingIncrementTrigger);
+
+  const fetchMovimenti = useCallback(async () => {
+    const data = await movimentiStockApi.list();
+    return Array.isArray(data) ? data : [];
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await movimentiStockApi.list();
-      setMovimenti(data);
+      const data = await fetchMovimenti();
+      setMovimenti(sortMovimenti(data));
+      loadedIdsRef.current = new Set(data.map((item) => item.id));
+      setPendingCount(0);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchMovimenti]);
+
+  const loadPendingCount = useCallback(async () => {
+    try {
+      const data = await fetchMovimenti();
+      const loadedIds = loadedIdsRef.current;
+      setPendingCount(data.reduce((count, item) => count + (loadedIds.has(item.id) ? 0 : 1), 0));
+    } catch {}
+  }, [fetchMovimenti]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (refreshTrigger !== undefined) load(); }, [refreshTrigger, load]);
+  useEffect(() => {
+    const intervalId = window.setInterval(loadPendingCount, 60000);
+    return () => window.clearInterval(intervalId);
+  }, [loadPendingCount]);
+  useEffect(() => {
+    if (pendingIncrementTrigger === undefined) return;
+    if (lastPendingIncrementRef.current === undefined) {
+      lastPendingIncrementRef.current = pendingIncrementTrigger;
+      return;
+    }
+    if (pendingIncrementTrigger !== lastPendingIncrementRef.current) {
+      lastPendingIncrementRef.current = pendingIncrementTrigger;
+      setPendingCount((count) => count + 1);
+    }
+  }, [pendingIncrementTrigger]);
 
   return (
     <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
@@ -60,14 +123,21 @@ export function StockMovementsTimeline({ refreshTrigger }: { refreshTrigger?: nu
             <span className="text-xs font-medium text-[#17E88F]">Live</span>
           </div>
         </div>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-[#17E88F] transition-colors disabled:opacity-40"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Aggiorna
-        </button>
+        <div className="flex items-center gap-2">
+          {pendingCount > 0 && (
+            <span className="inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-[#FEE2E2] px-1.5 text-[11px] font-semibold text-[#DC2626]">
+              {pendingCount}
+            </span>
+          )}
+          <button
+            onClick={load}
+            disabled={loading}
+            className="flex items-center gap-1.5 text-xs text-[#6B7280] hover:text-[#17E88F] transition-colors disabled:opacity-40"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Aggiorna
+          </button>
+        </div>
       </div>
 
       {loading && (
@@ -95,7 +165,7 @@ export function StockMovementsTimeline({ refreshTrigger }: { refreshTrigger?: nu
           const label = TIPO_LABEL[m.tipo] ?? m.tipo;
           const style = TIPO_STYLE[label] ?? TIPO_STYLE['Spostamento'];
           const Icon  = style.icon;
-          const positivo = isPositivo(m.tipo);
+          const positivo = isMovimentoPositivo(m);
 
           return (
             <div

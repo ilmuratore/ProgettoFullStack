@@ -100,6 +100,7 @@ export interface MovimentoStock {
   ubicazione: string;
   quantita: number;
   tipo: MovimentoTipo;
+  direzione?: "IN" | "OUT" | null;
   riferimento?: string | null;
   note?: string | null;
   created_at: string;

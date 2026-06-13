@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Plus, GitMerge, Package, ArrowLeftRight,
-  Tag, PackageCheck, Download, Upload,
+  Tag, PackageCheck, Download, Upload, ListChecks, MapPin, CheckSquare, Clock,
 } from 'lucide-react';
 import { WarehouseKPIs } from './components/WarehouseKPIs';
 import { WarehouseTreeView } from './components/WarehouseTreeView';
@@ -38,7 +38,7 @@ import type { Prodotto, ProdottoListino, ProdottoCreateRequest, ProdottoUpdateRe
 import type { Categoria, CategoriaCreateRequest, CategoriaUpdateRequest } from '../../types/categorie';
 import type { Ricezione, StatoOrdineAcquisto } from '../../types/acquisti';
 
-type WarehouseTab = 'prodotti' | 'categorie' | 'struttura' | 'giacenze' | 'movimenti' | 'ricezioni';
+type WarehouseTab = 'prodotti' | 'categorie' | 'struttura' | 'giacenze' | 'movimenti' | 'picking' | 'ricezioni';
 
 const tabs: TabConfig[] = [
   { id: 'prodotti', label: 'Prodotti', icon: Package },
@@ -46,8 +46,11 @@ const tabs: TabConfig[] = [
   { id: 'struttura', label: 'Struttura', icon: GitMerge },
   { id: 'giacenze', label: 'Giacenze', icon: Package },
   { id: 'movimenti', label: 'Movimenti', icon: ArrowLeftRight },
+  { id: 'picking', label: 'Picking', icon: ListChecks },
   { id: 'ricezioni', label: 'Ricezioni', icon: PackageCheck },
 ];
+
+const pickingData: {id:string;ordine:string;cliente:string;dataConsegna:string;righe:{sku:string;prodotto:string;ubicazione:string;qtaRichiesta:number;qtaPrelevata:number;completato:boolean}[];stato:string;operatore:string}[] = [];
 
 const fmtDataOra = (iso: string | null): string =>
   iso ? new Date(iso).toLocaleString('it-IT') : '—';
@@ -120,6 +123,8 @@ export function WarehousePage() {
   const [loadingRic, setLoadingRic] = useState(false);
   const [ricezioniReloadKey, setRicezioniReloadKey] = useState(0);
   const [exportingGiacenze, setExportingGiacenze] = useState(false);
+  const [movimentiPendingTick, setMovimentiPendingTick] = useState(0);
+  const [expandedPicking, setExpandedPicking] = useState<string | null>('PCK-001');
 
   const fetchMagazzini = useCallback(async () => {
     setLoading(true);
@@ -190,6 +195,8 @@ export function WarehousePage() {
         return { label: 'Aggiorna Giacenze', show: false, action: () => {} };
       case 'movimenti':
         return { label: 'Nuovo Movimento', show: true, action: () => setIsMovementModalOpen(true) };
+      case 'picking':
+        return { label: 'Avvia Picking', show: false, action: () => {} };
       case 'ricezioni':
         return { label: 'Registra Ricezione', show: true, action: () => setIsRicezioneModalOpen(true) };
     }
@@ -368,6 +375,7 @@ export function WarehousePage() {
       id: prodotto.id,
       sku: prodotto.sku,
       nome: prodotto.nome,
+      categoria: prodotto.categoria ?? prodotto.categoria_nome ?? null,
       prezzo: prodotto.prezzo,
       data_agg_prezzo: prodotto.data_agg_prezzo,
       attivo: prodotto.attivo,
@@ -422,7 +430,13 @@ export function WarehousePage() {
   };
 
   const handleDeleteCategory = (id: number) => {
-    setCategoryToDelete(categorie.find(c => c.id === id) ?? null);
+    const categoria = categorie.find(c => c.id === id) ?? null;
+    setCategoryToDelete(categoria);
+    if (categoria?.prodotti_disattivi_count) {
+      toast.info('Categoria con prodotti disattivi', {
+        description: `${categoria.prodotti_disattivi_count} prodotto/i disattivato/i ancora associato/i.`,
+      });
+    }
   };
 
   const handleConfirmDeleteCategory = async () => {
@@ -573,7 +587,91 @@ export function WarehousePage() {
 
           {activeTab === 'giacenze' && <StockTable />}
 
-          {activeTab === 'movimenti' && <StockMovementsTimeline />}
+          {activeTab === 'movimenti' && <StockMovementsTimeline pendingIncrementTrigger={movimentiPendingTick} />}
+
+          {activeTab === 'picking' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-[#6B7280]">Lista picking attivi - ordina per ubicazione per ottimizzare il percorso</p>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="flex items-center gap-1 text-[#D97706]"><Clock className="w-3 h-3" /> IN_PICKING</span>
+                  <span className="flex items-center gap-1 text-[#22C55E]"><CheckSquare className="w-3 h-3" /> PICKING_COMPLETATO</span>
+                </div>
+              </div>
+
+              {pickingData.map((pick) => {
+                const completate = pick.righe.filter(r => r.completato).length;
+                const pct = Math.round((completate / pick.righe.length) * 100);
+                const isExpanded = expandedPicking === pick.id;
+                return (
+                  <div key={pick.id} className="border border-[#E5EAF2] rounded-xl overflow-hidden">
+                    <button
+                      onClick={() => setExpandedPicking(isExpanded ? null : pick.id)}
+                      className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#F7F9FC] transition-colors"
+                    >
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm font-semibold text-[#17E88F]">{pick.id}</span>
+                        <span className="text-sm text-[#374151]">{pick.ordine}</span>
+                        <span className="text-sm text-[#6B7280]">{pick.cliente}</span>
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          pick.stato === 'PICKING_COMPLETATO'
+                            ? 'bg-[#DCFCE7] text-[#16A34A]'
+                            : 'bg-[#FEF3C7] text-[#D97706]'
+                        }`}>
+                          {pick.stato === 'PICKING_COMPLETATO' ? <CheckSquare className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                          {pick.stato.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-24 bg-[#E5EAF2] rounded-full h-1.5">
+                            <div className={`h-1.5 rounded-full ${pct === 100 ? 'bg-[#16A34A]' : 'bg-[#D97706]'}`} style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-xs text-[#6B7280]">{completate}/{pick.righe.length}</span>
+                        </div>
+                        <span className="text-xs text-[#9CA3AF]">Cons. {pick.dataConsegna}</span>
+                      </div>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="border-t border-[#E5EAF2]">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="bg-[#F7F9FC]">
+                              <th className="text-left px-5 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Ubicazione</th>
+                              <th className="text-left px-4 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">SKU</th>
+                              <th className="text-left px-4 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Prodotto</th>
+                              <th className="text-center px-4 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Qta</th>
+                              <th className="text-center px-4 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Prelevato</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#E5EAF2]">
+                            {pick.righe.map((riga, i) => (
+                              <tr key={i} className={`transition-colors ${riga.completato ? 'bg-[#F0FFF8]' : 'hover:bg-[#FAFAFA]'}`}>
+                                <td className="px-5 py-3 text-sm text-[#374151] flex items-center gap-1.5">
+                                  <MapPin className="w-3.5 h-3.5 text-[#9CA3AF]" />
+                                  {riga.ubicazione}
+                                </td>
+                                <td className="px-4 py-3 text-xs font-mono text-[#6B7280]">{riga.sku}</td>
+                                <td className="px-4 py-3 text-sm text-[#374151]">{riga.prodotto}</td>
+                                <td className="px-4 py-3 text-sm text-center font-medium text-[#2D2D2D]">{riga.qtaRichiesta}</td>
+                                <td className="px-4 py-3 text-center">
+                                  {riga.completato
+                                    ? <CheckSquare className="w-5 h-5 text-[#16A34A] mx-auto" />
+                                    : <span className="text-sm text-[#D97706]">{riga.qtaPrelevata}/{riga.qtaRichiesta}</span>
+                                  }
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {activeTab === 'ricezioni' && (
             <div className="space-y-6">
@@ -621,7 +719,11 @@ export function WarehousePage() {
       </div>
 
       {/* ── Modali ── */}
-      <NewMovementModal isOpen={isMovementModalOpen} onClose={() => setIsMovementModalOpen(false)} />
+      <NewMovementModal
+        isOpen={isMovementModalOpen}
+        onClose={() => setIsMovementModalOpen(false)}
+        onCreated={() => setMovimentiPendingTick((k) => k + 1)}
+      />
       <NewGoodsReceiptModal
         isOpen={isRicezioneModalOpen}
         onClose={() => setIsRicezioneModalOpen(false)}

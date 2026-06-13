@@ -85,9 +85,18 @@ const deleteCategoria = async (id) => {
 
     const prodotti = await categorieModel.countProdotti(id);
     if (prodotti.rows[0].cnt > 0) {
+        const { cnt, attivi, disattivi } = prodotti.rows[0];
+        let dettaglio = `${cnt} prodotto/i associato/i`;
+
+        if (attivi > 0 && disattivi > 0) {
+            dettaglio += ` (${attivi} attivo/i, ${disattivi} disattivo/i)`;
+        } else if (disattivi > 0) {
+            dettaglio += `, di cui ${disattivi} disattivo/i`;
+        }
+
         throwError(
             'CATEGORIA_CON_PRODOTTI',
-            `Impossibile eliminare: la categoria ha ${prodotti.rows[0].cnt} prodotto/i associato/i. Riassegnali prima di procedere.`
+            `Impossibile eliminare: la categoria ha ${dettaglio}. Riassegnali prima di procedere.`
         );
     }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, ShoppingBag, ListChecks, BarChart2, MapPin, CheckSquare, Clock, Download } from 'lucide-react';
+import { Plus, ShoppingBag, BarChart2, MapPin, CheckSquare, Clock, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { SalesKPIs } from './components/SalesKPIs';
 import { SalesOrdersTable } from './components/SalesOrdersTable';
@@ -22,7 +22,6 @@ type SalesTab = 'ordini' | 'picking' | 'kpi';
 
 const tabs: TabConfig[] = [
   { id: 'ordini', label: 'Ordini', icon: ShoppingBag },
-  { id: 'picking', label: 'Picking', icon: ListChecks },
   { id: 'kpi', label: 'KPI Vendite', icon: BarChart2 },
 ];
 
@@ -207,7 +206,6 @@ export function SalesPage() {
   const getActionLabel = () => {
     switch (activeTab) {
       case 'ordini': return 'Nuovo Ordine Cliente';
-      case 'picking': return 'Avvia Picking';
       default: return 'Nuovo Ordine Cliente';
     }
   };

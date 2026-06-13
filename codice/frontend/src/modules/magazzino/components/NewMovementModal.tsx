@@ -89,7 +89,7 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
     tutteUbicazioni.filter((u) => idConGiacenza.has(u.id)),
     [tutteUbicazioni, idConGiacenza]
   );
-  const prodottiFiltratiCarico = useMemo(() => {
+  const prodottiFiltrati = useMemo(() => {
     let items = prodotti;
 
     if (statoProdottoFilter === 'attivi') {
@@ -100,7 +100,7 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
 
     return items;
   }, [prodotti, statoProdottoFilter]);
-  const prodottiVisibili = tipo === 'CARICO_ACQUISTO' ? prodottiFiltratiCarico : prodotti;
+  const prodottiVisibili = prodottiFiltrati;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -156,7 +156,7 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
     setErrors({});
   };
 
-  const handleResetCaricoFilters = () => {
+  const handleResetProductFilters = () => {
     setStatoProdottoFilter('all');
   };
 
@@ -303,37 +303,35 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
                 <label className="flex items-center gap-2 text-sm font-medium text-[#2D2D2D] mb-1.5">
                   <Package className="w-4 h-4 text-[#9CA3AF]" /> Prodotto
                 </label>
-                {tipo === 'CARICO_ACQUISTO' && (
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <div className="inline-flex items-center rounded-lg border border-[#E5EAF2] bg-white p-1">
-                      <button
-                        type="button"
-                        onClick={() => setStatoProdottoFilter('attivi')}
-                        className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
-                          statoProdottoFilter === 'attivi' ? 'bg-[#DCFCE7] text-[#166534]' : 'text-[#6B7280]'
-                        }`}
-                      >
-                        Attivi
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setStatoProdottoFilter('disattivati')}
-                        className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
-                          statoProdottoFilter === 'disattivati' ? 'bg-[#FEE2E2] text-[#B91C1C]' : 'text-[#6B7280]'
-                        }`}
-                      >
-                        Disattivati
-                      </button>
-                    </div>
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <div className="inline-flex items-center rounded-lg border border-[#E5EAF2] bg-white p-1">
                     <button
                       type="button"
-                      onClick={handleResetCaricoFilters}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium border border-[#E5EAF2] text-[#6B7280] hover:bg-[#F7F9FC] transition-all"
+                      onClick={() => setStatoProdottoFilter('attivi')}
+                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                        statoProdottoFilter === 'attivi' ? 'bg-[#DCFCE7] text-[#166534]' : 'text-[#6B7280]'
+                      }`}
                     >
-                      Reset
+                      Attivi
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStatoProdottoFilter('disattivati')}
+                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                        statoProdottoFilter === 'disattivati' ? 'bg-[#FEE2E2] text-[#B91C1C]' : 'text-[#6B7280]'
+                      }`}
+                    >
+                      Disattivati
                     </button>
                   </div>
-                )}
+                  <button
+                    type="button"
+                    onClick={handleResetProductFilters}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium border border-[#E5EAF2] text-[#6B7280] hover:bg-[#F7F9FC] transition-all"
+                  >
+                    Reset
+                  </button>
+                </div>
                 <select value={form.prodotto_id} onChange={set('prodotto_id')} className={inputCls('prodotto_id')}>
                   <option value="">Seleziona prodotto…</option>
                   {prodottiVisibili.map(p => (
@@ -341,7 +339,7 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
                   ))}
                 </select>
                 {errors.prodotto_id && <p className="mt-1 text-xs text-red-500">{errors.prodotto_id}</p>}
-                {tipo === 'CARICO_ACQUISTO' && !loadingDati && prodottiVisibili.length === 0 && (
+                {!loadingDati && prodottiVisibili.length === 0 && (
                   <p className="mt-1 text-xs text-[#F59E0B]">Nessun prodotto corrisponde ai filtri selezionati</p>
                 )}
               </div>

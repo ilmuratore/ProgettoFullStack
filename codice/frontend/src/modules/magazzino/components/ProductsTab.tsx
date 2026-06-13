@@ -175,7 +175,8 @@ export function ProductsTab({
       const matchSearch =
         query === '' ||
         prodotto.nome.toLowerCase().includes(query) ||
-        prodotto.sku.toLowerCase().includes(query);
+        prodotto.sku.toLowerCase().includes(query) ||
+        (prodotto.categoria ?? '').toLowerCase().includes(query);
 
       const matchStatus =
         filters.stato === 'tutti' ||
@@ -214,7 +215,7 @@ export function ProductsTab({
             <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Cerca prodotti per nome o SKU..."
+              placeholder="Cerca prodotti per nome, SKU o categoria..."
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
               className="w-full h-10 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all"
@@ -229,14 +230,15 @@ export function ProductsTab({
             <tr className="border-b border-[#E5EAF2]">
               <SortableHeader label="Nome Prodotto" sortKey="nome" sort={sort} onSort={handleSort} />
               <SortableHeader label="SKU" sortKey="sku" sort={sort} onSort={handleSort} />
+              <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Categoria</th>
               <SortableHeader label="Prezzo" sortKey="prezzo" sort={sort} onSort={handleSort} align="right" />
               <SortableHeader label="Agg. Prezzo" sortKey="data_agg_prezzo" sort={sort} onSort={handleSort} />
               <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Azioni</th>
             </tr>
           </thead>
           <tbody>
-            {loading ? <SkeletonRows cols={5} /> : filteredProdotti.length === 0
-              ? <tr><td colSpan={5} className="py-12 text-center text-[#6B7280] text-sm">
+            {loading ? <SkeletonRows cols={6} /> : filteredProdotti.length === 0
+              ? <tr><td colSpan={6} className="py-12 text-center text-[#6B7280] text-sm">
                 {search || activeFiltersCount > 0
                   ? 'Nessun prodotto corrisponde ai filtri impostati'
                   : 'Nessun prodotto. Clicca "Nuovo Prodotto" per iniziare.'}
@@ -256,6 +258,7 @@ export function ProductsTab({
                     </div>
                   </td>
                   <td className="py-3 px-4 text-sm text-[#6B7280] font-mono">{p.sku}</td>
+                  <td className="py-3 px-4 text-sm text-[#6B7280]">{p.categoria ?? '—'}</td>
                   <td className="py-3 px-4 text-sm font-semibold text-[#2D2D2D] text-right">{formatPrezzo(p.prezzo)}</td>
                   <td className="py-3 px-4 text-sm text-[#6B7280]">{formatData(p.data_agg_prezzo)}</td>
                   <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
