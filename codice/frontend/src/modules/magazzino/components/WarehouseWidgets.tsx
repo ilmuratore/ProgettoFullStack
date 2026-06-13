@@ -145,7 +145,7 @@ export function WarehouseWidgets() {
           </div>
           <div className="flex items-center gap-2 text-xs">
             <div className="w-2 h-2 bg-[#F59E0B] rounded-full animate-pulse" />
-            <span className="text-[#9CA3AF]">— picking aperti</span>
+            <span className="text-[#9CA3AF]">— preparazioni aperte</span>
           </div>
         </div>
       </div>

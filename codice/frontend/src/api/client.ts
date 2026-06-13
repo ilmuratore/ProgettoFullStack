@@ -82,6 +82,43 @@ export async function downloadBlob(path: string, filename: string): Promise<void
   window.URL.revokeObjectURL(url);
 }
 
+
+export async function postFormData<T>(path: string, formData: FormData): Promise<T> {
+  const token = localStorage.getItem('lc_token');
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  });
+
+  if (res.status === 204) return undefined as T;
+
+  const body = await res.json();
+
+  if (res.status === 401) {
+    localStorage.removeItem('lc_token');
+    localStorage.removeItem('lc_utente');
+    window.location.href = '/login';
+    throw Object.assign(new Error(body.message ?? 'Non autorizzato'), {
+      code: 'AUTH_REQUIRED',
+      details: [],
+      status: 401,
+    });
+  }
+
+  if (!res.ok) {
+    throw Object.assign(new Error(body.message ?? 'Errore server'), {
+      code: body.code ?? 'INTERNAL_SERVER_ERROR',
+      details: body.details ?? [],
+      status: res.status,
+    });
+  }
+
+  return body.data as T;
+}
+
 export const api = {
   get:    <T>(path: string) => request<T>(path),
   post:   <T>(path: string, body: unknown) => request<T>(path, { method: 'POST',  body: JSON.stringify(body) }),

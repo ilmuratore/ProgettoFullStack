@@ -12,6 +12,9 @@ export const notificheApi = {
   getNonLette: (): Promise<Notifica[]> =>
     api.get<Notifica[]>('/notifiche/non-lette'),
 
+  getById: (id: number): Promise<Notifica> =>
+    api.get<Notifica>(`/notifiche/${id}`),
+
   count: (): Promise<NotificheCountResponse> =>
     api.get<NotificheCountResponse>('/notifiche/count'),
 

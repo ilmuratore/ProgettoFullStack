@@ -4,6 +4,7 @@ import type {
   OrdineVenditaDettaglio,
   OrdineVendita,
   OrdineVenditaCreateRequest,
+  OrdineVenditaUpdateRequest,
   OrdineVenditaUpdatePickingRequest,
   OrdineVenditaUpdatePickingResponse,
   RigaOrdineVendita,
@@ -36,6 +37,9 @@ export const ordiniApi = {
 
   create: (body: OrdineVenditaCreateRequest): Promise<{ ordine: OrdineVendita; righe: RigaOrdineVendita[] }> =>
     api.post<{ ordine: OrdineVendita; righe: RigaOrdineVendita[] }>('/ordini', body),
+
+  update: (id: number, body: OrdineVenditaUpdateRequest): Promise<OrdineVendita> =>
+    api.patch<OrdineVendita>(`/ordini/${id}`, body),
 
   updateStato: (id: number, stato: StatoOrdineVendita): Promise<OrdineVendita> =>
     api.patch<OrdineVendita>(`/ordini/${id}/stato`, { stato }),

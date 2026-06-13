@@ -2217,6 +2217,68 @@ paths:
                   summary: Ha sottocategorie
                   value: { status: error, code: CATEGORIA_CON_SOTTOCATEGORIE, message: "Impossibile eliminare: la categoria ha 2 sottocategoria/e. Eliminale prima di procedere." }
 
+
+  /prodotti/import:
+    post:
+      tags: [Prodotti]
+      summary: Importa prodotti da CSV/Excel
+      description: |
+        Importa prodotti da file caricato dal frontend.
+        Endpoint operativo lato backend, documentato per allineare il contratto OpenAPI.
+        Richiede permesso `prodotti:write`.
+      x-required-permission: prodotti:write
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: File CSV/XLS/XLSX contenente i prodotti da importare.
+      responses:
+        "200":
+          description: Esito import prodotti
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data:
+                    type: object
+                    properties:
+                      importati: { type: integer, example: 12 }
+                      saltati: { type: integer, example: 1 }
+                      errori:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            riga: { type: integer, example: 4 }
+                            motivo: { type: string, example: SKU già presente }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  /prodotti/import/template:
+    get:
+      tags: [Prodotti]
+      summary: Scarica template import prodotti
+      description: Restituisce il template CSV per l'import prodotti. Richiede permesso `prodotti:write`.
+      x-required-permission: prodotti:write
+      responses:
+        "200":
+          description: Template CSV
+          content:
+            text/csv:
+              schema: { type: string, format: binary }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
   # ══════════════════════════════════════════
   # M03 — FORNITORI
   # ══════════════════════════════════════════
@@ -3540,6 +3602,22 @@ paths:
         "401": { $ref: '#/components/responses/Unauthorized' }
         "403": { $ref: '#/components/responses/Forbidden' }
 
+
+  /giacenze/export:
+    get:
+      tags: [Giacenze]
+      summary: Esporta giacenze in Excel
+      description: Esporta la vista giacenze in formato XLSX/Excel. Richiede permesso `giacenze:read`.
+      x-required-permission: giacenze:read
+      responses:
+        "200":
+          description: File Excel giacenze
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: { type: string, format: binary }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
   /giacenze/{prodotto_id}:
     parameters:
       - name: prodotto_id
@@ -4568,6 +4646,22 @@ paths:
         "403": { $ref: '#/components/responses/Forbidden' }
         "404": { $ref: '#/components/responses/NotFound' }
 
+
+  /ordini/export:
+    get:
+      tags: [Ordini]
+      summary: Esporta ordini di vendita in Excel
+      description: Esporta gli ordini di vendita in formato XLSX/Excel. Richiede permesso `ordini:read`.
+      x-required-permission: ordini:read
+      responses:
+        "200":
+          description: File Excel ordini di vendita
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: { type: string, format: binary }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
   /ordini/{id}:
     parameters:
       - name: id
@@ -4709,6 +4803,22 @@ paths:
         "403": { $ref: '#/components/responses/Forbidden' }
         "404": { $ref: '#/components/responses/NotFound' }
         "422": { $ref: '#/components/responses/InsufficientStock' }
+
+
+  /ordini-acquisto/export:
+    get:
+      tags: [OrdiniAcquisto]
+      summary: Esporta ordini di acquisto in Excel
+      description: Esporta gli ordini di acquisto in formato XLSX/Excel. Richiede permesso `acquisti:read`.
+      x-required-permission: acquisti:read
+      responses:
+        "200":
+          description: File Excel ordini di acquisto
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: { type: string, format: binary }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
 
   # ══════════════════════════════════════════
   # M08 (ext) — PDF ORDINE DI ACQUISTO
@@ -5334,7 +5444,7 @@ paths:
     get:
       tags: [Spedizioni]
       summary: Genera PDF del DDT
-      description: Restituisce il PDF del DDT (`Content-Type: application/pdf`). Richiede permesso `spedizioni:read`.
+      description: "Restituisce il PDF del DDT (`Content-Type: application/pdf`). Richiede permesso `spedizioni:read`."
       x-required-permission: spedizioni:read
       responses:
         "200":

@@ -50,7 +50,7 @@ const tabs: TabConfig[] = [
   { id: 'struttura', label: 'Struttura', icon: GitMerge },
   { id: 'giacenze', label: 'Giacenze', icon: Package },
   { id: 'movimenti', label: 'Movimenti', icon: ArrowLeftRight },
-  { id: 'picking', label: 'Picking', icon: ListChecks },
+  { id: 'picking', label: 'Preparazione Spedizione', icon: ListChecks },
   { id: 'ricezioni', label: 'Ricezioni', icon: PackageCheck },
 ];
 
@@ -74,6 +74,12 @@ type PickingOrderView = {
   operatore: string;
 };
 
+type PickingUbicazioneOption = {
+  ubicazione_id: number;
+  label: string;
+  quantita: number;
+};
+
 type PickingStartLine = {
   id: number;
   prodotto_id: number;
@@ -81,6 +87,7 @@ type PickingStartLine = {
   sku: string;
   quantita_ordinata: number;
   quantita_da_prelevare: number;
+  ubicazioni: PickingUbicazioneOption[];
 };
 
 const fmtDataOra = (iso: string | null): string =>
@@ -92,8 +99,8 @@ const fmtData = (iso: string | null): string =>
 const getPickingLabel = (stato: StatoPickingVendita): string => {
   switch (stato) {
     case 'NON_AVVIATO': return 'NON AVVIATO';
-    case 'IN_PICKING': return 'IN PICKING';
-    case 'PICKING_COMPLETATO': return 'PICKING COMPLETATO';
+    case 'IN_PICKING': return 'IN PREPARAZIONE';
+    case 'PICKING_COMPLETATO': return 'PREPARAZIONE COMPLETATA';
   }
 };
 
@@ -271,7 +278,7 @@ export function WarehousePage() {
         });
 
         return {
-          id: `PCK-${String(ordine.id).padStart(4, '0')}`,
+          id: `PREP-${String(ordine.id).padStart(4, '0')}`,
           ordineId: ordine.id,
           ordine: `SO-${String(ordine.id).padStart(4, '0')}`,
           cliente: ordine.cliente ?? '-',
@@ -285,7 +292,7 @@ export function WarehousePage() {
       setPickingOrders(rows);
       setExpandedPicking((current) => current ?? rows.find((item) => item.stato === 'IN_PICKING')?.id ?? null);
     } catch (err: any) {
-      toast.error('Errore caricamento picking', { description: err?.message });
+      toast.error('Errore caricamento preparazioni spedizione', { description: err?.message });
       setPickingOrders([]);
     } finally {
       setLoadingPicking(false);
@@ -342,7 +349,7 @@ export function WarehousePage() {
         return { label: 'Nuovo Movimento', show: true, action: () => setIsMovementModalOpen(true) };
       case 'picking':
         return {
-          label: 'Avvia Picking',
+          label: 'Avvia Preparazione',
           show: canApproveOrders,
           action: () => {
             setStartPickingStep(1);
@@ -370,15 +377,34 @@ export function WarehousePage() {
     try {
       const detail = await ordiniApi.getById(ordineId);
       setSelectedPickingDetail(detail);
+
+      const prodottiIds = Array.from(new Set(detail.righe.map((riga) => riga.prodotto_id)));
+      const giacenzeEntries = await Promise.all(
+        prodottiIds.map(async (prodottoId) => [prodottoId, await giacenzeApi.getByProdottoId(prodottoId)] as const)
+      );
+      const giacenzeByProdotto = new Map<number, Giacenza[]>(giacenzeEntries);
+
       setPickingStartLines(
-        detail.righe.map((riga) => ({
-          id: riga.id,
-          prodotto_id: riga.prodotto_id,
-          prodotto: riga.prodotto ?? `Prodotto ${riga.prodotto_id}`,
-          sku: riga.sku ?? '',
-          quantita_ordinata: Number(riga.quantita ?? 0),
-          quantita_da_prelevare: Number(riga.quantita ?? 0),
-        }))
+        detail.righe.map((riga) => {
+          const ubicazioni = (giacenzeByProdotto.get(riga.prodotto_id) ?? [])
+            .filter((item) => Number(item.quantita ?? 0) > 0)
+            .sort((left, right) => Number(right.quantita ?? 0) - Number(left.quantita ?? 0))
+            .map((item) => ({
+              ubicazione_id: item.ubicazione_id,
+              label: item.ubicazione || `Ubicazione ${item.ubicazione_id}`,
+              quantita: Number(item.quantita ?? 0),
+            }));
+
+          return {
+            id: riga.id,
+            prodotto_id: riga.prodotto_id,
+            prodotto: riga.prodotto ?? `Prodotto ${riga.prodotto_id}`,
+            sku: riga.sku ?? '',
+            quantita_ordinata: Number(riga.quantita ?? 0),
+            quantita_da_prelevare: Number(riga.quantita ?? 0),
+            ubicazioni,
+          };
+        })
       );
       setStartPickingStep(2);
     } catch (err: any) {
@@ -391,20 +417,72 @@ export function WarehousePage() {
     }
   };
 
+  const getLineDisponibile = (line: PickingStartLine): number =>
+    line.ubicazioni.reduce((totale, ubicazione) => totale + ubicazione.quantita, 0);
+
+  const buildPrelieviForLine = (line: PickingStartLine) => {
+    let remaining = line.quantita_da_prelevare;
+
+    return line.ubicazioni.reduce<{ ubicazione_id: number; quantita: number }[]>((acc, ubicazione) => {
+      if (remaining <= 0) return acc;
+      const quantita = Math.min(remaining, ubicazione.quantita);
+      if (quantita > 0) {
+        acc.push({ ubicazione_id: ubicazione.ubicazione_id, quantita });
+        remaining -= quantita;
+      }
+      return acc;
+    }, []);
+  };
+
   const handleStartPicking = async (ordineId: number) => {
+    if (!selectedPickingOrder) return;
+
+    const incompleteLine = pickingStartLines.find((line) => line.quantita_da_prelevare !== line.quantita_ordinata);
+    if (incompleteLine) {
+      toast.error('Preparazione incompleta', {
+        description: 'Per completare la preparazione spedizione devi preparare tutta la quantità ordinata.',
+      });
+      return;
+    }
+
+    const insufficientLine = pickingStartLines.find((line) => getLineDisponibile(line) < line.quantita_da_prelevare);
+    if (insufficientLine) {
+      toast.error('Giacenza insufficiente', {
+        description: `${insufficientLine.prodotto}: quantità disponibile ${getLineDisponibile(insufficientLine)}, richiesta ${insufficientLine.quantita_da_prelevare}.`,
+      });
+      return;
+    }
+
+    const prelievi = pickingStartLines.map((line) => ({
+      riga_id: line.id,
+      ubicazioni: buildPrelieviForLine(line),
+    }));
+
     setStartingPickingId(ordineId);
     try {
-      await ordiniApi.updatePicking(ordineId, { stato_picking: 'IN_PICKING' });
-      toast.success(`Picking avviato per SO-${String(ordineId).padStart(4, '0')}`);
+      if (selectedPickingOrder.stato === 'NON_AVVIATO') {
+        await ordiniApi.updatePicking(ordineId, { stato_picking: 'IN_PICKING' });
+      }
+
+      const payload: {
+        stato_picking: StatoPickingVendita;
+        prelievi: { riga_id: number; ubicazioni: { ubicazione_id: number; quantita: number }[] }[];
+      } = {
+        stato_picking: 'PICKING_COMPLETATO',
+        prelievi,
+      };
+
+      await ordiniApi.updatePicking(ordineId, payload);
+      toast.success(`Preparazione spedizione completata per SO-${String(ordineId).padStart(4, '0')}`);
       setStartPickingOpen(false);
       setStartPickingStep(1);
       setSelectedPickingOrder(null);
       setSelectedPickingDetail(null);
       setPickingStartLines([]);
       await fetchPickingOrders();
-      setExpandedPicking(`PCK-${String(ordineId).padStart(4, '0')}`);
+      setExpandedPicking(`PREP-${String(ordineId).padStart(4, '0')}`);
     } catch (err: any) {
-      toast.error('Errore avvio picking', { description: err?.message });
+      toast.error('Errore preparazione spedizione', { description: err?.message });
     } finally {
       setStartingPickingId(null);
     }
@@ -830,28 +908,28 @@ export function WarehousePage() {
           {activeTab === 'picking' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-[#6B7280]">Lista picking attivi - ordina per ubicazione per ottimizzare il percorso</p>
+                <p className="text-sm text-[#6B7280]">Preparazioni spedizione attive: prelievo merce da magazzino/ubicazione e passaggio a logistica</p>
                 <div className="flex items-center gap-2 text-xs">
                   <span className="flex items-center gap-1 text-[#6B7280]"><ListChecks className="w-3 h-3" /> NON_AVVIATO</span>
-                  <span className="flex items-center gap-1 text-[#D97706]"><Clock className="w-3 h-3" /> IN_PICKING</span>
-                  <span className="flex items-center gap-1 text-[#22C55E]"><CheckSquare className="w-3 h-3" /> PICKING_COMPLETATO</span>
+                  <span className="flex items-center gap-1 text-[#D97706]"><Clock className="w-3 h-3" /> IN PREPARAZIONE</span>
+                  <span className="flex items-center gap-1 text-[#22C55E]"><CheckSquare className="w-3 h-3" /> COMPLETATA</span>
                 </div>
               </div>
 
               {loadingPicking ? (
                 <div className="border border-[#E5EAF2] rounded-xl px-5 py-8 text-sm text-[#6B7280] text-center">
-                  Caricamento picking...
+                  Caricamento preparazioni...
                 </div>
               ) : (nonStartedPickingOrders.length === 0 && activePickingOrders.length === 0) ? (
                 <div className="border border-[#E5EAF2] rounded-xl px-5 py-8 text-sm text-[#6B7280] text-center">
-                  Nessun ordine confermato disponibile per il picking.
+                  Nessun ordine confermato disponibile per la preparazione spedizione.
                 </div>
               ) : (
                 <>
                   {nonStartedPickingOrders.length > 0 && (
                     <div className="border border-[#E5EAF2] rounded-xl overflow-hidden">
                       <div className="px-5 py-3 bg-[#F7F9FC] border-b border-[#E5EAF2]">
-                        <p className="text-sm font-medium text-[#2D2D2D]">Ordini confermati con picking non avviato</p>
+                        <p className="text-sm font-medium text-[#2D2D2D]">Ordini confermati con preparazione non avviata</p>
                       </div>
                       <div className="divide-y divide-[#E5EAF2]">
                         {nonStartedPickingOrders.map((pick) => (
@@ -1012,7 +1090,7 @@ export function WarehousePage() {
           <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl animate-in fade-in duration-200 max-h-[90vh] overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-6 border-b border-[#E5EAF2]">
               <div>
-                <h2 className="text-xl font-semibold text-[#2D2D2D]">Avvia Picking</h2>
+                <h2 className="text-xl font-semibold text-[#2D2D2D]">Avvia Preparazione Spedizione</h2>
                 <p className="text-sm text-[#6B7280] mt-1">Step {startPickingStep} di 3</p>
               </div>
               <button
@@ -1068,8 +1146,8 @@ export function WarehousePage() {
               {startPickingStep === 1 && (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="font-semibold text-[#2D2D2D] mb-2">Seleziona Ordine da Mettere in Picking</h3>
-                    <p className="text-sm text-[#6B7280]">Ordini confermati con picking non avviato o gi&agrave; in corso.</p>
+                    <h3 className="font-semibold text-[#2D2D2D] mb-2">Seleziona ordine da preparare per la spedizione</h3>
+                    <p className="text-sm text-[#6B7280]">Ordini confermati con preparazione non avviata o gi&agrave; in corso.</p>
                   </div>
                   <div className="border border-[#E5EAF2] rounded-xl overflow-hidden">
                     <table className="w-full">
@@ -1078,7 +1156,7 @@ export function WarehousePage() {
                           <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Ordine</th>
                           <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Cliente</th>
                           <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Consegna</th>
-                          <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Picking</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Preparazione</th>
                           <th className="text-right px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Azione</th>
                         </tr>
                       </thead>
@@ -1159,13 +1237,13 @@ export function WarehousePage() {
                                 </div>
                               </div>
                               <div className="col-span-2">
-                                <label className="text-xs text-[#6B7280] mb-1 block">Qta Prelevata</label>
-                                <div className="h-11 text-sm text-[#9CA3AF] flex items-center pt-1">
-                                  0
+                                <label className="text-xs text-[#6B7280] mb-1 block">Disponibile</label>
+                                <div className={`h-11 text-sm flex items-center pt-1 ${getLineDisponibile(line) >= line.quantita_ordinata ? 'text-[#16A34A]' : 'text-[#DC2626]'}`}>
+                                  {getLineDisponibile(line)}
                                 </div>
                               </div>
                               <div className="col-span-3">
-                                <label className="text-xs text-[#6B7280] mb-1 block">Qta da Prelevare</label>
+                                <label className="text-xs text-[#6B7280] mb-1 block">Qta da preparare</label>
                                 <input
                                   type="number"
                                   min={0}
@@ -1175,6 +1253,17 @@ export function WarehousePage() {
                                   className="w-full h-9 px-3 bg-white border border-[#E5EAF2] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20"
                                 />
                               </div>
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {line.ubicazioni.length === 0 ? (
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#FEE2E2] text-[#DC2626]">
+                                  Nessuna giacenza disponibile
+                                </span>
+                              ) : line.ubicazioni.map((ubicazione) => (
+                                <span key={ubicazione.ubicazione_id} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-white border border-[#E5EAF2] text-[#6B7280]">
+                                  {ubicazione.label}: {ubicazione.quantita}
+                                </span>
+                              ))}
                             </div>
                           </div>
                         ))}
@@ -1214,13 +1303,19 @@ export function WarehousePage() {
                               <div className="text-xs text-[#9CA3AF] mt-1">
                                 {line.sku || 'SKU non disponibile'}
                               </div>
+                              <div className="text-xs text-[#6B7280] mt-2">
+                                {buildPrelieviForLine(line).map((prelievo) => {
+                                  const ubicazione = line.ubicazioni.find((item) => item.ubicazione_id === prelievo.ubicazione_id);
+                                  return `${ubicazione?.label ?? `Ubicazione ${prelievo.ubicazione_id}`}: ${prelievo.quantita}`;
+                                }).join(' · ')}
+                              </div>
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white border border-[#E5EAF2] text-[#6B7280]">
                                 Ordinati: {line.quantita_ordinata}
                               </span>
                               <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#DCFCE7] text-[#16A34A]">
-                                Da prelevare: {line.quantita_da_prelevare}
+                                Da preparare: {line.quantita_da_prelevare}
                               </span>
                             </div>
                           </div>
@@ -1247,7 +1342,7 @@ export function WarehousePage() {
                   disabled={!selectedPickingOrder || startingPickingId === selectedPickingOrder.ordineId || loadingPickingStartDetail || pickingStartLines.length === 0 || pickingStartActiveLines.length === 0}
                   className="px-6 py-2.5 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {startingPickingId === selectedPickingOrder?.ordineId ? 'Esecuzione...' : <>Effettua Picking <ArrowRight className="w-4 h-4" /></>}
+                  {startingPickingId === selectedPickingOrder?.ordineId ? 'Esecuzione...' : <>Completa Preparazione <ArrowRight className="w-4 h-4" /></>}
                 </button>
               ) : startPickingStep === 2 ? (
                 <button

@@ -62,6 +62,9 @@ export function SupplierFormModal({ open, onClose, onSave, initialData, mode }: 
     if (!form.ragione_sociale.trim()) {
       errs.ragione_sociale = 'La ragione sociale è obbligatoria';
     }
+    if (mode === 'create' && !form.piva.trim()) {
+      errs.piva = 'La partita IVA è obbligatoria';
+    }
     if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       errs.email = 'Formato email non valido';
     }
@@ -81,16 +84,26 @@ export function SupplierFormModal({ open, onClose, onSave, initialData, mode }: 
     if (!validate()) return;
     setLoading(true);
     try {
-      const payload: FornitoreCreateRequest | FornitoreUpdateRequest = {
-        ragione_sociale: form.ragione_sociale.trim(),
-        ...(form.piva.trim() && { piva: form.piva.trim() }),
-        ...(form.indirizzo.trim() && { indirizzo: form.indirizzo.trim() }),
-        ...(form.email.trim() && { email: form.email.trim() }),
-        ...(form.telefono.trim() && { telefono: form.telefono.trim() }),
-        ...(form.sito_web.trim() && { sito_web: normalizeUrl(form.sito_web) }),
-        ...(form.descrizione_aziendale.trim() && { descrizione_aziendale: form.descrizione_aziendale.trim() }),
-        ...(mode === 'edit' && { attivo: form.attivo }),
-      };
+      const payload: FornitoreCreateRequest | FornitoreUpdateRequest = mode === 'create'
+        ? {
+            ragione_sociale: form.ragione_sociale.trim(),
+            piva: form.piva.trim(),
+            ...(form.indirizzo.trim() && { indirizzo: form.indirizzo.trim() }),
+            ...(form.email.trim() && { email: form.email.trim() }),
+            ...(form.telefono.trim() && { telefono: form.telefono.trim() }),
+            ...(form.sito_web.trim() && { sito_web: normalizeUrl(form.sito_web) }),
+            ...(form.descrizione_aziendale.trim() && { descrizione_aziendale: form.descrizione_aziendale.trim() }),
+          }
+        : {
+            ragione_sociale: form.ragione_sociale.trim(),
+            ...(form.piva.trim() && { piva: form.piva.trim() }),
+            ...(form.indirizzo.trim() && { indirizzo: form.indirizzo.trim() }),
+            ...(form.email.trim() && { email: form.email.trim() }),
+            ...(form.telefono.trim() && { telefono: form.telefono.trim() }),
+            ...(form.sito_web.trim() && { sito_web: normalizeUrl(form.sito_web) }),
+            ...(form.descrizione_aziendale.trim() && { descrizione_aziendale: form.descrizione_aziendale.trim() }),
+            attivo: form.attivo,
+          };
       await onSave(payload, initialData?.id);
       onClose();
     } catch {
@@ -145,7 +158,7 @@ export function SupplierFormModal({ open, onClose, onSave, initialData, mode }: 
 
             <div>
               <label className="block text-sm font-medium text-[#2D2D2D] mb-1.5">
-                Partita IVA
+                Partita IVA {mode === 'create' && <span className="text-red-500">*</span>}
               </label>
               <input
                 type="text"
@@ -154,7 +167,9 @@ export function SupplierFormModal({ open, onClose, onSave, initialData, mode }: 
                 placeholder="02345678901"
                 className={`${inputClass('piva')} font-mono`}
               />
-              <p className="mt-1 text-xs text-[#6B7280]">Opzionale per fornitori esteri</p>
+              {errors.piva && (
+                <p className="mt-1 text-xs text-red-500">{errors.piva}</p>
+              )}
             </div>
 
             <div>

@@ -5,11 +5,13 @@ import type { UtenteAPI } from '../types/auth';
 import { toast } from 'sonner';
 
 const RUOLI = [
-  { id: 1, label: 'Admin' },
-  { id: 2, label: 'Responsabile Acquisti' },
-  { id: 3, label: 'Responsabile Magazzino' },
-  { id: 4, label: 'Operatore' },
-  { id: 5, label: 'Corriere' },
+  { id: 4, label: 'Resp. Azienda' },
+  { id: 5, label: 'Resp. HR' },
+  { id: 6, label: 'Resp. Vendite' },
+  { id: 7, label: 'Resp. Acquisti' },
+  { id: 8, label: 'Resp. Magazzino' },
+  { id: 9, label: 'Operatore' },
+  { id: 10, label: 'Corriere' },
 ];
 
 interface FieldError {

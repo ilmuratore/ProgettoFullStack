@@ -111,7 +111,7 @@ export function CategoriesTab({
           {categorieRadice.map((cat) => {
             const subcategories = filteredCategorie.filter((c) => c.categoria_padre_id === cat.id);
             const totalProdotti = cat.prodotti_count + subcategories.reduce((s, sub) => s + sub.prodotti_count, 0);
-            const totalProdottiDisattivi = cat.prodotti_disattivi_count + subcategories.reduce((s, sub) => s + sub.prodotti_disattivi_count, 0);
+            const totalProdottiDisattivi = (cat.prodotti_disattivi_count ?? 0) + subcategories.reduce((s, sub) => s + (sub.prodotti_disattivi_count ?? 0), 0);
             const isExpanded = search.trim() !== '' || expandedIds.has(cat.id);
 
             return (
@@ -157,7 +157,7 @@ export function CategoriesTab({
                       <div className="w-1 h-8 bg-[#E5EAF2] rounded" />
                       <div>
                         <p className="text-sm font-medium text-[#2D2D2D]">{sub.nome}</p>
-                        <p className="text-xs text-[#6B7280]">{formatProdottiLabel(sub.prodotti_count, sub.prodotti_disattivi_count)}</p>
+                        <p className="text-xs text-[#6B7280]">{formatProdottiLabel(sub.prodotti_count, sub.prodotti_disattivi_count ?? 0)}</p>
                       </div>
                     </div>
                     <CategoryActions

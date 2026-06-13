@@ -189,6 +189,9 @@ export function ClientFormModal({ open, onClose, onSave, initialData, mode }: Cl
     if (!form.ragione_sociale.trim()) {
       errs.ragione_sociale = 'La ragione sociale è obbligatoria';
     }
+    if (mode === 'create' && !form.piva_cf.trim()) {
+      errs.piva_cf = 'P. IVA / CF obbligatoria';
+    }
     if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       errs.email = 'Formato email non valido';
     }
@@ -201,13 +204,20 @@ export function ClientFormModal({ open, onClose, onSave, initialData, mode }: Cl
     if (!validate()) return;
     setLoading(true);
     try {
-      const payload: ClienteCreateRequest | ClienteUpdateRequest = {
-        ragione_sociale: form.ragione_sociale.trim(),
-        ...(form.piva_cf.trim() && { piva_cf: form.piva_cf.trim() }),
-        ...(form.email.trim() && { email: form.email.trim() }),
-        ...(form.telefono.trim() && { telefono: form.telefono.trim() }),
-        ...(mode === 'edit' && { attivo: form.attivo }),
-      };
+      const payload: ClienteCreateRequest | ClienteUpdateRequest = mode === 'create'
+        ? {
+            ragione_sociale: form.ragione_sociale.trim(),
+            piva_cf: form.piva_cf.trim(),
+            ...(form.email.trim() && { email: form.email.trim() }),
+            ...(form.telefono.trim() && { telefono: form.telefono.trim() }),
+          }
+        : {
+            ragione_sociale: form.ragione_sociale.trim(),
+            ...(form.piva_cf.trim() && { piva_cf: form.piva_cf.trim() }),
+            ...(form.email.trim() && { email: form.email.trim() }),
+            ...(form.telefono.trim() && { telefono: form.telefono.trim() }),
+            attivo: form.attivo,
+          };
       const result = await onSave(payload, initialData?.id);
       const clienteId = result?.id ?? initialData?.id;
 
@@ -297,7 +307,7 @@ export function ClientFormModal({ open, onClose, onSave, initialData, mode }: Cl
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-[#2D2D2D] mb-1">P. IVA / CF</label>
+              <label className="block text-xs font-medium text-[#2D2D2D] mb-1">P. IVA / CF {mode === 'create' && <span className="text-red-500">*</span>}</label>
               <input
                 type="text"
                 value={form.piva_cf}
@@ -305,6 +315,9 @@ export function ClientFormModal({ open, onClose, onSave, initialData, mode }: Cl
                 placeholder="03456789012"
                 className={`${inputClass('piva_cf')} font-mono`}
               />
+              {errors.piva_cf && (
+                <p className="mt-1 text-xs text-red-500">{errors.piva_cf}</p>
+              )}
             </div>
 
             <div>

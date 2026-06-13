@@ -23,3 +23,34 @@ export interface SpedizioneCreateRequest {
   corriere_id?: number;
   tracking_number?: string;
 }
+
+
+export interface SpedizioneTrackingUpdateRequest {
+  tracking_number: string;
+}
+
+export interface Ddt {
+  id: number;
+  spedizione_id: number;
+  ordine_id?: number;
+  numero_ddt: string;
+  data_ddt: string;
+  trasportatore: string | null;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DdtCreateRequest {
+  numero_ddt: string;
+  data_ddt?: string;
+  trasportatore?: string;
+  note?: string;
+}
+
+export interface DdtUpdateRequest {
+  numero_ddt?: string;
+  data_ddt?: string;
+  trasportatore?: string;
+  note?: string;
+}

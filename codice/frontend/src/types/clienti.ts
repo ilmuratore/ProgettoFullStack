@@ -46,7 +46,7 @@ export interface DestinazioneUpdateRequest {
 
 export interface ClienteCreateRequest {
   ragione_sociale: string;
-  piva_cf?: string;
+  piva_cf: string;
   email?: string;
   telefono?: string;
 }

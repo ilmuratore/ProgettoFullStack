@@ -2,7 +2,7 @@ export interface ProdottoListino {
   id: number;
   sku: string;
   nome: string;
-  categoria: string | null;
+  categoria?: string | null;
   prezzo: number;
   data_agg_prezzo: string;
   attivo: boolean;

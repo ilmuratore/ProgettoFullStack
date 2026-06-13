@@ -16,7 +16,7 @@ export interface Fornitore {
 
 export interface FornitoreCreateRequest {
   ragione_sociale: string;
-  piva?: string;
+  piva: string;
   indirizzo?: string;
   email?: string;
   telefono?: string;
@@ -33,4 +33,33 @@ export interface FornitoreUpdateRequest {
   sito_web?: string;
   descrizione_aziendale?: string;
   attivo?: boolean;
+}
+
+export interface ContattoFornitore {
+  id: number;
+  fornitore_id: number;
+  nome: string;
+  ruolo: string | null;
+  email: string | null;
+  telefono: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContattoFornitoreDettaglio extends ContattoFornitore {
+  fornitore: string;
+}
+
+export interface ContattoFornitoreCreateRequest {
+  nome: string;
+  ruolo?: string;
+  email?: string;
+  telefono?: string;
+}
+
+export interface ContattoFornitoreUpdateRequest {
+  nome?: string;
+  ruolo?: string;
+  email?: string;
+  telefono?: string;
 }

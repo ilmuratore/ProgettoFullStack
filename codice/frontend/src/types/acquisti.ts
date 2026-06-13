@@ -179,3 +179,46 @@ export interface RigaRicezioneRow {
   created_at: string;
   updated_at: string;
 }
+
+// ─── Email ordine acquisto ───
+
+export interface EmailAttachmentInfo {
+  filename: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  kind?: 'ORDINE_PDF' | 'CONTABILE';
+}
+
+export interface OrdineAcquistoEmailRequest {
+  to?: string;
+  cc?: string;
+  bcc?: string;
+  subject?: string;
+  message?: string;
+  contabile?: File | null;
+}
+
+export interface OrdineAcquistoEmailLog {
+  id: number;
+  ordine_acquisto_id: number;
+  message_id: string | null;
+  provider: string | null;
+  from: string | null;
+  to: string;
+  cc: string | null;
+  bcc: string | null;
+  subject: string;
+  message: string | null;
+  status: 'SENT' | 'FAILED';
+  errore: string | null;
+  attachments: EmailAttachmentInfo[];
+  created_at: string;
+  sent_at: string | null;
+}
+
+export interface OrdineAcquistoEmailSendResult {
+  ordine_id: number;
+  stato_ordine_precedente: StatoOrdineAcquisto;
+  stato_ordine_corrente: StatoOrdineAcquisto;
+  email_log: OrdineAcquistoEmailLog;
+}

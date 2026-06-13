@@ -52,6 +52,10 @@ export interface OrdineVenditaCreateRequest {
   righe: RigaOrdineVenditaCreateRequest[];
 }
 
+export interface OrdineVenditaUpdateRequest {
+  data_consegna_richiesta?: string;
+}
+
 export interface OrdineVenditaUpdatePickingRequest {
   stato_picking: StatoPickingVendita;
   prelievi?: PrelievoRigaVendita[];

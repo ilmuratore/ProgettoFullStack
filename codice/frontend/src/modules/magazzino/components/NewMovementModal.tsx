@@ -31,9 +31,10 @@ const TIPI: Record<MovimentoTipo, TipoConfig> = {
   RESO:               { label: 'Reso',           icon: RotateCcw,        color: 'text-[#7C3AED]', bg: 'bg-[#F5F3FF]', activeBg: 'bg-[#EDE9FE]', activeBorder: 'border-[#7C3AED]', isSpostamento: false, needsNote: false },
 };
 
+// Carico acquisto e scarico vendita non sono più movimenti manuali:
+// il carico viene gestito da Ricezioni, lo scarico da Preparazione Spedizione.
 const TIPO_ORDER: MovimentoTipo[] = [
-  'CARICO_ACQUISTO', 'SCARICO_VENDITA', 'SPOSTAMENTO',
-  'RETTIFICA_POSITIVA', 'RETTIFICA_NEGATIVA', 'RESO',
+  'SPOSTAMENTO', 'RETTIFICA_POSITIVA', 'RETTIFICA_NEGATIVA', 'RESO',
 ];
 
 interface Props {
@@ -62,7 +63,7 @@ type ProdottoOption = {
 type StatoProdottoFilter = 'all' | 'attivi' | 'disattivati';
 
 export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
-  const [tipo, setTipo] = useState<MovimentoTipo>('CARICO_ACQUISTO');
+  const [tipo, setTipo] = useState<MovimentoTipo>('SPOSTAMENTO');
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<typeof EMPTY_FORM>>({});
   const [prodotti, setProdotti] = useState<ProdottoOption[]>([]);
@@ -75,7 +76,7 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
 
   const cfg = TIPI[tipo];
 
-  // Ubicazioni con giacenza per il prodotto selezionato (SCARICO, SPOSTAMENTO da)
+  // Ubicazioni con giacenza per il prodotto selezionato (SPOSTAMENTO da / rettifica negativa)
   // giacenze API: ubicazione_id (number), ubicazione (codice corto)
   // ubicazioni API: id (number), codice_composto (label completa)
   // Usiamo tutteUbicazioni come source unica per le label, filtrate per ID dalle giacenze
@@ -145,7 +146,7 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
   const handleClose = () => {
     setForm(EMPTY_FORM);
     setErrors({});
-    setTipo('CARICO_ACQUISTO');
+    setTipo('SPOSTAMENTO');
     setStatoProdottoFilter('all');
     onClose();
   };
@@ -172,8 +173,6 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
     if (!form.quantita || parseInt(form.quantita) < 1) errs.quantita = 'Quantità minima 1';
 
     const needsGiacenza = tipo === 'SCARICO_VENDITA' || tipo === 'RETTIFICA_NEGATIVA';
-    const ubicazioneOrId = cfg.isSpostamento ? form.ubicazione_da_id : form.ubicazione_id;
-
     if (cfg.isSpostamento) {
       if (!form.ubicazione_da_id) errs.ubicazione_da_id = 'Seleziona ubicazione di origine';
       if (!form.ubicazione_a_id)  errs.ubicazione_a_id  = 'Seleziona ubicazione di destinazione';
@@ -258,7 +257,7 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
             </div>
             <div>
               <h2 className="text-lg font-semibold text-[#2D2D2D]">Nuovo Movimento Stock</h2>
-              <p className="text-xs text-[#9CA3AF]">Seleziona tipo e compila i dati</p>
+              <p className="text-xs text-[#9CA3AF]">Movimenti manuali: spostamenti, rettifiche e resi. Carico e scarico passano da Ricezioni e Preparazione Spedizione.</p>
             </div>
           </div>
           <button onClick={handleClose} className="w-9 h-9 flex items-center justify-center hover:bg-[#F7F9FC] rounded-xl transition-all">
@@ -271,7 +270,7 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
           {/* Tipo movimento */}
           <div>
             <label className="block text-sm font-medium text-[#2D2D2D] mb-3">Tipo movimento</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {TIPO_ORDER.map(t => {
                 const c = TIPI[t];
                 const Icon = c.icon;
@@ -446,7 +445,7 @@ export function NewMovementModal({ isOpen, onClose, onCreated }: Props) {
                 </label>
                 <input
                   type="text" value={form.riferimento} onChange={set('riferimento')}
-                  placeholder="es. ordine_acquisto:42"
+                  placeholder="es. rettifica inventario, reso cliente, spostamento interno"
                   className="w-full h-11 px-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all"
                 />
               </div>

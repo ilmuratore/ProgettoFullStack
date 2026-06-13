@@ -102,7 +102,7 @@ const PERMESSI_PER_RUOLO: Record<number, string[]> = {
     'prodotti:read', 'fornitori:read', 'clienti:read',
     'magazzino:read',
     'giacenze:read', 'giacenze:write',
-    'ordini:read',
+    'ordini:read', 'ordini:write', 'ordini:approve',
     'spedizioni:read',
     'notifiche:read', 'dashboard:read',
   ],
