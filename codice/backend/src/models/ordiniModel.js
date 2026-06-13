@@ -88,6 +88,43 @@ const findByStatoPicking = (stato_picking) =>
         [stato_picking]
     );
 
+const findFiltered = ({ stato, stato_picking, cliente_id }) => {
+    const conditions = [];
+    const params = [];
+
+    if (stato) {
+        params.push(stato);
+        conditions.push(`ordini.stato = $${params.length}::sales_order_state`);
+    }
+
+    if (stato_picking) {
+        params.push(stato_picking);
+        conditions.push(`ordini.stato_picking = $${params.length}::sales_order_picking_state`);
+    }
+
+    if (cliente_id) {
+        params.push(cliente_id);
+        conditions.push(`ordini.cliente_id = $${params.length}`);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    return pool.query(
+        `
+        SELECT ${LIST_SELECT}
+        FROM ordini
+        JOIN clienti ON ordini.cliente_id = clienti.id
+        LEFT JOIN destinazioni_clienti ON ordini.destinazione_id = destinazioni_clienti.id
+        LEFT JOIN utenti ON ordini.utente_id = utenti.id
+        LEFT JOIN righe_ordine ON righe_ordine.ordine_id = ordini.id
+        ${whereClause}
+        GROUP BY ordini.id, clienti.ragione_sociale, destinazioni_clienti.etichetta, utenti.nome, utenti.cognome
+        ORDER BY ordini.data_ordine DESC;
+        `,
+        params
+    );
+};
+
 const findById = (id, client) =>
     (client || pool).query(
         `
@@ -207,6 +244,7 @@ module.exports = {
     findByStato,
     findByClienteId,
     findByStatoPicking,
+    findFiltered,
     findById,
     findByIdForUpdate,
     update,

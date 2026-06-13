@@ -68,9 +68,9 @@ const getAll = async (filters = {}) => {
     if (stato_picking && !VALID_PICKING.includes(stato_picking)) {
         throwError('VALIDATION_ERROR', `Stato picking non valido. Valori ammessi: ${VALID_PICKING.join(', ')}`);
     }
-    if (stato) return (await ordiniModel.findByStato(stato)).rows;
-    if (stato_picking) return (await ordiniModel.findByStatoPicking(stato_picking)).rows;
-    if (cliente_id) return (await ordiniModel.findByClienteId(cliente_id)).rows;
+    if (stato || stato_picking || cliente_id) {
+        return (await ordiniModel.findFiltered({ stato, stato_picking, cliente_id })).rows;
+    }
     return (await ordiniModel.findAll()).rows;
 };
 
