@@ -4,9 +4,9 @@ const dotenv = require('dotenv');
 const envPath = path.resolve(process.cwd(), '.env.test');
 const fallbackPath = path.resolve(process.cwd(), '.env.test.example');
 
-const result = dotenv.config({ path: envPath, quiet: true });
+const result = dotenv.config({ path: envPath, quiet: true, override: true });
 if (result.error) {
-    dotenv.config({ path: fallbackPath, quiet: true });
+    dotenv.config({ path: fallbackPath, quiet: true, override: true });
 }
 
 process.env.NODE_ENV = 'test';
@@ -31,10 +31,6 @@ const normalizeTestDatabaseEnv = () => {
     }
 
     process.env.DB_NAME = dbName;
-
-    // node-pg-migrate usa DATABASE_URL come sorgente principale.
-    // Nei test la rigeneriamo dai campi DB_* per evitare mismatch tipo:
-    // DB_PASSWORD aggiornato ma DATABASE_URL rimasto con change_me.
     process.env.DATABASE_URL = buildDatabaseUrl(dbName);
 };
 

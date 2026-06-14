@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
+    "migrate:test": "node -r ./scripts/loadTestEnv node_modules/node-pg-migrate/bin/node-pg-migrate.js up --no-check-order",
+    "test:setup": "NODE_ENV=test node scripts/resetTestDb.js && NODE_ENV=test npm run migrate:test && NODE_ENV=test node seeds/seed_ruoli_permessi.js && NODE_ENV=test node seeds/seed_admin.js && NODE_ENV=test node scripts/seed_test_users.js",
+    "test:e2e": "NODE_ENV=test node -r ./scripts/loadTestEnv node_modules/.bin/jest --runInBand tests/e2e",
     "migrate": "node-pg-migrate up --no-check-order",
     "seed_ruoli_permessi": "node seeds/seed_ruoli_permessi.js",
     "seed_admin": "node seeds/seed_admin.js",
@@ -15,9 +18,7 @@
     "db:test:reset": "node scripts/resetTestDb.js",
     "seed:test-users": "node scripts/seed_test_users.js",
     "test": "jest --runInBand",
-    "test:e2e": "jest --runInBand tests/e2e",
-    "test:smoke": "jest --runInBand tests/e2e/logichain.e2e.test.js --testNamePattern=\"smoke\"",
-    "test:setup": "node scripts/resetTestDb.js && node-pg-migrate up --no-check-order && node seeds/seed_ruoli_permessi.js && node seeds/seed_admin.js && node scripts/seed_test_users.js"
+    "test:smoke": "jest --runInBand tests/e2e/logichain.e2e.test.js --testNamePattern=\"smoke\""
   },
   "keywords": [],
   "author": "",

@@ -67,11 +67,13 @@ describe('LogiChain backend E2E priority 4 (anagrafiche, ecosystem, settings)', 
 
         await api.delete(`/api/v1/fornitori/${createRes.body.data.id}`).set(bearer(adminToken)).expect(204);
 
-        const dettaglio = await api
+        await api
             .get(`/api/v1/fornitori/${createRes.body.data.id}`)
             .set(bearer(adminToken))
-            .expect(200);
-        expect(dettaglio.body.data.attivo).toBe(false);
+            .expect(404);
+
+        const listaRes = await api.get('/api/v1/fornitori').set(bearer(adminToken)).expect(200);
+        expect(listaRes.body.data.some((f) => f.id === createRes.body.data.id)).toBe(false);
     });
 
     test('M04: cliente con storico e soft delete sempre consentito', async () => {
@@ -91,8 +93,10 @@ describe('LogiChain backend E2E priority 4 (anagrafiche, ecosystem, settings)', 
 
         await api.delete(`/api/v1/clienti/${clienteId}`).set(bearer(adminToken)).expect(204);
 
-        const dettaglio = await api.get(`/api/v1/clienti/${clienteId}`).set(bearer(adminToken)).expect(200);
-        expect(dettaglio.body.data.attivo).toBe(false);
+        await api.get(`/api/v1/clienti/${clienteId}`).set(bearer(adminToken)).expect(404);
+
+        const listaRes = await api.get('/api/v1/clienti').set(bearer(adminToken)).expect(200);
+        expect(listaRes.body.data.some((c) => c.id === clienteId)).toBe(false);
     });
 
     test('M05: corriere soft delete, dipendente hard delete', async () => {
@@ -106,8 +110,7 @@ describe('LogiChain backend E2E priority 4 (anagrafiche, ecosystem, settings)', 
         const corriereId = corriereRes.body.data.id;
 
         await api.delete(`/api/v1/corrieri/${corriereId}`).set(bearer(adminToken)).expect(204);
-        const corriereDett = await api.get(`/api/v1/corrieri/${corriereId}`).set(bearer(adminToken)).expect(200);
-        expect(corriereDett.body.data.attivo).toBe(false);
+        await api.get(`/api/v1/corrieri/${corriereId}`).set(bearer(adminToken)).expect(404);
 
         const dipRes = await api
             .post('/api/v1/dipendenti')
