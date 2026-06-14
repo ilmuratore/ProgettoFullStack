@@ -79,6 +79,8 @@ const createApp = () => {
     // M16 — Richieste di Acquisto
     app.use('/api/v1/richieste-acquisto', require('./routes/richiesteAcquistoRoutes'));
 
+    app.use('/api/v1/azienda-settings', require('./routes/aziendaSettingsRoutes'));
+
     app.use((_req, res) => res.status(404).json({
         status: 'error',
         code: 'RESOURCE_NOT_FOUND',
