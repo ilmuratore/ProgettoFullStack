@@ -1,7 +1,7 @@
 const pool = require('../config/db');
 
-const findByRichiestaId = (richiesta_id) =>
-    pool.query(
+const findByRichiestaId = (richiesta_id, client) =>
+    (client || pool).query(
         `SELECT
              rr.id,
              rr.richiesta_id,
@@ -18,8 +18,8 @@ const findByRichiestaId = (richiesta_id) =>
         [richiesta_id]
     );
 
-const findById = (id) =>
-    pool.query(
+const findById = (id, client) =>
+    (client || pool).query(
         `SELECT
              rr.id,
              rr.richiesta_id,
@@ -35,22 +35,22 @@ const findById = (id) =>
         [id]
     );
 
-const create = ({ richiesta_id, prodotto_id, quantita_richiesta }) =>
-    pool.query(
+const create = ({ richiesta_id, prodotto_id, quantita_richiesta }, client) =>
+    (client || pool).query(
         `INSERT INTO righe_richiesta (richiesta_id, prodotto_id, quantita_richiesta)
          VALUES ($1, $2, $3)
          RETURNING id, richiesta_id, prodotto_id, quantita_richiesta, created_at`,
         [richiesta_id, prodotto_id, quantita_richiesta]
     );
 
-const createBulk = async (richiesta_id, rows) => {
+const createBulk = async (richiesta_id, rows, client) => {
     if (!rows || rows.length === 0) return { rows: [] };
 
     const values = rows.map((r, i) => `($1, $${i * 2 + 2}, $${i * 2 + 3})`).join(', ');
     const params = [richiesta_id];
     rows.forEach(r => params.push(r.prodotto_id, r.quantita_richiesta));
 
-    return pool.query(
+    return (client || pool).query(
         `INSERT INTO righe_richiesta (richiesta_id, prodotto_id, quantita_richiesta)
          VALUES ${values}
          RETURNING id, richiesta_id, prodotto_id, quantita_richiesta, created_at`,
@@ -58,8 +58,8 @@ const createBulk = async (richiesta_id, rows) => {
     );
 };
 
-const updateQuantita = (id, quantita_richiesta) =>
-    pool.query(
+const updateQuantita = (id, quantita_richiesta, client) =>
+    (client || pool).query(
         `UPDATE righe_richiesta
          SET quantita_richiesta = $1
          WHERE id = $2
@@ -67,16 +67,16 @@ const updateQuantita = (id, quantita_richiesta) =>
         [quantita_richiesta, id]
     );
 
-const remove = (id) =>
-    pool.query(
+const remove = (id, client) =>
+    (client || pool).query(
         `DELETE FROM righe_richiesta
          WHERE id = $1
          RETURNING id`,
         [id]
     );
 
-const removeByRichiestaId = (richiesta_id) =>
-    pool.query(
+const removeByRichiestaId = (richiesta_id, client) =>
+    (client || pool).query(
         `DELETE FROM righe_richiesta
          WHERE richiesta_id = $1
          RETURNING id`,

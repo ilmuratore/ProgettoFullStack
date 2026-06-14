@@ -102,8 +102,8 @@ const search = (q) =>
 const create = ({ sku, nome, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima = 0, prezzo, attivo = true }, client = pool) =>
     client.query(
         `INSERT INTO prodotti
-             (sku, nome, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo, data_agg_prezzo, attivo)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9)
+             (sku, nome, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo, attivo)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING id, sku, nome, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo, data_agg_prezzo, attivo, created_at, updated_at`,
         [sku, nome, descrizione, categoria_id, unita_misura, peso_kg, scorta_minima, prezzo, attivo]
     );
@@ -119,11 +119,6 @@ const update = (id, { sku, nome, descrizione, categoria_id, unita_misura, peso_k
              peso_kg       = COALESCE($6,  peso_kg),
              scorta_minima = COALESCE($7,  scorta_minima),
              prezzo        = COALESCE($8,  prezzo),
-             -- Aggiorna data_agg_prezzo solo se il prezzo è effettivamente cambiato
-             data_agg_prezzo = CASE
-                                 WHEN $8 IS NOT NULL AND $8 <> prezzo THEN NOW()
-                                 ELSE data_agg_prezzo
-                               END,
              attivo        = COALESCE($9,  attivo),
              updated_at    = NOW()
          WHERE id = $10
@@ -136,7 +131,6 @@ const updatePrezzo = (id, prezzo) =>
     pool.query(
         `UPDATE prodotti
          SET prezzo        = $1,
-             data_agg_prezzo = NOW(),
              updated_at    = NOW()
          WHERE id = $2
          RETURNING id, sku, nome, prezzo, data_agg_prezzo`,

@@ -71,8 +71,8 @@ const findByIdForUpdate = (id, client) =>
         [id]
     );
 
-const findByOrdineId = (ordine_id) =>
-    pool.query(
+const findByOrdineId = (ordine_id, client) =>
+    (client || pool).query(
         `SELECT id, ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number, created_at, updated_at
      FROM spedizioni
      WHERE ordine_id = $1
@@ -80,8 +80,8 @@ const findByOrdineId = (ordine_id) =>
         [ordine_id]
     );
 
-const findByClienteId = (cliente_id) =>
-    pool.query(
+const findByClienteId = (cliente_id, client) =>
+    (client || pool).query(
         `SELECT id, ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number, created_at, updated_at
      FROM spedizioni
      WHERE cliente_id = $1
@@ -89,8 +89,8 @@ const findByClienteId = (cliente_id) =>
         [cliente_id]
     );
 
-const findByDestinazioneId = (destinazione_id) =>
-    pool.query(
+const findByDestinazioneId = (destinazione_id, client) =>
+    (client || pool).query(
         `SELECT id, ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number, created_at, updated_at
      FROM spedizioni
      WHERE destinazione_id = $1
@@ -98,8 +98,8 @@ const findByDestinazioneId = (destinazione_id) =>
         [destinazione_id]
     );
 
-const findByCorriereId = (corriere_id) =>
-    pool.query(
+const findByCorriereId = (corriere_id, client) =>
+    (client || pool).query(
         `SELECT id, ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number, created_at, updated_at
      FROM spedizioni
      WHERE corriere_id = $1
@@ -107,8 +107,8 @@ const findByCorriereId = (corriere_id) =>
         [corriere_id]
     );
 
-const findByStato = (stato) =>
-    pool.query(
+const findByStato = (stato, client) =>
+    (client || pool).query(
         `SELECT id, ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number, created_at, updated_at
      FROM spedizioni
      WHERE stato = $1
@@ -117,8 +117,8 @@ const findByStato = (stato) =>
     );
 
 
-const create = ({ ordine_id, cliente_id, destinazione_id, corriere_id, stato = 'IN_PREPARAZIONE', tracking_number }) =>
-    pool.query(
+const create = ({ ordine_id, cliente_id, destinazione_id, corriere_id, stato = 'IN_PREPARAZIONE', tracking_number }, client) =>
+    (client || pool).query(
         `INSERT INTO spedizioni (ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number)
      VALUES ($1, $2, $3, $4, $5::shipping_state, $6)
      RETURNING id, ordine_id, cliente_id, destinazione_id, corriere_id, stato, tracking_number, created_at, updated_at`,

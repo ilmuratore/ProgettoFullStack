@@ -31,7 +31,7 @@ const logSchemaStatus = async () => {
     `);
 
     const totale = parseInt(rows[0].totale, 10);
-    console.log(`  📊 Tabelle presenti nel DB: ${totale} (atteso V2: 28)`);
+    console.log(`  📊 Tabelle presenti nel DB: ${totale} (atteso V3: 30)`);
 
     if (totale < 27) {
         console.warn(`  ⚠️  Tabelle mancanti — esegui: npm run migrate`);
@@ -49,7 +49,7 @@ const initDB = async () => {
             WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
         `);
         const n = parseInt(rows[0].n, 10);
-        console.log(`📊 Tabelle nel DB: ${n} (atteso: 28)`);
+        console.log(`📊 Tabelle nel DB: ${n} (atteso: 30)`);
         if (n < 27) console.warn('⚠️  Schema non aggiornato — esegui: npm run migrate');
     } finally {
         client.release();

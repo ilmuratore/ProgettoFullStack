@@ -89,8 +89,8 @@ const importProdotti = async (req, res, next) => {
 
         const lowerName = (req.file.originalname || '').toLowerCase();
         const rows = lowerName.endsWith('.csv')
-            ? importService.parseCSV(req.file.buffer)
-            : importService.parseXLSX(req.file.buffer);
+            ? await importService.parseCSV(req.file.buffer)
+            : await importService.parseXLSX(req.file.buffer);
 
         const result = await importService.importProdotti(rows);
         return res.status(200).json({ status: 'success', data: result });
@@ -101,7 +101,7 @@ const importProdotti = async (req, res, next) => {
 
 const downloadImportTemplate = async (_req, res, next) => {
     try {
-        const buffer = importService.getTemplateCSVBuffer();
+        const buffer = await importService.getTemplateCSVBuffer();
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', 'attachment; filename="template-import-prodotti.csv"');
         res.setHeader('Content-Length', buffer.length);
