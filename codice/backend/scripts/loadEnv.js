@@ -1,5 +1,5 @@
 if (process.env.NODE_ENV === 'test') {
-    require('../../scripts/loadTestEnv');
+    require('./loadTestEnv');
 } else {
     require('dotenv').config();
 }

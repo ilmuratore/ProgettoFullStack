@@ -21,7 +21,8 @@ const errorMessages = {
     RATE_LIMIT: 'Troppe richieste',
     EMAIL_CONFIG_MISSING: 'Configurazione email incompleta',
     EMAIL_SEND_FAILED: 'Invio email non riuscito',
-    INTERNAL_SERVER_ERROR: 'Errore interno del server'
+    INTERNAL_SERVER_ERROR: 'Errore interno del server',
+    LIMIT_FILE_SIZE: 'VALIDATION_ERROR'
 };
 
 const errorStatusCodes = {
