@@ -1,0 +1,536 @@
+{
+  "info": {
+    "name": "LogiChain V2 — M01 Admin Gestione Utenti",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Estensione M01 per GET /utenti, gestione ruoli, reset password, associazione dipendente-account."
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "admin_email",
+      "value": "admin@logichain.it",
+      "type": "string"
+    },
+    {
+      "key": "admin_password",
+      "value": "Admin123!",
+      "type": "string"
+    },
+    {
+      "key": "test_password",
+      "value": "Test123!",
+      "type": "string"
+    },
+    {
+      "key": "operatore_email",
+      "value": "operatore@test.local",
+      "type": "string"
+    },
+    {
+      "key": "token_admin",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token_operatore",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "suffix",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "utente_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "dipendente_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ruolo_operatore_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "prodotto_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "prodotto_acquisto_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "fornitore_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "magazzino_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ubicazione_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ubicazione_2_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "movimento_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ordine_acquisto_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ricezione_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cliente_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "destinazione_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ordine_vendita_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "riga_ordine_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "spedizione_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "richiesta_acquisto_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "00.01 Set suffix runtime",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/",
+          "host": [
+            "{{base_url}}/"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('suffix', Date.now().toString());"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "00.02 Login Admin",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/auth/login",
+          "host": [
+            "{{base_url}}/api/v1/auth/login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('token_admin', json.data.token);",
+              "pm.test('token presente', () => pm.expect(pm.collectionVariables.get('token_admin')).to.be.ok);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "00.03 Login Operatore",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/auth/login",
+          "host": [
+            "{{base_url}}/api/v1/auth/login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{operatore_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('token_operatore', json.data.token);",
+              "pm.test('token presente', () => pm.expect(pm.collectionVariables.get('token_operatore')).to.be.ok);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "01.01 GET utenti admin 200",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_admin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/utenti",
+          "host": [
+            "{{base_url}}/api/v1/utenti"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "01.02 GET utenti operatore 403",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_operatore}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/utenti",
+          "host": [
+            "{{base_url}}/api/v1/utenti"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "01.03 GET ruoli e salva Operatore",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_admin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/utenti/ruoli",
+          "host": [
+            "{{base_url}}/api/v1/utenti/ruoli"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "const ruolo = json.data.find(r => r.nome === 'Operatore');",
+              "pm.expect(ruolo, 'ruolo Operatore').to.be.ok;",
+              "pm.collectionVariables.set('ruolo_operatore_id', ruolo.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "01.04 Crea dipendente per associazione account",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_admin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/dipendenti",
+          "host": [
+            "{{base_url}}/api/v1/dipendenti"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nome\": \"Mario\",\n  \"cognome\": \"Postman\",\n  \"codice_fiscale\": \"PM{{$timestamp}}\",\n  \"ruolo_operativo\": \"Operatore\",\n  \"data_assunzione\": \"2026-01-01\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('dipendente_id', json.data.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "01.05 Register utente test",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_admin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/auth/register",
+          "host": [
+            "{{base_url}}/api/v1/auth/register"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nome\": \"Utente\",\n  \"cognome\": \"Postman\",\n  \"email\": \"utente.{{suffix}}@test.local\",\n  \"password\": \"Temp123!\",\n  \"ruolo_id\": \"{{ruolo_operatore_id}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('utente_id', json.data.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "01.06 Associa dipendente ad account",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_admin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/utenti/{{utente_id}}",
+          "host": [
+            "{{base_url}}/api/v1/utenti/{{utente_id}}"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dipendente_id\": \"{{dipendente_id}}\",\n  \"attivo\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "01.07 Reset password account",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_admin}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/v1/utenti/{{utente_id}}/password",
+          "host": [
+            "{{base_url}}/api/v1/utenti/{{utente_id}}/password"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"password_nuova\": \"NewPass123!\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

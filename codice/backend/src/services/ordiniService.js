@@ -250,6 +250,78 @@ const updateStato = async (id, nuovoStato) => {
     }
 };
 
+
+const isPositiveInteger = (value) => Number.isInteger(Number(value)) && Number(value) > 0;
+
+const validatePrelieviCompletamentoPicking = (prelievi, righeById) => {
+    if (righeById.size === 0) {
+        throwError('VALIDATION_ERROR', 'Ordine senza righe: impossibile completare il picking');
+    }
+
+    if (!Array.isArray(prelievi) || prelievi.length === 0) {
+        throwError('VALIDATION_ERROR', 'Per completare il picking serve la lista prelievi per ogni riga');
+    }
+
+    const righeViste = new Set();
+
+    for (const [index, p] of prelievi.entries()) {
+        if (!isPositiveInteger(p?.riga_id)) {
+            throwError('VALIDATION_ERROR', `prelievi[${index}].riga_id deve essere un intero positivo`);
+        }
+
+        const rigaId = Number(p.riga_id);
+
+        if (righeViste.has(rigaId)) {
+            throwError('VALIDATION_ERROR', `Riga ordine ${rigaId} duplicata nei prelievi`);
+        }
+
+        const riga = righeById.get(rigaId);
+        if (!riga) {
+            throwError('VALIDATION_ERROR', `Riga ordine ${rigaId} non trovata in questo ordine`);
+        }
+
+        if (!Array.isArray(p.ubicazioni) || p.ubicazioni.length === 0) {
+            throwError('VALIDATION_ERROR', `La riga ${rigaId} non ha ubicazioni di prelievo`);
+        }
+
+        righeViste.add(rigaId);
+
+        const ubicazioniViste = new Set();
+        let sommaPrelievi = 0;
+
+        for (const [ubicazioneIndex, u] of p.ubicazioni.entries()) {
+            if (!isPositiveInteger(u?.ubicazione_id)) {
+                throwError('VALIDATION_ERROR', `prelievi[${index}].ubicazioni[${ubicazioneIndex}].ubicazione_id deve essere un intero positivo`);
+            }
+
+            if (!isPositiveInteger(u?.quantita)) {
+                throwError('VALIDATION_ERROR', `prelievi[${index}].ubicazioni[${ubicazioneIndex}].quantita deve essere un intero positivo`);
+            }
+
+            const ubicazioneId = Number(u.ubicazione_id);
+            if (ubicazioniViste.has(ubicazioneId)) {
+                throwError('VALIDATION_ERROR', `Ubicazione ${ubicazioneId} duplicata nella riga ${rigaId}`);
+            }
+
+            ubicazioniViste.add(ubicazioneId);
+            sommaPrelievi += Number(u.quantita);
+        }
+
+        if (sommaPrelievi !== Number(riga.quantita)) {
+            throwError(
+                'VALIDATION_ERROR',
+                `La somma dei prelievi (${sommaPrelievi}) per la riga ${rigaId} non corrisponde alla quantita ordinata (${riga.quantita})`
+            );
+        }
+    }
+
+    for (const rigaId of righeById.keys()) {
+        if (!righeViste.has(rigaId)) {
+            throwError('VALIDATION_ERROR', `Manca il prelievo per la riga ordine ${rigaId}`);
+        }
+    }
+};
+
 const updateStatoPicking = async (id, nuovoStatoPicking, prelievi) => {
     if (!VALID_PICKING.includes(nuovoStatoPicking)) {
         throwError('VALIDATION_ERROR', `Stato picking non valido. Valori ammessi: ${VALID_PICKING.join(', ')}`);
@@ -284,36 +356,17 @@ const updateStatoPicking = async (id, nuovoStatoPicking, prelievi) => {
             return { ordine: res.rows[0], movimenti: [] };
         }
 
-        if (!Array.isArray(prelievi) || prelievi.length === 0) {
-            throwError('VALIDATION_ERROR', 'Per completare il picking serve la lista prelievi per ogni riga');
-        }
-
         const righeRes = await righeOrdineModel.findByOrdine(id, client);
-        const righeById = new Map(righeRes.rows.map(r => [r.id, r]));
+        const righeById = new Map(righeRes.rows.map(r => [Number(r.id), r]));
 
-        for (const p of prelievi) {
-            const riga = righeById.get(Number(p.riga_id));
-            if (!riga) {
-                throwError('VALIDATION_ERROR', `Riga ordine ${p.riga_id} non trovata in questo ordine`);
-            }
-            if (!Array.isArray(p.ubicazioni) || p.ubicazioni.length === 0) {
-                throwError('VALIDATION_ERROR', `La riga ${p.riga_id} non ha ubicazioni di prelievo`);
-            }
-            const sommaPrelievi = p.ubicazioni.reduce((s, u) => s + Number(u.quantita || 0), 0);
-            if (sommaPrelievi !== Number(riga.quantita)) {
-                throwError(
-                    'VALIDATION_ERROR',
-                    `La somma dei prelievi (${sommaPrelievi}) per la riga ${p.riga_id} non corrisponde alla quantita ordinata (${riga.quantita})`
-                );
-            }
-        }
+        validatePrelieviCompletamentoPicking(prelievi, righeById);
 
         const movimenti = [];
         for (const p of prelievi) {
             const riga = righeById.get(Number(p.riga_id));
             for (const u of p.ubicazioni) {
                 const movimento = await movimentiStockService.create({
-                    prodotto_id: riga.prodotto_id,
+                    prodotto_id: Number(riga.prodotto_id),
                     ubicazione_id: Number(u.ubicazione_id),
                     quantita: Number(u.quantita),
                     movimento_tipo: 'SCARICO_VENDITA',

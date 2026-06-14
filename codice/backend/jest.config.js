@@ -1,0 +1,8 @@
+module.exports = {
+    testEnvironment: 'node',
+    testMatch: ['**/tests/**/*.test.js'],
+    setupFiles: ['<rootDir>/tests/setupEnv.js'],
+    globalSetup: '<rootDir>/tests/globalSetup.js',
+    testTimeout: 60000,
+    verbose: true,
+};
