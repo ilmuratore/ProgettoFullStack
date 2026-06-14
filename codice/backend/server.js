@@ -9,7 +9,7 @@ const port = process.env.PORT || 3000;
 const start = async () => {
     try {
         await initDB();
-        app.listen(port, () => console.log(`🚀 LogiChain V2 su http://localhost:${port}`));
+        app.listen(port, () => console.log(`🚀 LogiChain V3 su http://localhost:${port}`));
     } catch (err) {
         console.error('❌ Avvio fallito:', err.message);
         process.exit(1);
