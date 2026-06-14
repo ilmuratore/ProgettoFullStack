@@ -9,6 +9,7 @@ const router = express.Router();
 
 const createBlueprint = {
     codice: { required: true, type: 'string' },
+    utente_id: { required: false, type: 'number', integer: true, min: 1 },
     nome: { required: true, type: 'string' },
     telefono: { required: false, type: 'string' },
     email: { required: false, type: 'string' },
@@ -16,6 +17,7 @@ const createBlueprint = {
 
 const updateBlueprint = {
     codice: { required: false, type: 'string' },
+    utente_id: { required: false, type: 'number', integer: true, min: 1 },
     nome: { required: false, type: 'string' },
     telefono: { required: false, type: 'string' },
     email: { required: false, type: 'string' },

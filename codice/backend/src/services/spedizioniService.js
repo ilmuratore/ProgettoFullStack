@@ -174,24 +174,85 @@ const updateTracking = async (id, tracking_number) => {
 
 const getDdt = async (spedizione_id) => {
     await getById(spedizione_id);
-    const r = await ddtModel.findBySpedizioneId(spedizione_id);
-    return r.rows[0] || null;
+
+    const result = await ddtModel.findBySpedizioneId(spedizione_id);
+    return result.rows[0] || null;
 };
 
 const createDdt = async (spedizione_id, data) => {
-    await getById(spedizione_id);
-    const existing = await ddtModel.findBySpedizioneId(spedizione_id);
-    if (existing.rowCount > 0) throwError('DUPLICATE_ENTRY', 'DDT già esistente per questa spedizione', 409);
-    const r = await ddtModel.create({ spedizione_id, ...data });
-    return r.rows[0];
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const spedizioneResult = await spedizioniModel.findByIdForUpdate(spedizione_id, client);
+
+        if (spedizioneResult.rowCount === 0) {
+            throwError('RESOURCE_NOT_FOUND', 'Spedizione non trovata', 404);
+        }
+
+        const existing = await ddtModel.findBySpedizioneId(spedizione_id, client);
+
+        if (existing.rowCount > 0) {
+            throwError('DUPLICATE_ENTRY', 'DDT già esistente per questa spedizione', 409);
+        }
+
+        const result = await ddtModel.create(
+            {
+                spedizione_id,
+                data_ddt: data.data_ddt,
+                trasportatore: data.trasportatore,
+                note: data.note
+            },
+            client
+        );
+
+        await client.query('COMMIT');
+        return result.rows[0];
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
 };
 
 const updateDdt = async (spedizione_id, data) => {
-    await getById(spedizione_id);
-    const existing = await ddtModel.findBySpedizioneId(spedizione_id);
-    if (existing.rowCount === 0) throwError('RESOURCE_NOT_FOUND', 'DDT non trovato', 404);
-    const r = await ddtModel.update(existing.rows[0].id, data);
-    return r.rows[0];
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const spedizioneResult = await spedizioniModel.findByIdForUpdate(spedizione_id, client);
+
+        if (spedizioneResult.rowCount === 0) {
+            throwError('RESOURCE_NOT_FOUND', 'Spedizione non trovata', 404);
+        }
+
+        const existing = await ddtModel.findBySpedizioneId(spedizione_id, client);
+
+        if (existing.rowCount === 0) {
+            throwError('RESOURCE_NOT_FOUND', 'DDT non trovato', 404);
+        }
+
+        const result = await ddtModel.update(
+            existing.rows[0].id,
+            {
+                data_ddt: data.data_ddt,
+                trasportatore: data.trasportatore,
+                note: data.note
+            },
+            client
+        );
+
+        await client.query('COMMIT');
+        return result.rows[0];
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
 };
 
 const generaPdfDdt = async (spedizione_id) => {

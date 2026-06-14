@@ -19,22 +19,26 @@ const getById = async (id) => {
     return result.rows[0];
 };
 
-const create = async ({ codice, nome, telefono, email }) => {
-    const result = await corrieriModel.create({ codice, nome, telefono, email });
+const create = async ({ codice, nome, telefono, email, utente_id }) => {
+    const result = await corrieriModel.create({ codice, nome, telefono, email, utente_id });
     return result.rows[0];
 };
 
 const update = async (id, fields) => {
     await getById(id);
+
     if (Object.keys(fields).length === 0) {
         throwError('VALIDATION_ERROR', 'Nessun campo valido da aggiornare');
     }
+
     const result = await corrieriModel.update(id, {
-        codice:   fields.codice,
-        nome:     fields.nome,
+        codice: fields.codice,
+        nome: fields.nome,
         telefono: fields.telefono,
-        email:    fields.email
+        email: fields.email,
+        utente_id: fields.utente_id
     });
+
     return result.rows[0];
 };
 
