@@ -116,10 +116,10 @@ export function PurchasesPage() {
                 onOrdiniRitardoClick={scrollToOverdue}
                 onLeadTimeClick={scrollToLeadTime}
               />
+              <PurchaseWidgets />
               <div ref={ordersTableRef}>
                 <PurchaseOrdersTable onOrderClick={setSelectedOrderId} reloadKey={reloadKey} />
               </div>
-              <PurchaseWidgets />
             </div>
           )}
 
