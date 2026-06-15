@@ -93,7 +93,7 @@ export function AnagraficaDetailDrawer({ entityType, entityId, isOpen, onClose, 
 
   if (entityId === null) return null;
 
-  const canWrite = hasPermesso(`${PERM_ENTITY[entityType]}:write`);
+  const canWrite = hasPermesso(entityType === 'corriere' ? 'magazzino:write' : `${PERM_ENTITY[entityType]}:write`);
   const titolo = TITOLI[entityType];
   const fornitore = entityType === 'fornitore' ? (item as Fornitore | null) : null;
   const cliente = entityType === 'cliente' ? (item as Cliente | null) : null;
@@ -104,6 +104,7 @@ export function AnagraficaDetailDrawer({ entityType, entityId, isOpen, onClose, 
   const handleViewHistory = () => {
     if (fornitore) navigate(`/acquisti?fornitore=${encodeURIComponent(fornitore.ragione_sociale)}`);
     else if (cliente) navigate(`/vendite?cliente=${encodeURIComponent(cliente.ragione_sociale)}`);
+    else if (corriere) navigate(`/logistica?corriere=${encodeURIComponent(corriere.nome)}`);
     onClose();
   };
 
@@ -146,9 +147,9 @@ export function AnagraficaDetailDrawer({ entityType, entityId, isOpen, onClose, 
             <div className="bg-[#F7F9FC] rounded-2xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-[#2D2D2D]">Informazioni Generali</h3>
-                {(cliente || fornitore || corriere) && (
-                  <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getBadgeAttivo((cliente ?? fornitore ?? corriere)!.attivo)}`}>
-                    {(cliente ?? fornitore ?? corriere)!.attivo ? 'Attivo' : 'Disattivo'}
+                {(cliente || fornitore) && (
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getBadgeAttivo((cliente ?? fornitore)!.attivo)}`}>
+                    {(cliente ?? fornitore)!.attivo ? 'Attivo' : 'Disattivo'}
                   </span>
                 )}
               </div>
@@ -329,9 +330,9 @@ export function AnagraficaDetailDrawer({ entityType, entityId, isOpen, onClose, 
             </div>
 
             {/* Azioni */}
-            {((cliente || fornitore) || (canWrite && onEdit && !isEcosystem)) && (
+            {((cliente || fornitore || corriere) || (canWrite && onEdit && !isEcosystem)) && (
               <div className="flex justify-end gap-3 pt-2">
-                {(cliente || fornitore) && (
+                {(cliente || fornitore || corriere) && (
                   <button
                     onClick={handleViewHistory}
                     className="px-4 py-2 bg-white border border-[#E5EAF2] text-[#2D2D2D] rounded-xl hover:bg-[#F7F9FC] transition-all flex items-center gap-2 font-medium"

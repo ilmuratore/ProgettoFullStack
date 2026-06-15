@@ -7,13 +7,17 @@ interface KPICardProps {
   trend?: number;
   iconBgColor: string;
   iconColor: string;
+  onClick?: () => void;
 }
 
-export function KPICard({ icon: Icon, title, value, trend, iconBgColor, iconColor }: KPICardProps) {
+export function KPICard({ icon: Icon, title, value, trend, iconBgColor, iconColor, onClick }: KPICardProps) {
   const isPositive = (trend ?? 0) > 0;
 
   return (
-    <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2] hover:shadow-lg transition-all duration-300 group cursor-pointer">
+    <div
+      onClick={onClick}
+      className="bg-white rounded-2xl p-6 border border-[#E5EAF2] hover:shadow-lg transition-all duration-300 group cursor-pointer"
+    >
       <div className="flex items-start justify-between">
         <div className={`w-12 h-12 ${iconBgColor} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
           <Icon className={`w-6 h-6 ${iconColor}`} />

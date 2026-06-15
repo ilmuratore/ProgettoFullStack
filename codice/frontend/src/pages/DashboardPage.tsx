@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import {
   Package, ClipboardList, AlertTriangle, Truck,
   Bell, BellDot, Check, Filter, RotateCcw
@@ -40,6 +41,7 @@ const notifTypeConfig: Record<NotifType, { label: string; bg: string; text: stri
 
 export function DashboardPage() {
   const { utente } = useAuthStore();
+  const navigate = useNavigate();
 
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>('dashboard');
   const [notificheState, setNotificheState] = useState<Notifica[]>([]);
@@ -193,10 +195,10 @@ export function DashboardPage() {
           {dashboardTab === 'dashboard' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <KPICard icon={Package} title="Valore Totale Stock" value={valoreStock !== null ? formatCurrency(valoreStock) : '...'} iconBgColor="bg-gradient-to-br from-[#3B82F6] to-[#2563EB]" iconColor="text-white" />
-                <KPICard icon={ClipboardList} title="Ordini da Evadere" value={ordiniAperti !== null ? String(ordiniAperti) : '...'} iconBgColor="bg-gradient-to-br from-[#F59E0B] to-[#D97706]" iconColor="text-white" />
-                <KPICard icon={AlertTriangle} title="Prodotti Sottoscorta" value={sottoScorta !== null ? String(sottoScorta) : '...'} iconBgColor="bg-gradient-to-br from-[#EF4444] to-[#DC2626]" iconColor="text-white" />
-                <KPICard icon={Truck} title="Spedizioni Odierne" value={spedizioniOggi !== null ? String(spedizioniOggi) : '...'} iconBgColor="bg-gradient-to-br from-[#17E88F] to-[#0FA67A]" iconColor="text-white" />
+                <KPICard icon={Package} title="Valore Totale Stock" value={valoreStock !== null ? formatCurrency(valoreStock) : '...'} iconBgColor="bg-gradient-to-br from-[#3B82F6] to-[#2563EB]" iconColor="text-white" onClick={() => navigate('/magazzino?tab=giacenze')} />
+                <KPICard icon={ClipboardList} title="Ordini da Evadere" value={ordiniAperti !== null ? String(ordiniAperti) : '...'} iconBgColor="bg-gradient-to-br from-[#F59E0B] to-[#D97706]" iconColor="text-white" onClick={() => navigate('/acquisti')} />
+                <KPICard icon={AlertTriangle} title="Prodotti Sottoscorta" value={sottoScorta !== null ? String(sottoScorta) : '...'} iconBgColor="bg-gradient-to-br from-[#EF4444] to-[#DC2626]" iconColor="text-white" onClick={() => navigate('/magazzino?tab=giacenze&scorta=sotto')} />
+                <KPICard icon={Truck} title="Spedizioni Odierne" value={spedizioniOggi !== null ? String(spedizioniOggi) : '...'} iconBgColor="bg-gradient-to-br from-[#17E88F] to-[#0FA67A]" iconColor="text-white" onClick={() => navigate('/logistica')} />
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2"><OrdersBarChart data={barChartData} /></div>

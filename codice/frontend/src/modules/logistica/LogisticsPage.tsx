@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Truck, FileText, BarChart2, Download, Eye } from 'lucide-react';
+import { Plus, Truck, FileText, BarChart2, Download, Eye, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { LogisticsKPIs } from '../logistica/components/LogisticsKPIs';
 import { ShipmentsTable } from '../logistica/components/ShipmentsTable';
@@ -11,7 +11,7 @@ import { NewShipmentModal } from '../logistica/components/NewShipmentModal';
 import { PageTabBar, type TabConfig } from '../../components/ui/PageTabBar';
 import { spedizioniApi } from '../../api/spedizioniApi';
 import { corrieriApi } from '../../api/corrieriApi';
-import type { Spedizione } from '../../types/spedizioni';
+import type { Spedizione, Ddt } from '../../types/spedizioni';
 import type { Corriere } from '../../types/corrieri';
 import type { LogisticsKpiItem } from './components/LogisticsKPIs';
 import type { CourierPerformanceItem } from './components/CourierPerformance';
@@ -27,11 +27,12 @@ const tabs: TabConfig[] = [
   { id: 'kpi', label: 'KPI Logistica', icon: BarChart2 },
 ];
 
-type DdtRow = { id: string; spedizione: string; ordine: string; cliente: string; corriere: string; dataEmissione: string; peso: string; colli: number; stato: string };
-
-const ddtData: DdtRow[] = [];
+type DdtRow = { id: string; spedizioneId: number; spedizione: string; ordine: string; cliente: string; corriere: string; dataEmissione: string; peso: string; colli: number; stato: string };
 
 type DdtSortKey = 'id' | 'spedizione' | 'ordine' | 'cliente' | 'corriere' | 'dataEmissione' | 'colli' | 'stato';
+
+const fmtDate = (iso: string | null | undefined): string =>
+  iso ? new Date(iso).toLocaleDateString('it-IT') : '-';
 
 const compareDdtByKey = (left: DdtRow, right: DdtRow, key: DdtSortKey) => {
   switch (key) {
@@ -73,10 +74,55 @@ export function LogisticsPage() {
   const [shipments, setShipments] = useState<Spedizione[]>([]);
   const [loadingShipments, setLoadingShipments] = useState(true);
   const [couriers, setCouriers] = useState<Corriere[]>([]);
+  const [ddts, setDdts] = useState<Ddt[]>([]);
+  const [loadingDdts, setLoadingDdts] = useState(false);
+  const [exportingDdt, setExportingDdt] = useState(false);
   const [ddtSort, setDdtSort] = useState<SortConfig<DdtSortKey> | null>(null);
 
   const handleDdtSort = (key: DdtSortKey) => setDdtSort((prev) => toggleSort(prev, key));
+
+  const ddtData: DdtRow[] = ddts.map((ddt) => {
+    const ship = shipments.find((s) => s.id === ddt.spedizione_id);
+    return {
+      id: ddt.numero_ddt,
+      spedizioneId: ddt.spedizione_id,
+      spedizione: `SH-${String(ddt.spedizione_id).padStart(4, '0')}`,
+      ordine: ship ? `SO-${String(ship.ordine_id).padStart(4, '0')}` : '-',
+      cliente: ship?.cliente ?? '-',
+      corriere: ddt.trasportatore ?? ship?.corriere ?? '-',
+      dataEmissione: ddt.data_ddt,
+      peso: '-',
+      colli: 0,
+      stato: ship?.stato ?? 'IN_PREPARAZIONE',
+    };
+  });
+
   const sortedDdtData = applySort(ddtData, ddtSort, compareDdtByKey);
+
+  const handleDownloadDdtPdf = async (spedizioneId: number) => {
+    try {
+      await spedizioniApi.downloadDdtPdf(spedizioneId);
+    } catch (err: any) {
+      toast.error('Errore download PDF DDT', { description: err?.message });
+    }
+  };
+
+  const handleExportAllDdt = async () => {
+    if (sortedDdtData.length === 0) {
+      toast.info('Nessun DDT da esportare');
+      return;
+    }
+    setExportingDdt(true);
+    try {
+      for (const ddt of sortedDdtData) {
+        await spedizioniApi.downloadDdtPdf(ddt.spedizioneId);
+      }
+    } catch (err: any) {
+      toast.error('Errore esportazione DDT', { description: err?.message });
+    } finally {
+      setExportingDdt(false);
+    }
+  };
 
   const loadLogisticsData = () => {
     setLoadingShipments(true);
@@ -103,6 +149,24 @@ export function LogisticsPage() {
   useEffect(() => {
     loadLogisticsData();
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'ddt' || shipments.length === 0) {
+      if (shipments.length === 0) setDdts([]);
+      return;
+    }
+    let alive = true;
+    setLoadingDdts(true);
+    Promise.all(shipments.map((s) => spedizioniApi.getDdt(s.id).catch(() => null)))
+      .then((results) => {
+        if (!alive) return;
+        setDdts(results.filter((d): d is Ddt => d != null));
+      })
+      .finally(() => {
+        if (alive) setLoadingDdts(false);
+      });
+    return () => { alive = false; };
+  }, [activeTab, shipments]);
 
   const now = new Date();
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -283,7 +347,11 @@ export function LogisticsPage() {
                 />
               </div>
               <div className="lg:col-span-3">
-                <LogisticsWidgets />
+                <LogisticsWidgets
+                  shipments={shipments}
+                  couriers={couriers}
+                  onShipmentClick={setSelectedShipmentId}
+                />
               </div>
             </div>
           )}
@@ -292,9 +360,13 @@ export function LogisticsPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-[#6B7280]">Documenti di Trasporto — numerazione progressiva anno/numero</p>
-                <button className="px-3 py-1.5 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-lg hover:bg-[#F7F9FC] transition-all flex items-center gap-2 text-sm">
-                  <Download className="w-4 h-4" />
-                  Esporta DDT
+                <button
+                  onClick={handleExportAllDdt}
+                  disabled={exportingDdt || sortedDdtData.length === 0}
+                  className="px-3 py-1.5 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-lg hover:bg-[#F7F9FC] transition-all flex items-center gap-2 text-sm disabled:opacity-40"
+                >
+                  {exportingDdt ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Esporta tutti i DDT
                 </button>
               </div>
 
@@ -314,14 +386,21 @@ export function LogisticsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E5EAF2]">
-                    {sortedDdtData.map((ddt) => (
+                    {loadingDdts ? (
+                      <tr><td colSpan={9} className="py-8 text-center text-sm text-[#6B7280]">
+                        <Loader2 className="w-4 h-4 mx-auto mb-2 animate-spin" />
+                        Caricamento DDT...
+                      </td></tr>
+                    ) : sortedDdtData.length === 0 ? (
+                      <tr><td colSpan={9} className="py-8 text-center text-sm text-[#6B7280]">Nessun DDT generato.</td></tr>
+                    ) : sortedDdtData.map((ddt) => (
                       <tr key={ddt.id} className="hover:bg-[#F7F9FC] transition-colors">
                         <td className="px-4 py-3 text-sm font-semibold text-[#17E88F]">{ddt.id}</td>
                         <td className="px-4 py-3 text-sm text-[#374151]">{ddt.spedizione}</td>
                         <td className="px-4 py-3 text-sm text-[#374151]">{ddt.ordine}</td>
                         <td className="px-4 py-3 text-sm text-[#374151] max-w-[160px] truncate">{ddt.cliente}</td>
                         <td className="px-4 py-3 text-sm text-[#6B7280]">{ddt.corriere}</td>
-                        <td className="px-4 py-3 text-sm text-[#6B7280]">{ddt.dataEmissione}</td>
+                        <td className="px-4 py-3 text-sm text-[#6B7280]">{fmtDate(ddt.dataEmissione)}</td>
                         <td className="px-4 py-3 text-sm text-center text-[#374151]">{ddt.colli} colli / {ddt.peso}</td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${shippingStateBadge(ddt.stato)}`}>
@@ -330,10 +409,18 @@ export function LogisticsPage() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-2">
-                            <button className="p-1.5 hover:bg-[#E5EAF2] rounded-lg transition-colors" title="Visualizza">
+                            <button
+                              onClick={() => setSelectedShipmentId(ddt.spedizioneId)}
+                              className="p-1.5 hover:bg-[#E5EAF2] rounded-lg transition-colors"
+                              title="Visualizza"
+                            >
                               <Eye className="w-4 h-4 text-[#6B7280]" />
                             </button>
-                            <button className="p-1.5 hover:bg-[#E5EAF2] rounded-lg transition-colors" title="Scarica PDF">
+                            <button
+                              onClick={() => handleDownloadDdtPdf(ddt.spedizioneId)}
+                              className="p-1.5 hover:bg-[#E5EAF2] rounded-lg transition-colors"
+                              title="Scarica PDF"
+                            >
                               <Download className="w-4 h-4 text-[#6B7280]" />
                             </button>
                           </div>
@@ -360,6 +447,7 @@ export function LogisticsPage() {
         shipmentId={selectedShipmentId}
         isOpen={!!selectedShipmentId}
         onClose={() => setSelectedShipmentId(null)}
+        onUpdated={(updated) => setShipments((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))}
       />
 
       <NewShipmentModal
