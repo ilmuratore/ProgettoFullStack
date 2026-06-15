@@ -147,9 +147,9 @@ export function AnagraficaDetailDrawer({ entityType, entityId, isOpen, onClose, 
             <div className="bg-[#F7F9FC] rounded-2xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-[#2D2D2D]">Informazioni Generali</h3>
-                {(cliente || fornitore || corriere) && (
-                  <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getBadgeAttivo((cliente ?? fornitore ?? corriere)!.attivo)}`}>
-                    {(cliente ?? fornitore ?? corriere)!.attivo ? 'Attivo' : 'Disattivo'}
+                {(cliente || fornitore) && (
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getBadgeAttivo((cliente ?? fornitore)!.attivo)}`}>
+                    {(cliente ?? fornitore)!.attivo ? 'Attivo' : 'Disattivo'}
                   </span>
                 )}
               </div>

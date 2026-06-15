@@ -14,7 +14,6 @@ export interface CorriereCreateRequest {
   nome: string;
   telefono?: string;
   email?: string;
-  attivo?: boolean;
 }
 
 export interface CorriereUpdateRequest {
@@ -22,7 +21,6 @@ export interface CorriereUpdateRequest {
   nome?: string;
   telefono?: string;
   email?: string;
-  attivo?: boolean;
 }
 
 export interface Dipendente {
