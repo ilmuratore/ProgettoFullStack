@@ -4,6 +4,7 @@ import { authApi } from '../api/authApi';
 import type { RegisterData } from '../api/authApi';
 import type { UtenteAPI } from '../types/auth';
 import type { UtenteCreateRequest, UtenteUpdateRequest } from '../types/utenti';
+import type { Dipendente } from '../types/corrieri';
 import { toast } from 'sonner';
 
 interface FieldError {
@@ -14,6 +15,7 @@ interface FieldError {
 const REGISTER_ROLE_IDS = [2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 const PROTECTED_ROLE_IDS = [1] as const;
 const NON_DEACTIVATABLE_ROLE_IDS = [1] as const;
+const EMPLOYEE_LOCKED_ROLE_IDS = [1, 2, 3, 4] as const;
 const REGISTER_ROLES = [
   { id: 2, label: 'Developer' },
   { id: 3, label: 'Supporto' },
@@ -30,14 +32,16 @@ interface RegisterPageProps {
   open?: boolean;
   mode?: 'create' | 'edit';
   initialData?: UtenteAPI | null;
+  dipendenti?: Dipendente[];
   onSuccess?: (utente: UtenteAPI) => void;
   onCancel?: () => void;
-  onSave?: (data: UtenteCreateRequest | UtenteUpdateRequest, id?: number, passwordReset?: string) => Promise<void>;
+  onSave?: (data: UtenteCreateRequest | UtenteUpdateRequest, options?: { id?: number; passwordReset?: string; dipendenteId?: number | null }) => Promise<void>;
 }
 
 type RegisterFormState = RegisterData & {
   attivo: boolean;
   confirmPassword: string;
+  dipendente_id: number | '';
 };
 
 const EMPTY_FORM: RegisterFormState = {
@@ -48,9 +52,10 @@ const EMPTY_FORM: RegisterFormState = {
   ruolo_id: 2,
   attivo: true,
   confirmPassword: '',
+  dipendente_id: '',
 };
 
-export function RegisterPage({ open, mode = 'create', initialData, onSuccess, onCancel, onSave }: RegisterPageProps) {
+export function RegisterPage({ open, mode = 'create', initialData, dipendenti = [], onSuccess, onCancel, onSave }: RegisterPageProps) {
   const [form, setForm] = useState<RegisterFormState>(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldError[]>([]);
@@ -59,6 +64,7 @@ export function RegisterPage({ open, mode = 'create', initialData, onSuccess, on
   const isModal = typeof open === 'boolean';
   const isProtectedRoleUser = PROTECTED_ROLE_IDS.includes((initialData?.ruolo_id ?? -1) as (typeof PROTECTED_ROLE_IDS)[number]);
   const isNonDeactivatableUser = NON_DEACTIVATABLE_ROLE_IDS.includes((initialData?.ruolo_id ?? -1) as (typeof NON_DEACTIVATABLE_ROLE_IDS)[number]);
+  const canLinkDipendente = !EMPLOYEE_LOCKED_ROLE_IDS.includes(Number(form.ruolo_id) as (typeof EMPLOYEE_LOCKED_ROLE_IDS)[number]);
 
   const roleOptions = useMemo(() => {
     const options = [...REGISTER_ROLES];
@@ -75,6 +81,13 @@ export function RegisterPage({ open, mode = 'create', initialData, onSuccess, on
     return options;
   }, [mode, initialData]);
 
+  const dipendenteOptions = useMemo(() => {
+    const currentDipendenteId = initialData?.dipendente?.id ?? null;
+    return dipendenti.filter((dipendente) =>
+      dipendente.utente_id == null || dipendente.id === currentDipendenteId
+    );
+  }, [dipendenti, initialData]);
+
   useEffect(() => {
     if (mode === 'edit' && initialData) {
       setForm({
@@ -85,6 +98,7 @@ export function RegisterPage({ open, mode = 'create', initialData, onSuccess, on
         ruolo_id: initialData.ruolo_id ?? 2,
         attivo: initialData.attivo ?? true,
         confirmPassword: '',
+        dipendente_id: initialData.dipendente?.id ?? '',
       });
     } else {
       setForm(EMPTY_FORM);
@@ -97,7 +111,13 @@ export function RegisterPage({ open, mode = 'create', initialData, onSuccess, on
     fieldErrors.find((e) => e.field === field)?.message;
 
   const handleChange = (field: keyof RegisterFormState, value: string | number | boolean) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === 'ruolo_id' && EMPLOYEE_LOCKED_ROLE_IDS.includes(Number(value) as (typeof EMPLOYEE_LOCKED_ROLE_IDS)[number])) {
+        next.dipendente_id = '';
+      }
+      return next;
+    });
     setFieldErrors((prev) => prev.filter((e) => e.field !== field));
     setGlobalError('');
   };
@@ -148,7 +168,9 @@ export function RegisterPage({ open, mode = 'create', initialData, onSuccess, on
         };
 
         if (onSave) {
-          await onSave(payload);
+          await onSave(payload, {
+            dipendenteId: canLinkDipendente && form.dipendente_id !== '' ? Number(form.dipendente_id) : null,
+          });
         } else {
           const utente = await authApi.register(payload);
           toast.success(`Utente ${utente.nome} ${utente.cognome} creato con successo`);
@@ -161,7 +183,11 @@ export function RegisterPage({ open, mode = 'create', initialData, onSuccess, on
           email: form.email.trim(),
           ruolo_id: isProtectedRoleUser ? initialData?.ruolo_id : Number(form.ruolo_id),
           attivo: isNonDeactivatableUser ? true : form.attivo,
-        }, initialData?.id, form.password.trim() ? form.password.trim() : undefined);
+        }, {
+          id: initialData?.id,
+          passwordReset: form.password.trim() ? form.password.trim() : undefined,
+          dipendenteId: canLinkDipendente && form.dipendente_id !== '' ? Number(form.dipendente_id) : null,
+        });
       }
     } catch (err: unknown) {
       const e = err as { code?: string; details?: FieldError[]; message?: string };
@@ -255,6 +281,27 @@ export function RegisterPage({ open, mode = 'create', initialData, onSuccess, on
             </label>
           </div>
         </div>
+
+        {canLinkDipendente && (
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-[#374151]">Dipendente collegato</label>
+            <select
+              value={form.dipendente_id}
+              onChange={(e) => handleChange('dipendente_id', e.target.value ? Number(e.target.value) : '')}
+              className={`${inputClass('dipendente_id')} cursor-pointer`}
+              disabled={loading}
+            >
+              <option value="">Nessun collegamento</option>
+              {dipendenteOptions.map((dipendente) => (
+                <option key={dipendente.id} value={dipendente.id}>
+                  {dipendente.cognome} {dipendente.nome} · {dipendente.ruolo_operativo ?? 'Dipendente'}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-[#9CA3AF]">Disponibili solo dipendenti non ancora collegati.</p>
+            {getFieldError('dipendente_id') && <p className="text-xs text-[#DC2626]">{getFieldError('dipendente_id')}</p>}
+          </div>
+        )}
 
         {globalError && (
           <div className="p-3 bg-[#FEF2F2] border border-[#FECACA] rounded-xl">

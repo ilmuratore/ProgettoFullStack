@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 import {
   Search, Plus, Download, Upload, MoreVertical,
   Edit, Trash2, Mail, Phone, MapPin, Building2,
-  User, Truck, Globe, ExternalLink, Users, Calendar, AlertTriangle,
+  User, Truck, Globe, ExternalLink, Users, Calendar, AlertTriangle, Link2,
 } from 'lucide-react';
 import { PageTabBar } from '../../components/ui/PageTabBar';
 import { FilterButton, FilterPanel } from '../../components/ui/FilterPanel';
@@ -18,9 +18,11 @@ import { toast } from 'sonner';
 import { fornitoriApi } from '../../api/fornitoriApi';
 import { clientiApi } from '../../api/clientiApi';
 import { corrieriApi, dipendentiApi } from '../../api/corrieriApi';
+import { utentiApi } from '../../api/utentiApi';
 import { useAuthStore } from '../../store/authStore';
 import type { Fornitore, FornitoreCreateRequest, FornitoreUpdateRequest } from '../../types/fornitori';
 import type { Cliente, ClienteCreateRequest, ClienteUpdateRequest } from '../../types/clienti';
+import type { UtenteAPI } from '../../types/utenti';
 import type {
   Corriere, CorriereCreateRequest, CorriereUpdateRequest,
   Dipendente, DipendenteCreateRequest, DipendenteUpdateRequest,
@@ -35,7 +37,7 @@ const TAB_IDS: TabType[] = ['fornitori', 'clienti', 'corrieri', 'dipendenti'];
 type FornitoriSortKey = 'ragione_sociale' | 'piva' | 'email' | 'indirizzo' | 'source' | 'attivo';
 type ClientiSortKey = 'ragione_sociale' | 'piva_cf' | 'email' | 'source' | 'attivo';
 type CorrieriSortKey = 'codice' | 'nome' | 'email' | 'telefono';
-type DipendentiSortKey = 'nominativo' | 'codice_fiscale' | 'ruolo_operativo' | 'data_assunzione';
+type DipendentiSortKey = 'nominativo' | 'codice_fiscale' | 'ruolo_operativo' | 'collegamento' | 'data_assunzione';
 
 const compareFornitoriByKey = (left: Fornitore, right: Fornitore, key: FornitoriSortKey) => {
   switch (key) {
@@ -70,11 +72,21 @@ const compareCorrieriByKey = (left: Corriere, right: Corriere, key: CorrieriSort
   }
 };
 
-const compareDipendentiByKey = (left: Dipendente, right: Dipendente, key: DipendentiSortKey) => {
+const compareDipendentiByKey = (
+  left: Dipendente,
+  right: Dipendente,
+  key: DipendentiSortKey,
+  utentiById: Map<number, UtenteAPI>
+) => {
   switch (key) {
     case 'nominativo': return compareText(`${left.cognome} ${left.nome}`, `${right.cognome} ${right.nome}`);
     case 'codice_fiscale': return compareText(left.codice_fiscale ?? '', right.codice_fiscale ?? '');
     case 'ruolo_operativo': return compareText(left.ruolo_operativo ?? '', right.ruolo_operativo ?? '');
+    case 'collegamento': {
+      const leftRole = left.utente_id ? (utentiById.get(left.utente_id)?.ruolo_nome ?? utentiById.get(left.utente_id)?.ruolo ?? `Utente #${left.utente_id}`) : '';
+      const rightRole = right.utente_id ? (utentiById.get(right.utente_id)?.ruolo_nome ?? utentiById.get(right.utente_id)?.ruolo ?? `Utente #${right.utente_id}`) : '';
+      return compareText(leftRole, rightRole);
+    }
     case 'data_assunzione': return compareDate(left.data_assunzione, right.data_assunzione);
     default: return 0;
   }
@@ -108,6 +120,7 @@ const formatDataBreve = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
 
 export function AnagrafichePage() {
+  const navigate = useNavigate();
   const { hasPermesso } = useAuthStore();
   const [searchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
@@ -154,6 +167,7 @@ export function AnagrafichePage() {
   const [loadingCorrieri, setLoadingCorrieri] = useState(false);
   const [dipendenti, setDipendenti] = useState<Dipendente[]>([]);
   const [loadingDipendenti, setLoadingDipendenti] = useState(false);
+  const [utenti, setUtenti] = useState<UtenteAPI[]>([]);
 
   const fetchFornitori = useCallback(async () => {
     setLoadingFornitori(true);
@@ -183,6 +197,11 @@ export function AnagrafichePage() {
     finally { setLoadingDipendenti(false); }
   }, []);
 
+  const fetchUtenti = useCallback(async () => {
+    try { setUtenti(await utentiApi.list()); }
+    catch (err: any) { toast.error('Errore caricamento utenti collegati', { description: err?.message }); }
+  }, []);
+
   const fetchedTabs = useRef(new Set<TabType>());
 
   const fetchForTab = useCallback(async (tab: TabType) => {
@@ -198,6 +217,9 @@ export function AnagrafichePage() {
 
   useEffect(() => { fetchForTab('fornitori'); }, []);
   useEffect(() => { fetchForTab(activeTab); }, [activeTab, fetchForTab]);
+  useEffect(() => {
+    if (activeTab === 'dipendenti') fetchUtenti();
+  }, [activeTab, fetchUtenti]);
 
   useEffect(() => {
     setFiltersOpen(false);
@@ -393,6 +415,11 @@ export function AnagrafichePage() {
     new Set(dipendenti.map(d => d.ruolo_operativo).filter((r): r is string => !!r))
   ).sort((a, b) => a.localeCompare(b, 'it'));
 
+  const utentiById = useMemo(
+    () => new Map(utenti.map((utente) => [utente.id, utente])),
+    [utenti]
+  );
+
   const getFilteredData = () => {
     const q = searchQuery.toLowerCase();
     switch (activeTab) {
@@ -443,7 +470,7 @@ export function AnagrafichePage() {
         if (dipendentiFilters.ordinamento === 'alfabetico') {
           data = [...data].sort((a, b) => `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`, 'it'));
         }
-        return applySort(data, dipendentiSort, compareDipendentiByKey);
+        return applySort(data, dipendentiSort, (left, right, key) => compareDipendentiByKey(left, right, key, utentiById));
       }
       default: return [];
     }
@@ -454,6 +481,17 @@ export function AnagrafichePage() {
   const filteredClienti    = activeTab === 'clienti'    ? (filteredData as Cliente[]) : [];
   const filteredCorrieri   = activeTab === 'corrieri'   ? (filteredData as Corriere[]) : [];
   const filteredDipendenti = activeTab === 'dipendenti' ? (filteredData as Dipendente[]) : [];
+
+  const getLinkedUserLabel = (dipendente: Dipendente) => {
+    if (!dipendente.utente_id) return null;
+    const utente = utentiById.get(dipendente.utente_id);
+    return utente?.ruolo_nome ?? utente?.ruolo ?? `Utente #${dipendente.utente_id}`;
+  };
+
+  const handleOpenLinkedUser = (dipendente: Dipendente) => {
+    if (!dipendente.utente_id) return;
+    navigate(`/amministrazione?tab=utenti&highlightUserId=${dipendente.utente_id}`);
+  };
 
   const tabEntity = activeTab; 
 
@@ -835,13 +873,14 @@ export function AnagrafichePage() {
                     <SortableHeader label="Nominativo" sortKey="nominativo" sort={dipendentiSort} onSort={handleDipendentiSort} />
                     <SortableHeader label="Codice Fiscale" sortKey="codice_fiscale" sort={dipendentiSort} onSort={handleDipendentiSort} />
                     <SortableHeader label="Ruolo Operativo" sortKey="ruolo_operativo" sort={dipendentiSort} onSort={handleDipendentiSort} />
+                    <SortableHeader label="Utente Collegato" sortKey="collegamento" sort={dipendentiSort} onSort={handleDipendentiSort} />
                     <SortableHeader label="Data Assunzione" sortKey="data_assunzione" sort={dipendentiSort} onSort={handleDipendentiSort} />
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Azioni</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {loadingDipendenti ? <SkeletonRows cols={5} /> : filteredDipendenti.length === 0
-                    ? <EmptyRow cols={5} msg={searchQuery || activeFiltersCount > 0 ? 'Nessun dipendente corrisponde alla ricerca' : 'Nessun dipendente. Clicca "Nuovo Dipendente" per iniziare.'} />
+                  {loadingDipendenti ? <SkeletonRows cols={6} /> : filteredDipendenti.length === 0
+                    ? <EmptyRow cols={6} msg={searchQuery || activeFiltersCount > 0 ? 'Nessun dipendente corrisponde alla ricerca' : 'Nessun dipendente. Clicca "Nuovo Dipendente" per iniziare.'} />
                     : filteredDipendenti.map((d, i) => (
                       <tr key={d.id} onClick={() => handleView(d)} className={`cursor-pointer border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
                         <td className="py-3 px-4">
@@ -857,6 +896,23 @@ export function AnagrafichePage() {
                           {d.ruolo_operativo
                             ? <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#F0FDF7] text-[#0FA67A]"><Users className="w-3 h-3" />{d.ruolo_operativo}</span>
                             : <span className="text-sm italic text-[#9CA3AF]">—</span>}
+                        </td>
+                        <td className="py-3 px-4">
+                          {d.utente_id ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenLinkedUser(d);
+                              }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#EEF2FF] text-[#4F46E5] hover:bg-[#E0E7FF] transition-colors"
+                            >
+                              <Link2 className="w-3 h-3" />
+                              {getLinkedUserLabel(d)}
+                            </button>
+                          ) : (
+                            <span className="text-sm italic text-[#9CA3AF]">Non collegato</span>
+                          )}
                         </td>
                         <td className="py-3 px-4">
                           {d.data_assunzione
