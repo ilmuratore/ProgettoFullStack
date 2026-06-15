@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { authApi } from '../api/authApi';
 import { useAuthStore } from '../store/authStore';
+import { toast } from 'sonner';
 
 // ─── ICONE INLINE ─────────────────────────────────────────────────────────────
 function IconUser({ size = 15 }: { size?: number }) {
@@ -93,7 +94,7 @@ export function LoginPage({
   const [loading, setLoading]   = useState(false);
   const [mounted, setMounted]   = useState(false);
 
-  const { setAuth } = useAuthStore();
+  const { setAuth, logout } = useAuthStore();
 
   useEffect(() => {
     const t = setTimeout(() => setMounted(true), 50);
@@ -109,8 +110,12 @@ export function LoginPage({
       setAuth(data.token, data.utente);
       onLoginSuccess();
     } catch (err: unknown) {
-      const e = err as { status?: number; message?: string };
-      if (e.status === 401) {
+      const e = err as { status?: number; code?: string; message?: string };
+      if (e.code === 'UTENTE_DISABILITATO') {
+        logout();
+        toast.error('Utente non piu attivo, contattare il supporto.');
+        setError('Utente non piu attivo, contattare il supporto.');
+      } else if (e.status === 401) {
         setError('Email o password non validi. Controlla le credenziali e riprova.');
       } else {
         setError(e.message ?? 'Errore di connessione. Riprova.');

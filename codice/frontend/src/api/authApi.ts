@@ -14,6 +14,7 @@ export interface RegisterData {
   email: string;
   password: string;
   ruolo_id: number;
+  attivo?: boolean;
 }
 
 export const authApi = {

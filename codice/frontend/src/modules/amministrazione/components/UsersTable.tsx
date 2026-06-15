@@ -1,4 +1,4 @@
-import { Edit, KeyRound, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
+import { Edit, ToggleLeft, ToggleRight } from 'lucide-react';
 import type { UtenteAPI } from '../../../types/utenti';
 
 const ruoloColorMap: Record<string, string> = {
@@ -16,6 +16,7 @@ const ruoloColorMap: Record<string, string> = {
 
 type UsersTableRow = {
   id: number;
+  utente: UtenteAPI;
   nome: string;
   email: string;
   ruolo: string;
@@ -27,12 +28,15 @@ type UsersTableRow = {
 type UsersTableProps = {
   utenti: UtenteAPI[];
   loading: boolean;
+  onEdit: (utente: UtenteAPI) => void;
+  onToggleAttivo: (utente: UtenteAPI) => void;
 };
 
 const mapUtenteToRow = (utente: UtenteAPI): UsersTableRow => {
   const ruolo = utente.ruolo_nome ?? utente.ruolo ?? 'Utente';
   return {
     id: utente.id,
+    utente,
     nome: `${utente.nome} ${utente.cognome}`.trim(),
     email: utente.email,
     ruolo,
@@ -42,7 +46,7 @@ const mapUtenteToRow = (utente: UtenteAPI): UsersTableRow => {
   };
 };
 
-export function UsersTable({ utenti, loading }: UsersTableProps) {
+export function UsersTable({ utenti, loading, onEdit, onToggleAttivo }: UsersTableProps) {
   const rows = utenti.map(mapUtenteToRow);
 
   return (
@@ -70,7 +74,7 @@ export function UsersTable({ utenti, loading }: UsersTableProps) {
             </tr>
           )}
           {rows.map((u) => (
-            <tr key={u.id} className={`hover:bg-[#F7F9FC] transition-colors ${!u.attivo ? 'opacity-50' : ''}`}>
+            <tr key={u.id} className="hover:bg-[#F7F9FC] transition-colors">
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <div
@@ -99,21 +103,31 @@ export function UsersTable({ utenti, loading }: UsersTableProps) {
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center justify-center gap-1.5">
-                  <button className="p-1.5 hover:bg-[#E5EAF2] rounded-lg transition-colors" title="Modifica">
+                  {(() => {
+                    const isAdmin = u.utente.ruolo_id === 1 || u.utente.ruolo === 'Admin' || u.utente.ruolo_nome === 'Admin';
+                    return (
+                      <>
+                  <button
+                    className="p-1.5 hover:bg-[#E5EAF2] rounded-lg transition-colors"
+                    title="Modifica"
+                    onClick={() => onEdit(u.utente)}
+                  >
                     <Edit className="w-4 h-4 text-[#6B7280]" />
                   </button>
-                  <button className="p-1.5 hover:bg-[#E5EAF2] rounded-lg transition-colors" title="Reset Password">
-                    <KeyRound className="w-4 h-4 text-[#6B7280]" />
-                  </button>
-                  <button className="p-1.5 hover:bg-[#E5EAF2] rounded-lg transition-colors" title={u.attivo ? 'Disabilita' : 'Abilita'}>
+                  <button
+                    className={`p-1.5 rounded-lg transition-colors ${isAdmin ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[#E5EAF2]'}`}
+                    title={isAdmin ? 'Admin non disattivabile' : u.attivo ? 'Disabilita' : 'Abilita'}
+                    disabled={isAdmin}
+                    onClick={() => !isAdmin && onToggleAttivo(u.utente)}
+                  >
                     {u.attivo
                       ? <ToggleRight className="w-4 h-4 text-[#16A34A]" />
                       : <ToggleLeft className="w-4 h-4 text-[#9CA3AF]" />
                     }
                   </button>
-                  <button className="p-1.5 hover:bg-[#FEE2E2] rounded-lg transition-colors" title="Elimina">
-                    <Trash2 className="w-4 h-4 text-[#DC2626]" />
-                  </button>
+                      </>
+                    );
+                  })()}
                 </div>
               </td>
             </tr>

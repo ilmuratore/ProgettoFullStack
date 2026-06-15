@@ -1,10 +1,13 @@
 import { api } from './client';
 import type { Ruolo } from '../types/ruoli';
-import type { UtenteAPI, UtenteUpdateRequest } from '../types/utenti';
+import type { UtenteAPI, UtenteCreateRequest, UtenteUpdateRequest } from '../types/utenti';
 
 export const utentiApi = {
   list: (): Promise<UtenteAPI[]> =>
     api.get<UtenteAPI[]>('/utenti'),
+
+  create: (body: UtenteCreateRequest): Promise<UtenteAPI> =>
+    api.post<UtenteAPI>('/auth/register', body),
 
   getRuoli: (): Promise<Ruolo[]> =>
     api.get<Ruolo[]>('/utenti/ruoli'),

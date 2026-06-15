@@ -31,6 +31,15 @@ export interface UtenteUpdateRequest {
   dipendente_id?: number | null;
 }
 
+export interface UtenteCreateRequest {
+  nome: string;
+  cognome: string;
+  email: string;
+  password: string;
+  ruolo_id: number;
+  attivo?: boolean;
+}
+
 export interface UiUser {
   id: number;
   nome: string;
