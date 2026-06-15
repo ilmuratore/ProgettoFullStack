@@ -8,12 +8,13 @@ import { acquistiApi } from '../../api/acquistiApi';
 import { ordiniApi } from '../../api/ordiniApi';
 import { spedizioniApi } from '../../api/spedizioniApi';
 import { magazzinoApi } from '../../api/magazzinoApi';
+import { dipendentiApi } from '../../api/corrieriApi';
 
 interface SearchResult {
   id: string;
   title: string;
   subtitle: string;
-  category: 'Clienti' | 'Fornitori' | 'Prodotti' | 'Ordini' | 'Spedizioni' | 'Magazzini';
+  category: 'Clienti' | 'Fornitori' | 'Dipendenti' | 'Prodotti' | 'Ordini' | 'Spedizioni' | 'Magazzini';
   href: string;
   tokens: string;
 }
@@ -26,6 +27,7 @@ interface GlobalSearchProps {
 const categoryIcons = {
   Clienti: Users,
   Fornitori: Building2,
+  Dipendenti: Users,
   Prodotti: Package,
   Ordini: ShoppingCart,
   Spedizioni: Truck,
@@ -80,6 +82,7 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
       const settled = await Promise.allSettled([
         clientiApi.list(),
         fornitoriApi.list(),
+        dipendentiApi.list(),
         prodottiApi.list(),
         acquistiApi.list(),
         ordiniApi.list(),
@@ -92,6 +95,7 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
       const [
         clientiRes,
         fornitoriRes,
+        dipendentiRes,
         prodottiRes,
         ordiniAcquistoRes,
         ordiniVenditaRes,
@@ -123,6 +127,19 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
             category: 'Fornitori' as const,
             href: '/anagrafiche?tab=fornitori',
             tokens: normalize([fornitore.ragione_sociale, fornitore.piva, fornitore.indirizzo, fornitore.email, fornitore.telefono].filter(Boolean).join(' ')),
+          }))
+        );
+      }
+
+      if (dipendentiRes.status === 'fulfilled') {
+        nextResults.push(
+          ...dipendentiRes.value.map((dipendente) => ({
+            id: `dipendente-${dipendente.id}`,
+            title: [dipendente.nome, dipendente.cognome].filter(Boolean).join(' '),
+            subtitle: [dipendente.codice_fiscale, dipendente.ruolo_operativo, dipendente.utente_id ? `Utente #${dipendente.utente_id}` : null].filter(Boolean).join(' · ') || 'Dipendente',
+            category: 'Dipendenti' as const,
+            href: '/anagrafiche?tab=dipendenti',
+            tokens: normalize([dipendente.nome, dipendente.cognome, dipendente.codice_fiscale, dipendente.ruolo_operativo].filter(Boolean).join(' ')),
           }))
         );
       }
@@ -256,7 +273,7 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Cerca clienti, fornitori, prodotti, ordini..."
+            placeholder="Cerca clienti, fornitori, dipendenti, prodotti, ordini..."
             className="flex-1 text-base outline-none placeholder:text-[#9CA3AF]"
           />
           <div className="flex items-center gap-2">
