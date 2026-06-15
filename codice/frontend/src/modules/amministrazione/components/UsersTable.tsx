@@ -29,6 +29,7 @@ type UsersTableProps = {
   utenti: UtenteAPI[];
   loading: boolean;
   highlightedUserId?: number | null;
+  canManageUsers: boolean;
   onEdit: (utente: UtenteAPI) => void;
   onToggleAttivo: (utente: UtenteAPI) => void;
 };
@@ -46,7 +47,7 @@ const mapUtenteToRow = (utente: UtenteAPI): UsersTableRow => {
   };
 };
 
-export function UsersTable({ utenti, loading, highlightedUserId, onEdit, onToggleAttivo }: UsersTableProps) {
+export function UsersTable({ utenti, loading, highlightedUserId, canManageUsers, onEdit, onToggleAttivo }: UsersTableProps) {
   const rows = utenti.map(mapUtenteToRow);
   const highlightedRowRef = useRef<HTMLTableRowElement | null>(null);
 
@@ -64,18 +65,18 @@ export function UsersTable({ utenti, loading, highlightedUserId, onEdit, onToggl
             <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Email</th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Ruolo</th>
             <th className="text-center px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Stato</th>
-            <th className="text-center px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Azioni</th>
+            {canManageUsers && <th className="text-center px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Azioni</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-[#E5EAF2]">
           {loading && (
             <tr>
-              <td colSpan={5} className="px-4 py-8 text-center text-sm text-[#6B7280]">Caricamento utenti...</td>
+              <td colSpan={canManageUsers ? 5 : 4} className="px-4 py-8 text-center text-sm text-[#6B7280]">Caricamento utenti...</td>
             </tr>
           )}
           {!loading && rows.length === 0 && (
             <tr>
-              <td colSpan={5} className="px-4 py-8 text-center text-sm text-[#6B7280]">Nessun utente trovato</td>
+              <td colSpan={canManageUsers ? 5 : 4} className="px-4 py-8 text-center text-sm text-[#6B7280]">Nessun utente trovato</td>
             </tr>
           )}
           {rows.map((u) => (
@@ -109,35 +110,37 @@ export function UsersTable({ utenti, loading, highlightedUserId, onEdit, onToggl
                   {u.attivo ? 'Attivo' : 'Disabilitato'}
                 </span>
               </td>
-              <td className="px-4 py-3">
-                <div className="flex items-center justify-center gap-1.5">
-                  {(() => {
-                    const isAdmin = u.utente.ruolo_id === 1 || u.utente.ruolo === 'Admin' || u.utente.ruolo_nome === 'Admin';
-                    return (
-                      <>
-                  <button
-                    className="p-1.5 hover:bg-[#E5EAF2] rounded-lg transition-colors"
-                    title="Modifica"
-                    onClick={() => onEdit(u.utente)}
-                  >
-                    <Edit className="w-4 h-4 text-[#6B7280]" />
-                  </button>
-                  <button
-                    className={`p-1.5 rounded-lg transition-colors ${isAdmin ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[#E5EAF2]'}`}
-                    title={isAdmin ? 'Admin non disattivabile' : u.attivo ? 'Disabilita' : 'Abilita'}
-                    disabled={isAdmin}
-                    onClick={() => !isAdmin && onToggleAttivo(u.utente)}
-                  >
-                    {u.attivo
-                      ? <ToggleRight className="w-4 h-4 text-[#16A34A]" />
-                      : <ToggleLeft className="w-4 h-4 text-[#9CA3AF]" />
-                    }
-                  </button>
-                      </>
-                    );
-                  })()}
-                </div>
-              </td>
+              {canManageUsers && (
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-center gap-1.5">
+                    {(() => {
+                      const isAdmin = u.utente.ruolo_id === 1 || u.utente.ruolo === 'Admin' || u.utente.ruolo_nome === 'Admin';
+                      return (
+                        <>
+                    <button
+                      className="p-1.5 hover:bg-[#E5EAF2] rounded-lg transition-colors"
+                      title="Modifica"
+                      onClick={() => onEdit(u.utente)}
+                    >
+                      <Edit className="w-4 h-4 text-[#6B7280]" />
+                    </button>
+                    <button
+                      className={`p-1.5 rounded-lg transition-colors ${isAdmin ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[#E5EAF2]'}`}
+                      title={isAdmin ? 'Admin non disattivabile' : u.attivo ? 'Disabilita' : 'Abilita'}
+                      disabled={isAdmin}
+                      onClick={() => !isAdmin && onToggleAttivo(u.utente)}
+                    >
+                      {u.attivo
+                        ? <ToggleRight className="w-4 h-4 text-[#16A34A]" />
+                        : <ToggleLeft className="w-4 h-4 text-[#9CA3AF]" />
+                      }
+                    </button>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

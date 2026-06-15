@@ -5,6 +5,7 @@ import { PageTabBar, type TabConfig } from '../../components/ui/PageTabBar';
 import { toast } from 'sonner';
 import { utentiApi } from '../../api/utentiApi';
 import { dipendentiApi } from '../../api/corrieriApi';
+import { useAuthStore } from '../../store/authStore';
 import type { UtenteAPI, UtenteCreateRequest, UtenteUpdateRequest } from '../../types/utenti';
 import type { Dipendente } from '../../types/corrieri';
 import { RegisterPage } from '../../pages/RegisterPage';
@@ -21,12 +22,15 @@ const tabs: TabConfig[] = [
 ];
 
 const EMPLOYEE_LOCKED_ROLE_IDS = [1, 2, 3, 4] as const;
+const USER_MANAGEMENT_ROLE_IDS = [1, 2, 3] as const;
 
 export function AdministrationPage() {
+  const { utente } = useAuthStore();
   const [searchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const initialTab: AdminTab = requestedTab === 'ruoli' || requestedTab === 'impostazioni' ? requestedTab : 'utenti';
   const highlightedUserId = Number(searchParams.get('highlightUserId') ?? '') || null;
+  const canManageUsers = USER_MANAGEMENT_ROLE_IDS.includes((utente?.ruolo_id ?? -1) as (typeof USER_MANAGEMENT_ROLE_IDS)[number]);
   const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);
   const [utenti, setUtenti] = useState<UtenteAPI[]>([]);
   const [dipendenti, setDipendenti] = useState<Dipendente[]>([]);
@@ -141,7 +145,7 @@ export function AdministrationPage() {
           <h1 className="text-2xl font-semibold text-[#2D2D2D]">Amministrazione</h1>
           <p className="text-sm text-[#6B7280] mt-1">Gestione utenti, ruoli, permessi e impostazioni sistema</p>
         </div>
-        {activeTab === 'utenti' && (
+        {activeTab === 'utenti' && canManageUsers && (
           <button
             className="px-4 py-2 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2 font-medium"
             onClick={handleCreateUser}
@@ -157,7 +161,7 @@ export function AdministrationPage() {
 
         <div className="p-6 space-y-6">
           {activeTab === 'utenti' && (
-            <UsersTable utenti={utenti} loading={loadingUtenti} highlightedUserId={highlightedUserId} onEdit={handleEditUser} onToggleAttivo={handleToggleUser} />
+            <UsersTable utenti={utenti} loading={loadingUtenti} highlightedUserId={highlightedUserId} canManageUsers={canManageUsers} onEdit={handleEditUser} onToggleAttivo={handleToggleUser} />
           )}
 
           {activeTab === 'ruoli' && (
