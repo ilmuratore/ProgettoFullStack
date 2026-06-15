@@ -153,7 +153,10 @@
             "url": {
               "raw": "{{base_url}}/",
               "host": [
-                "{{base_url}}/"
+                "{{base_url}}"
+              ],
+              "path": [
+                ""
               ]
             }
           },
@@ -191,7 +194,13 @@
             "url": {
               "raw": "{{base_url}}/api/v1/auth/login",
               "host": [
-                "{{base_url}}/api/v1/auth/login"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
               ]
             },
             "body": {
@@ -232,7 +241,13 @@
             "url": {
               "raw": "{{base_url}}/api/v1/auth/login",
               "host": [
-                "{{base_url}}/api/v1/auth/login"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
               ]
             },
             "body": {
@@ -282,7 +297,12 @@
             "url": {
               "raw": "{{base_url}}/api/v1/utenti",
               "host": [
-                "{{base_url}}/api/v1/utenti"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "utenti"
               ]
             }
           },
@@ -315,7 +335,12 @@
             "url": {
               "raw": "{{base_url}}/api/v1/utenti",
               "host": [
-                "{{base_url}}/api/v1/utenti"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "utenti"
               ]
             }
           },
@@ -348,7 +373,13 @@
             "url": {
               "raw": "{{base_url}}/api/v1/utenti/ruoli",
               "host": [
-                "{{base_url}}/api/v1/utenti/ruoli"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "utenti",
+                "ruoli"
               ]
             }
           },
@@ -385,7 +416,12 @@
             "url": {
               "raw": "{{base_url}}/api/v1/dipendenti",
               "host": [
-                "{{base_url}}/api/v1/dipendenti"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dipendenti"
               ]
             },
             "body": {
@@ -429,7 +465,13 @@
             "url": {
               "raw": "{{base_url}}/api/v1/auth/register",
               "host": [
-                "{{base_url}}/api/v1/auth/register"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
               ]
             },
             "body": {
@@ -473,7 +515,13 @@
             "url": {
               "raw": "{{base_url}}/api/v1/utenti/{{utente_id}}",
               "host": [
-                "{{base_url}}/api/v1/utenti/{{utente_id}}"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "utenti",
+                "{{utente_id}}"
               ]
             },
             "body": {
@@ -515,7 +563,14 @@
             "url": {
               "raw": "{{base_url}}/api/v1/utenti/{{utente_id}}/password",
               "host": [
-                "{{base_url}}/api/v1/utenti/{{utente_id}}/password"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "utenti",
+                "{{utente_id}}",
+                "password"
               ]
             },
             "body": {
@@ -562,7 +617,12 @@
             "url": {
               "raw": "{{base_url}}/api/v1/prodotti",
               "host": [
-                "{{base_url}}/api/v1/prodotti"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
               ]
             },
             "body": {
@@ -606,7 +666,13 @@
             "url": {
               "raw": "{{base_url}}/api/v1/prodotti/{{prodotto_id}}",
               "host": [
-                "{{base_url}}/api/v1/prodotti/{{prodotto_id}}"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti",
+                "{{prodotto_id}}"
               ]
             }
           },
@@ -639,7 +705,12 @@
             "url": {
               "raw": "{{base_url}}/api/v1/prodotti",
               "host": [
-                "{{base_url}}/api/v1/prodotti"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
               ]
             },
             "body": {
@@ -686,7 +757,12 @@
             "url": {
               "raw": "{{base_url}}/api/v1/prodotti",
               "host": [
-                "{{base_url}}/api/v1/prodotti"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
               ]
             },
             "body": {
@@ -730,7 +806,12 @@
             "url": {
               "raw": "{{base_url}}/api/v1/magazzini",
               "host": [
-                "{{base_url}}/api/v1/magazzini"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini"
               ]
             },
             "body": {
@@ -774,7 +855,14 @@
             "url": {
               "raw": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
               "host": [
-                "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini",
+                "{{magazzino_id}}",
+                "ubicazioni"
               ]
             },
             "body": {
@@ -818,7 +906,14 @@
             "url": {
               "raw": "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni",
               "host": [
-                "{{base_url}}/api/v1/magazzini/{{magazzino_id}}/ubicazioni"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "magazzini",
+                "{{magazzino_id}}",
+                "ubicazioni"
               ]
             },
             "body": {
@@ -862,7 +957,12 @@
             "url": {
               "raw": "{{base_url}}/api/v1/movimenti-stock",
               "host": [
-                "{{base_url}}/api/v1/movimenti-stock"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "movimenti-stock"
               ]
             },
             "body": {
@@ -906,7 +1006,12 @@
             "url": {
               "raw": "{{base_url}}/api/v1/movimenti-stock",
               "host": [
-                "{{base_url}}/api/v1/movimenti-stock"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "movimenti-stock"
               ]
             },
             "body": {
@@ -949,7 +1054,14 @@
             "url": {
               "raw": "{{base_url}}/api/v1/movimenti-stock/{{movimento_id}}/pdf",
               "host": [
-                "{{base_url}}/api/v1/movimenti-stock/{{movimento_id}}/pdf"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "movimenti-stock",
+                "{{movimento_id}}",
+                "pdf"
               ]
             }
           },
@@ -988,7 +1100,12 @@
             "url": {
               "raw": "{{base_url}}/api/v1/fornitori",
               "host": [
-                "{{base_url}}/api/v1/fornitori"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fornitori"
               ]
             },
             "body": {
@@ -1032,7 +1149,12 @@
             "url": {
               "raw": "{{base_url}}/api/v1/prodotti",
               "host": [
-                "{{base_url}}/api/v1/prodotti"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "prodotti"
               ]
             },
             "body": {
@@ -1076,7 +1198,12 @@
             "url": {
               "raw": "{{base_url}}/api/v1/ordini-acquisto",
               "host": [
-                "{{base_url}}/api/v1/ordini-acquisto"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto"
               ]
             },
             "body": {
@@ -1120,7 +1247,14 @@
             "url": {
               "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_acquisto_id}}/stato",
               "host": [
-                "{{base_url}}/api/v1/ordini-acquisto/{{ordine_acquisto_id}}/stato"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_acquisto_id}}",
+                "stato"
               ]
             },
             "body": {
@@ -1162,7 +1296,14 @@
             "url": {
               "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_acquisto_id}}/stato",
               "host": [
-                "{{base_url}}/api/v1/ordini-acquisto/{{ordine_acquisto_id}}/stato"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_acquisto_id}}",
+                "stato"
               ]
             },
             "body": {
@@ -1204,7 +1345,13 @@
             "url": {
               "raw": "{{base_url}}/api/v1/ordini-acquisto/ricezioni",
               "host": [
-                "{{base_url}}/api/v1/ordini-acquisto/ricezioni"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "ricezioni"
               ]
             },
             "body": {
@@ -1248,7 +1395,14 @@
             "url": {
               "raw": "{{base_url}}/api/v1/ordini-acquisto/{{ordine_acquisto_id}}/pdf",
               "host": [
-                "{{base_url}}/api/v1/ordini-acquisto/{{ordine_acquisto_id}}/pdf"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini-acquisto",
+                "{{ordine_acquisto_id}}",
+                "pdf"
               ]
             }
           },
@@ -1281,7 +1435,14 @@
             "url": {
               "raw": "{{base_url}}/api/v1/ricezioni/{{ricezione_id}}/pdf",
               "host": [
-                "{{base_url}}/api/v1/ricezioni/{{ricezione_id}}/pdf"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ricezioni",
+                "{{ricezione_id}}",
+                "pdf"
               ]
             }
           },
@@ -1319,7 +1480,12 @@
             "url": {
               "raw": "{{base_url}}/api/v1/clienti",
               "host": [
-                "{{base_url}}/api/v1/clienti"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti"
               ]
             },
             "body": {
@@ -1363,7 +1529,14 @@
             "url": {
               "raw": "{{base_url}}/api/v1/clienti/{{cliente_id}}/destinazioni",
               "host": [
-                "{{base_url}}/api/v1/clienti/{{cliente_id}}/destinazioni"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti",
+                "{{cliente_id}}",
+                "destinazioni"
               ]
             },
             "body": {
@@ -1407,7 +1580,12 @@
             "url": {
               "raw": "{{base_url}}/api/v1/ordini",
               "host": [
-                "{{base_url}}/api/v1/ordini"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini"
               ]
             },
             "body": {
@@ -1451,7 +1629,12 @@
             "url": {
               "raw": "{{base_url}}/api/v1/spedizioni",
               "host": [
-                "{{base_url}}/api/v1/spedizioni"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "spedizioni"
               ]
             },
             "body": {
@@ -1493,7 +1676,14 @@
             "url": {
               "raw": "{{base_url}}/api/v1/ordini/{{ordine_vendita_id}}/stato",
               "host": [
-                "{{base_url}}/api/v1/ordini/{{ordine_vendita_id}}/stato"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "{{ordine_vendita_id}}",
+                "stato"
               ]
             },
             "body": {
@@ -1535,7 +1725,14 @@
             "url": {
               "raw": "{{base_url}}/api/v1/ordini/{{ordine_vendita_id}}/picking",
               "host": [
-                "{{base_url}}/api/v1/ordini/{{ordine_vendita_id}}/picking"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "{{ordine_vendita_id}}",
+                "picking"
               ]
             },
             "body": {
@@ -1577,7 +1774,13 @@
             "url": {
               "raw": "{{base_url}}/api/v1/ordini/{{ordine_vendita_id}}",
               "host": [
-                "{{base_url}}/api/v1/ordini/{{ordine_vendita_id}}"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "{{ordine_vendita_id}}"
               ]
             }
           },
@@ -1611,7 +1814,14 @@
             "url": {
               "raw": "{{base_url}}/api/v1/ordini/{{ordine_vendita_id}}/picking",
               "host": [
-                "{{base_url}}/api/v1/ordini/{{ordine_vendita_id}}/picking"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "{{ordine_vendita_id}}",
+                "picking"
               ]
             },
             "body": {
@@ -1653,7 +1863,14 @@
             "url": {
               "raw": "{{base_url}}/api/v1/ordini/{{ordine_vendita_id}}/pdf",
               "host": [
-                "{{base_url}}/api/v1/ordini/{{ordine_vendita_id}}/pdf"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "{{ordine_vendita_id}}",
+                "pdf"
               ]
             }
           },
@@ -1686,7 +1903,12 @@
             "url": {
               "raw": "{{base_url}}/api/v1/spedizioni",
               "host": [
-                "{{base_url}}/api/v1/spedizioni"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "spedizioni"
               ]
             },
             "body": {
@@ -1730,7 +1952,14 @@
             "url": {
               "raw": "{{base_url}}/api/v1/spedizioni/{{spedizione_id}}/stato",
               "host": [
-                "{{base_url}}/api/v1/spedizioni/{{spedizione_id}}/stato"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "spedizioni",
+                "{{spedizione_id}}",
+                "stato"
               ]
             },
             "body": {
@@ -1772,7 +2001,14 @@
             "url": {
               "raw": "{{base_url}}/api/v1/spedizioni/{{spedizione_id}}/ddt",
               "host": [
-                "{{base_url}}/api/v1/spedizioni/{{spedizione_id}}/ddt"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "spedizioni",
+                "{{spedizione_id}}",
+                "ddt"
               ]
             },
             "body": {
@@ -1814,7 +2050,15 @@
             "url": {
               "raw": "{{base_url}}/api/v1/spedizioni/{{spedizione_id}}/ddt/pdf",
               "host": [
-                "{{base_url}}/api/v1/spedizioni/{{spedizione_id}}/ddt/pdf"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "spedizioni",
+                "{{spedizione_id}}",
+                "ddt",
+                "pdf"
               ]
             }
           },
@@ -1847,7 +2091,12 @@
             "url": {
               "raw": "{{base_url}}/api/v1/spedizioni",
               "host": [
-                "{{base_url}}/api/v1/spedizioni"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "spedizioni"
               ]
             },
             "body": {
@@ -1894,7 +2143,12 @@
             "url": {
               "raw": "{{base_url}}/api/v1/richieste-acquisto",
               "host": [
-                "{{base_url}}/api/v1/richieste-acquisto"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "richieste-acquisto"
               ]
             },
             "body": {
@@ -1938,7 +2192,14 @@
             "url": {
               "raw": "{{base_url}}/api/v1/richieste-acquisto/{{richiesta_acquisto_id}}/stato",
               "host": [
-                "{{base_url}}/api/v1/richieste-acquisto/{{richiesta_acquisto_id}}/stato"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "richieste-acquisto",
+                "{{richiesta_acquisto_id}}",
+                "stato"
               ]
             },
             "body": {
@@ -1980,7 +2241,14 @@
             "url": {
               "raw": "{{base_url}}/api/v1/richieste-acquisto/{{richiesta_acquisto_id}}/stato",
               "host": [
-                "{{base_url}}/api/v1/richieste-acquisto/{{richiesta_acquisto_id}}/stato"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "richieste-acquisto",
+                "{{richiesta_acquisto_id}}",
+                "stato"
               ]
             },
             "body": {
@@ -2022,7 +2290,14 @@
             "url": {
               "raw": "{{base_url}}/api/v1/richieste-acquisto/{{richiesta_acquisto_id}}/stato",
               "host": [
-                "{{base_url}}/api/v1/richieste-acquisto/{{richiesta_acquisto_id}}/stato"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "richieste-acquisto",
+                "{{richiesta_acquisto_id}}",
+                "stato"
               ]
             },
             "body": {
@@ -2064,7 +2339,14 @@
             "url": {
               "raw": "{{base_url}}/api/v1/richieste-acquisto/{{richiesta_acquisto_id}}/stato",
               "host": [
-                "{{base_url}}/api/v1/richieste-acquisto/{{richiesta_acquisto_id}}/stato"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "richieste-acquisto",
+                "{{richiesta_acquisto_id}}",
+                "stato"
               ]
             },
             "body": {
@@ -2106,7 +2388,12 @@
             "url": {
               "raw": "{{base_url}}/api/v1/notifiche",
               "host": [
-                "{{base_url}}/api/v1/notifiche"
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifiche"
               ]
             }
           },

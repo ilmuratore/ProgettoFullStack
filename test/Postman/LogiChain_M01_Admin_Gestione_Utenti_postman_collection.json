@@ -150,7 +150,10 @@
         "url": {
           "raw": "{{base_url}}/",
           "host": [
-            "{{base_url}}/"
+            "{{base_url}}"
+          ],
+          "path": [
+            ""
           ]
         }
       },
@@ -188,7 +191,13 @@
         "url": {
           "raw": "{{base_url}}/api/v1/auth/login",
           "host": [
-            "{{base_url}}/api/v1/auth/login"
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "login"
           ]
         },
         "body": {
@@ -229,7 +238,13 @@
         "url": {
           "raw": "{{base_url}}/api/v1/auth/login",
           "host": [
-            "{{base_url}}/api/v1/auth/login"
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "login"
           ]
         },
         "body": {
@@ -274,7 +289,12 @@
         "url": {
           "raw": "{{base_url}}/api/v1/utenti",
           "host": [
-            "{{base_url}}/api/v1/utenti"
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "utenti"
           ]
         }
       },
@@ -307,7 +327,12 @@
         "url": {
           "raw": "{{base_url}}/api/v1/utenti",
           "host": [
-            "{{base_url}}/api/v1/utenti"
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "utenti"
           ]
         }
       },
@@ -340,7 +365,13 @@
         "url": {
           "raw": "{{base_url}}/api/v1/utenti/ruoli",
           "host": [
-            "{{base_url}}/api/v1/utenti/ruoli"
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "utenti",
+            "ruoli"
           ]
         }
       },
@@ -377,7 +408,12 @@
         "url": {
           "raw": "{{base_url}}/api/v1/dipendenti",
           "host": [
-            "{{base_url}}/api/v1/dipendenti"
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "dipendenti"
           ]
         },
         "body": {
@@ -421,7 +457,13 @@
         "url": {
           "raw": "{{base_url}}/api/v1/auth/register",
           "host": [
-            "{{base_url}}/api/v1/auth/register"
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "auth",
+            "register"
           ]
         },
         "body": {
@@ -465,7 +507,13 @@
         "url": {
           "raw": "{{base_url}}/api/v1/utenti/{{utente_id}}",
           "host": [
-            "{{base_url}}/api/v1/utenti/{{utente_id}}"
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "utenti",
+            "{{utente_id}}"
           ]
         },
         "body": {
@@ -507,7 +555,14 @@
         "url": {
           "raw": "{{base_url}}/api/v1/utenti/{{utente_id}}/password",
           "host": [
-            "{{base_url}}/api/v1/utenti/{{utente_id}}/password"
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "utenti",
+            "{{utente_id}}",
+            "password"
           ]
         },
         "body": {
