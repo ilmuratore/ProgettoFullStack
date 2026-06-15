@@ -108,6 +108,7 @@ export function ShipmentDrawer({ shipmentId, isOpen, onClose, onUpdated }: Shipm
   const shipmentLabel = shipment ? `SH-${String(shipment.id).padStart(4, '0')}` : '-';
   const ordineLabel = shipment ? `SO-${String(shipment.ordine_id).padStart(4, '0')}` : '-';
   const trackingChanged = shipment != null && tracking.trim() !== (shipment.tracking_number ?? '');
+  const trackingLocked = shipment != null && shipment.stato !== 'IN_PREPARAZIONE';
 
   const handleChangeStato = async (nuovo: StatoSpedizione) => {
     if (!shipment) return;
@@ -126,9 +127,14 @@ export function ShipmentDrawer({ shipmentId, isOpen, onClose, onUpdated }: Shipm
 
   const handleSaveTracking = async () => {
     if (!shipment) return;
+    if (trackingLocked) {
+      toast.error('Tracking non modificabile', { description: 'La spedizione è già stata spedita: il codice tracking non può più essere modificato.' });
+      return;
+    }
     setSavingTracking(true);
     try {
-      const updated = await spedizioniApi.updateTracking(shipment.id, tracking.trim());
+      const result = await spedizioniApi.updateTracking(shipment.id, tracking.trim());
+      const updated: Spedizione = { ...shipment, ...result };
       setShipment(updated);
       onUpdated?.(updated);
 
@@ -144,7 +150,7 @@ export function ShipmentDrawer({ shipmentId, isOpen, onClose, onUpdated }: Shipm
 
       toast.success(ddtExisted ? 'Tracking aggiornato e DDT aggiornato' : 'Tracking aggiornato e DDT generato');
     } catch (err: any) {
-      toast.error('Errore salvataggio tracking', { description: err?.message });
+      toast.error('Errore salvataggio tracking', { description: err?.message ?? 'Tracking non corrispondente o non valido.' });
     } finally {
       setSavingTracking(false);
     }
@@ -170,7 +176,7 @@ export function ShipmentDrawer({ shipmentId, isOpen, onClose, onUpdated }: Shipm
       />
 
       <div className="fixed right-0 top-0 bottom-0 w-full max-w-2xl bg-white shadow-2xl z-50 overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-[#E5EAF2] p-6 flex items-center justify-between">
+        <div className="sticky top-0 z-10 bg-white border-b border-[#E5EAF2] p-6 flex items-center justify-between">
           <div>
             <h2 className="font-semibold text-[#2D2D2D]">Dettaglio Spedizione</h2>
             <p className="text-sm text-[#6B7280] mt-1">{shipmentLabel}</p>
@@ -238,13 +244,13 @@ export function ShipmentDrawer({ shipmentId, isOpen, onClose, onUpdated }: Shipm
                   <span className="text-xs text-[#9CA3AF]">Stato attuale:</span>
                   {getStatusBadge(shipment.stato)}
                 </div>
-                {STATO_TRANSIZIONI[shipment.stato].length === 0 ? (
+                {(STATO_TRANSIZIONI[shipment.stato] ?? []).length === 0 ? (
                   <p className="text-sm text-[#6B7280]">Spedizione conclusa, nessuna ulteriore azione disponibile.</p>
                 ) : !canWrite ? (
                   <p className="text-sm text-[#6B7280]">Non hai i permessi per modificare lo stato della spedizione.</p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    {STATO_TRANSIZIONI[shipment.stato].map(({ stato, label, icon: Icon, className }) => (
+                    {(STATO_TRANSIZIONI[shipment.stato] ?? []).map(({ stato, label, icon: Icon, className }) => (
                       <button
                         key={stato}
                         onClick={() => handleChangeStato(stato)}
@@ -273,10 +279,10 @@ export function ShipmentDrawer({ shipmentId, isOpen, onClose, onUpdated }: Shipm
                         value={tracking}
                         onChange={(e) => setTracking(e.target.value)}
                         placeholder="Inserisci numero tracking"
-                        disabled={!canWrite}
+                        disabled={!canWrite || trackingLocked}
                         className="flex-1 px-3 py-2 border border-[#E5EAF2] rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all disabled:opacity-50 disabled:bg-[#F7F9FC]"
                       />
-                      {canWrite && (
+                      {canWrite && !trackingLocked && (
                         <button
                           onClick={handleSaveTracking}
                           disabled={savingTracking || !trackingChanged}
@@ -287,6 +293,11 @@ export function ShipmentDrawer({ shipmentId, isOpen, onClose, onUpdated }: Shipm
                         </button>
                       )}
                     </div>
+                    {trackingLocked && (
+                      <p className="text-xs text-[#9CA3AF] mt-1.5">
+                        Il codice tracking non è più modificabile: la spedizione è già stata spedita.
+                      </p>
+                    )}
                   </div>
                   <div>
                     <p className="text-xs text-[#9CA3AF] mb-1">Codice Corriere</p>
