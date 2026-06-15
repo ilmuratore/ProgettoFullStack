@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import {
-  Search, Plus, MoreVertical,
+  Search, Plus, Download, Upload, MoreVertical,
   Edit, Trash2, Mail, Phone, MapPin, Building2,
   User, Truck, Globe, ExternalLink, Users, Calendar, AlertTriangle,
 } from 'lucide-react';
@@ -107,17 +107,11 @@ const EMPTY_DIPENDENTI_FILTERS: DipendentiFiltersState = { ordinamento: 'nessuno
 const formatDataBreve = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
 
-const ANAGRAFICHE_TABS: TabType[] = ['fornitori', 'clienti', 'corrieri', 'dipendenti'];
-
-const isAnagraficheTab = (value: string | null): value is TabType =>
-  value !== null && ANAGRAFICHE_TABS.includes(value as TabType);
-
-const isDetailEntityType = (value: string | null): value is 'cliente' | 'fornitore' | 'corriere' | 'dipendente' =>
-  value === 'cliente' || value === 'fornitore' || value === 'corriere' || value === 'dipendente';
-
 export function AnagrafichePage() {
   const { hasPermesso } = useAuthStore();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const initialTab = TAB_IDS.includes(requestedTab as TabType) ? (requestedTab as TabType) : 'fornitori';
 
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
@@ -204,27 +198,6 @@ export function AnagrafichePage() {
 
   useEffect(() => { fetchForTab('fornitori'); }, []);
   useEffect(() => { fetchForTab(activeTab); }, [activeTab, fetchForTab]);
-
-  useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (isAnagraficheTab(tab) && tab !== activeTab) {
-      setActiveTab(tab);
-    }
-
-    const detailType = searchParams.get('detailType');
-    const detailId = Number(searchParams.get('detailId'));
-
-    if (isDetailEntityType(detailType) && Number.isInteger(detailId) && detailId > 0) {
-      if (detailEntityType !== detailType) setDetailEntityType(detailType);
-      if (detailEntityId !== detailId) setDetailEntityId(detailId);
-      if (!detailDrawerOpen) setDetailDrawerOpen(true);
-      return;
-    }
-
-    if (detailDrawerOpen) setDetailDrawerOpen(false);
-    if (detailEntityType !== null) setDetailEntityType(null);
-    if (detailEntityId !== null) setDetailEntityId(null);
-  }, [activeTab, detailDrawerOpen, detailEntityId, detailEntityType, searchParams]);
 
   useEffect(() => {
     setFiltersOpen(false);
@@ -327,49 +300,19 @@ export function AnagrafichePage() {
     dipendenti: 'dipendente',
   };
 
-  const updateUrlParams = (mutate: (params: URLSearchParams) => void) => {
-    const nextParams = new URLSearchParams(searchParams);
-    mutate(nextParams);
-    setSearchParams(nextParams, { replace: true });
-  };
-
-  const handleTabChange = (tab: TabType) => {
-    setActiveTab(tab);
-    updateUrlParams((params) => {
-      params.set('tab', tab);
-      params.delete('detailType');
-      params.delete('detailId');
-    });
-  };
-
-  const handleCloseDetailDrawer = () => {
-    setDetailDrawerOpen(false);
-    setDetailEntityType(null);
-    setDetailEntityId(null);
-    updateUrlParams((params) => {
-      params.delete('detailType');
-      params.delete('detailId');
-    });
-  };
-
   const handleView = (item: any) => {
     const entityType = TAB_TO_ENTITY_TYPE[activeTab];
     if (detailDrawerOpen && detailEntityType === entityType && detailEntityId === item.id) {
-      handleCloseDetailDrawer();
+      setDetailDrawerOpen(false);
       return;
     }
     setDetailEntityType(entityType);
     setDetailEntityId(item.id);
     setDetailDrawerOpen(true);
-    updateUrlParams((params) => {
-      params.set('tab', activeTab);
-      params.set('detailType', entityType);
-      params.set('detailId', String(item.id));
-    });
   };
 
   const handleEditFromDrawer = (item: any) => {
-    handleCloseDetailDrawer();
+    setDetailDrawerOpen(false);
     handleEdit(item);
   };
 
@@ -619,7 +562,7 @@ export function AnagrafichePage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-[#E5EAF2] overflow-hidden">
-        <PageTabBar tabs={tabs} activeTab={activeTab} onTabChange={(id) => handleTabChange(id as TabType)} />
+        <PageTabBar tabs={tabs} activeTab={activeTab} onTabChange={(id) => setActiveTab(id as TabType)} />
 
         <div className="p-6">
           <div className="mb-6">
@@ -973,7 +916,7 @@ export function AnagrafichePage() {
           entityType={detailEntityType}
           entityId={detailEntityId}
           isOpen={detailDrawerOpen}
-          onClose={handleCloseDetailDrawer}
+          onClose={() => setDetailDrawerOpen(false)}
           onEdit={handleEditFromDrawer}
         />
       )}
