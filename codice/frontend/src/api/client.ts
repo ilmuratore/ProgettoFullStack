@@ -16,12 +16,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const body = await res.json();
 
   if (res.status === 401) {
-    localStorage.removeItem('lc_token');
-    localStorage.removeItem('lc_utente');
-    window.location.href = '/login';
+    if (path !== '/auth/login') {
+      localStorage.removeItem('lc_token');
+      localStorage.removeItem('lc_utente');
+      window.location.href = '/login';
+    }
+
     throw Object.assign(new Error(body.message ?? 'Non autorizzato'), {
-      code: 'AUTH_REQUIRED',
-      details: [],
+      code: body.code ?? 'AUTH_REQUIRED',
+      details: body.details ?? [],
       status: 401,
     });
   }
