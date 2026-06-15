@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, Package, MapPin, User, Calendar, Receipt, Boxes, Loader2 } from 'lucide-react';
+import { X, Package, MapPin, User, Calendar, Receipt, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ordiniApi } from '../../../api/ordiniApi';
 import { destinazioniApi } from '../../../api/destinazioniApi';
@@ -260,10 +260,6 @@ export function SalesOrderDrawer({ orderId, isOpen, onClose }: SalesOrderDrawerP
               Modifica Ordine
             </button>
           )}
-          <button className="flex-1 px-4 py-2.5 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all text-sm font-medium flex items-center justify-center gap-2">
-            <Boxes className="w-4 h-4" />
-            Crea Spedizione
-          </button>
         </div>
       </div>
     </>
