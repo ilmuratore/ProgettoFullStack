@@ -66,4 +66,4 @@ const validate = (blueprint) => {
     };
 };
 
-module.exports = { validate };
+module.exports ={  validate };

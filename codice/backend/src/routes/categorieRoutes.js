@@ -3,7 +3,7 @@ const categorieController = require('../controllers/categorieController');
 
 const { auth } = require('../middleware/auth');
 const { requirePermesso } = require('../middleware/rbac');
-const { validate } = require('../middleware/validate');
+const {validate} = require('../middleware/validate');
 
 const router = express.Router();
 const createBlueprint = {
