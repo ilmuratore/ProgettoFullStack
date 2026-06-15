@@ -15,9 +15,10 @@ interface FormState {
   nome: string;
   telefono: string;
   email: string;
+  attivo: boolean;
 }
 
-const EMPTY: FormState = { codice: '', nome: '', telefono: '', email: '' };
+const EMPTY: FormState = { codice: '', nome: '', telefono: '', email: '', attivo: true };
 
 export function CourierFormModal({ open, onClose, onSave, initialData, mode }: CourierFormModalProps) {
   const [form, setForm] = useState<FormState>(EMPTY);
@@ -32,6 +33,7 @@ export function CourierFormModal({ open, onClose, onSave, initialData, mode }: C
           nome: initialData.nome,
           telefono: initialData.telefono ?? '',
           email: initialData.email ?? '',
+          attivo: initialData.attivo,
         });
       } else {
         setForm(EMPTY);
@@ -61,6 +63,7 @@ export function CourierFormModal({ open, onClose, onSave, initialData, mode }: C
         nome: form.nome.trim(),
         ...(form.telefono.trim() && { telefono: form.telefono.trim() }),
         ...(form.email.trim() && { email: form.email.trim() }),
+        attivo: form.attivo,
       };
       await onSave(payload, initialData?.id);
       onClose();
@@ -73,6 +76,10 @@ export function CourierFormModal({ open, onClose, onSave, initialData, mode }: C
   const set = (field: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm(prev => ({ ...prev, [field]: e.target.value }));
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: undefined }));
+  };
+
+  const toggleAttivo = () => {
+    setForm(prev => ({ ...prev, attivo: !prev.attivo }));
   };
 
   const inputClass = (field: keyof FormState) =>
@@ -142,6 +149,29 @@ export function CourierFormModal({ open, onClose, onSave, initialData, mode }: C
                 placeholder="02 1234567"
                 className={inputClass('telefono')}
               />
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-[#2D2D2D] mb-2">Stato corriere</label>
+              <div className="flex items-center justify-between gap-4 px-4 py-3 border border-[#E5EAF2] rounded-2xl bg-[#F7F9FC]">
+                <div>
+                  <p className="text-sm font-medium text-[#2D2D2D]">
+                    {form.attivo ? 'Corriere attivo' : 'Corriere disattivato'}
+                  </p>
+                  <p className="text-xs text-[#6B7280] mt-1">
+                    {form.attivo
+                      ? 'Il corriere sara visibile come attivo in anagrafica.'
+                      : 'Il corriere verra salvato come disattivato.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleAttivo}
+                  className={`w-11 h-6 rounded-full transition-colors flex items-center ${form.attivo ? 'bg-[#17E88F]' : 'bg-[#D1D5DB]'}`}
+                >
+                  <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform mx-1 ${form.attivo ? 'translate-x-5' : ''}`} />
+                </button>
+              </div>
             </div>
 
           </div>

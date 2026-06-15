@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router';
 import {
   Plus, GitMerge, Package, ArrowLeftRight,
   Tag, PackageCheck, Download, Upload, ListChecks, MapPin, CheckSquare, Clock, X, ClipboardList, ChevronRight, ArrowRight,
@@ -141,9 +142,14 @@ const EMPTY_MAG: MagazzinoFormState = { codice: '', nome: '', indirizzo: '', cap
 interface UbicazioneFormState { corsia: string; scaffale: string; temperatura_controllata: boolean; }
 const EMPTY_UBIC: UbicazioneFormState = { corsia: '', scaffale: '', temperatura_controllata: false };
 
+const WAREHOUSE_TAB_IDS: WarehouseTab[] = ['prodotti', 'categorie', 'struttura', 'giacenze', 'movimenti', 'picking', 'ricezioni'];
+
 export function WarehousePage() {
   const { hasPermesso } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<WarehouseTab>('prodotti');
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const initialTab = WAREHOUSE_TAB_IDS.includes(requestedTab as WarehouseTab) ? (requestedTab as WarehouseTab) : 'prodotti';
+  const [activeTab, setActiveTab] = useState<WarehouseTab>(initialTab);
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
   const [isRicezioneModalOpen, setIsRicezioneModalOpen] = useState(false);
 

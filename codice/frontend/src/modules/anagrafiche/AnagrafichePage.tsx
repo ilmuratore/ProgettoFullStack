@@ -108,6 +108,7 @@ export function AnagrafichePage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [fornitoriFilters, setFornitoriFilters] = useState<AnagraficaFiltersState>(EMPTY_ANAGRAFICA_FILTERS);
   const [clientiFilters, setClientiFilters] = useState<AnagraficaFiltersState>(EMPTY_ANAGRAFICA_FILTERS);
+  const [corrieriFilters, setCorrieriFilters] = useState<AnagraficaFiltersState>(EMPTY_ANAGRAFICA_FILTERS);
   const [dipendentiFilters, setDipendentiFilters] = useState<DipendentiFiltersState>(EMPTY_DIPENDENTI_FILTERS);
 
   const [fornitoriSort, setFornitoriSort] = useState<SortConfig<FornitoriSortKey> | null>(null);
@@ -411,10 +412,15 @@ export function AnagrafichePage() {
         return [...data].sort((a, b) => Number(a.attivo === false) - Number(b.attivo === false));
       }
       case 'corrieri': {
-        const data = corrieri.filter(c =>
+        let data = corrieri.filter(c =>
           c.nome.toLowerCase().includes(q) || c.codice.toLowerCase().includes(q)
         );
-        return applySort(data, corrieriSort, compareCorrieriByKey);
+        if (corrieriFilters.stato !== 'tutti') data = data.filter(c => c.attivo === (corrieriFilters.stato === 'attivo'));
+        if (corrieriFilters.ordinamento === 'alfabetico') {
+          data = [...data].sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
+        }
+        data = applySort(data, corrieriSort, compareCorrieriByKey);
+        return [...data].sort((a, b) => Number(a.attivo === false) - Number(b.attivo === false));
       }
       case 'dipendenti': {
         let data = dipendenti.filter(d =>
@@ -442,7 +448,7 @@ export function AnagrafichePage() {
 
   const tabEntity = activeTab; 
 
-  const canWrite  = (entity: string) => hasPermesso(`${entity}:write`);
+  const canWrite  = (entity: string) => hasPermesso(entity === 'corrieri' ? 'magazzino:write' : `${entity}:write`);
   const canDelete = (entity: string) => hasPermesso(`${entity}:delete`);
 
   const KebabMenu = ({ item, hideEdit }: { item: any; hideEdit?: boolean }) => {
@@ -502,6 +508,8 @@ export function AnagrafichePage() {
     ? (fornitoriFilters.ordinamento !== 'nessuno' ? 1 : 0) + (fornitoriFilters.stato !== 'tutti' ? 1 : 0)
     : activeTab === 'clienti'
     ? (clientiFilters.ordinamento !== 'nessuno' ? 1 : 0) + (clientiFilters.stato !== 'tutti' ? 1 : 0)
+    : activeTab === 'corrieri'
+    ? (corrieriFilters.ordinamento !== 'nessuno' ? 1 : 0) + (corrieriFilters.stato !== 'tutti' ? 1 : 0)
     : activeTab === 'dipendenti'
     ? (dipendentiFilters.ordinamento !== 'nessuno' ? 1 : 0) + (dipendentiFilters.ruolo !== 'tutti' ? 1 : 0) + (dipendentiFilters.dataAssunzione !== '' ? 1 : 0)
     : 0;
@@ -510,6 +518,7 @@ export function AnagrafichePage() {
     switch (activeTab) {
       case 'fornitori':  setFornitoriFilters(EMPTY_ANAGRAFICA_FILTERS); break;
       case 'clienti':    setClientiFilters(EMPTY_ANAGRAFICA_FILTERS); break;
+      case 'corrieri':   setCorrieriFilters(EMPTY_ANAGRAFICA_FILTERS); break;
       case 'dipendenti': setDipendentiFilters(EMPTY_DIPENDENTI_FILTERS); break;
     }
   };
@@ -548,18 +557,7 @@ export function AnagrafichePage() {
 
         <div className="p-6">
           <div className="mb-6">
-            {activeTab === 'corrieri' ? (
-              <div className="relative">
-                <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder={`Cerca ${activeTab}...`}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-10 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all"
-                />
-              </div>
-            ) : (
+            {(
               <FilterPanel
                 open={filtersOpen}
                 activeFiltersCount={activeFiltersCount}
@@ -605,6 +603,27 @@ export function AnagrafichePage() {
                           <FilterButton label="Tutti" active={clientiFilters.stato === 'tutti'} onClick={() => setClientiFilters(f => ({ ...f, stato: 'tutti' }))} />
                           <FilterButton label="Attivo" active={clientiFilters.stato === 'attivo'} onClick={() => setClientiFilters(f => ({ ...f, stato: 'attivo' }))} />
                           <FilterButton label="Disattivo" active={clientiFilters.stato === 'disattivo'} onClick={() => setClientiFilters(f => ({ ...f, stato: 'disattivo' }))} />
+                        </div>
+                      </div>
+                    </>
+                  ) : activeTab === 'corrieri' ? (
+                    <>
+                      <div>
+                        <p className="text-sm font-medium text-[#2D2D2D] mb-2">Ordinamento</p>
+                        <div className="flex flex-wrap gap-2">
+                          <FilterButton
+                            label="Nome (A → Z)"
+                            active={corrieriFilters.ordinamento === 'alfabetico'}
+                            onClick={() => setCorrieriFilters(f => ({ ...f, ordinamento: f.ordinamento === 'alfabetico' ? 'nessuno' : 'alfabetico' }))}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-[#2D2D2D] mb-2">Stato</p>
+                        <div className="flex flex-wrap gap-2">
+                          <FilterButton label="Tutti" active={corrieriFilters.stato === 'tutti'} onClick={() => setCorrieriFilters(f => ({ ...f, stato: 'tutti' }))} />
+                          <FilterButton label="Attivo" active={corrieriFilters.stato === 'attivo'} onClick={() => setCorrieriFilters(f => ({ ...f, stato: 'attivo' }))} />
+                          <FilterButton label="Disattivo" active={corrieriFilters.stato === 'disattivo'} onClick={() => setCorrieriFilters(f => ({ ...f, stato: 'disattivo' }))} />
                         </div>
                       </div>
                     </>

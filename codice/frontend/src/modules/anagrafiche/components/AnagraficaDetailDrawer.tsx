@@ -93,7 +93,7 @@ export function AnagraficaDetailDrawer({ entityType, entityId, isOpen, onClose, 
 
   if (entityId === null) return null;
 
-  const canWrite = hasPermesso(`${PERM_ENTITY[entityType]}:write`);
+  const canWrite = hasPermesso(entityType === 'corriere' ? 'magazzino:write' : `${PERM_ENTITY[entityType]}:write`);
   const titolo = TITOLI[entityType];
   const fornitore = entityType === 'fornitore' ? (item as Fornitore | null) : null;
   const cliente = entityType === 'cliente' ? (item as Cliente | null) : null;
@@ -104,6 +104,7 @@ export function AnagraficaDetailDrawer({ entityType, entityId, isOpen, onClose, 
   const handleViewHistory = () => {
     if (fornitore) navigate(`/acquisti?fornitore=${encodeURIComponent(fornitore.ragione_sociale)}`);
     else if (cliente) navigate(`/vendite?cliente=${encodeURIComponent(cliente.ragione_sociale)}`);
+    else if (corriere) navigate(`/logistica?corriere=${encodeURIComponent(corriere.nome)}`);
     onClose();
   };
 
@@ -329,9 +330,9 @@ export function AnagraficaDetailDrawer({ entityType, entityId, isOpen, onClose, 
             </div>
 
             {/* Azioni */}
-            {((cliente || fornitore) || (canWrite && onEdit && !isEcosystem)) && (
+            {((cliente || fornitore || corriere) || (canWrite && onEdit && !isEcosystem)) && (
               <div className="flex justify-end gap-3 pt-2">
-                {(cliente || fornitore) && (
+                {(cliente || fornitore || corriere) && (
                   <button
                     onClick={handleViewHistory}
                     className="px-4 py-2 bg-white border border-[#E5EAF2] text-[#2D2D2D] rounded-xl hover:bg-[#F7F9FC] transition-all flex items-center gap-2 font-medium"

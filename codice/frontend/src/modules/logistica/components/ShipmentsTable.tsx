@@ -1,5 +1,6 @@
 import { Search, Filter, ArrowUpDown, Package, MapPin } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import type { Spedizione, StatoSpedizione } from '../../../types/spedizioni';
 import { SortableHeader } from '../../../components/shared/SortableHeader';
 import { applySort, compareDate, compareNumber, compareText, toggleSort, type SortConfig } from '../../../utils/sorting';
@@ -66,8 +67,14 @@ const fmtDateTime = (iso: string | null | undefined): string =>
 export function ShipmentsTable({ onShipmentClick, shipments, loading }: ShipmentsTableProps) {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortConfig<SortKey> | null>(null);
+  const [searchParams] = useSearchParams();
 
   const handleSort = (key: SortKey) => setSort((prev) => toggleSort(prev, key));
+
+  useEffect(() => {
+    const corriere = searchParams.get('corriere');
+    if (corriere) setSearch(corriere);
+  }, [searchParams]);
 
   const filtered = applySort(
     shipments.filter((ship) => {
@@ -76,7 +83,8 @@ export function ShipmentsTable({ onShipmentClick, shipments, loading }: Shipment
       return (
         label.includes(term) ||
         (ship.tracking_number ?? '').toLowerCase().includes(term) ||
-        (ship.cliente ?? '').toLowerCase().includes(term)
+        (ship.cliente ?? '').toLowerCase().includes(term) ||
+        (ship.corriere ?? '').toLowerCase().includes(term)
       );
     }),
     sort,
