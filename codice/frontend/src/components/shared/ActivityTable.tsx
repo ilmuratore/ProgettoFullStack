@@ -2,6 +2,29 @@ import { useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
 import { movimentiStockApi } from '../../api/movimentiStockApi';
 import type { MovimentoStock, MovimentoTipo } from '../../types/magazzino';
+import { SortableHeader } from './SortableHeader';
+import { applySort, compareDate, compareNumber, compareText, toggleSort, type SortConfig } from '../../utils/sorting';
+
+type SortKey = 'prodotto' | 'sku' | 'tipo' | 'quantita' | 'utente' | 'created_at';
+
+const compareMovimentiByKey = (left: MovimentoStock, right: MovimentoStock, key: SortKey) => {
+  switch (key) {
+    case 'prodotto':
+      return compareText(left.prodotto ?? '', right.prodotto ?? '');
+    case 'sku':
+      return compareText(left.sku ?? '', right.sku ?? '');
+    case 'tipo':
+      return compareText(TIPO_CONFIG[left.tipo].label, TIPO_CONFIG[right.tipo].label);
+    case 'quantita':
+      return compareNumber(left.quantita, right.quantita);
+    case 'utente':
+      return compareText(left.utente ?? '', right.utente ?? '');
+    case 'created_at':
+      return compareDate(left.created_at, right.created_at);
+    default:
+      return 0;
+  }
+};
 
 const TIPO_CONFIG: Record<MovimentoTipo, { label: string; badge: string; sign: '+' | '-' | '' }> = {
   CARICO_ACQUISTO:    { label: 'Carico',       badge: 'bg-[#DCFCE7] text-[#22C55E]', sign: '+' },
@@ -33,6 +56,9 @@ export function ActivityTable() {
   const [movimenti, setMovimenti] = useState<MovimentoStock[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<SortConfig<SortKey> | null>(null);
+
+  const handleSort = (key: SortKey) => setSort((prev) => toggleSort(prev, key));
 
   useEffect(() => {
     movimentiStockApi
@@ -43,10 +69,14 @@ export function ActivityTable() {
   }, []);
 
   const query = search.trim().toLowerCase();
-  const filtered = movimenti.filter((m) =>
-    query === '' ||
-    m.prodotto.toLowerCase().includes(query) ||
-    m.sku.toLowerCase().includes(query)
+  const filtered = applySort(
+    movimenti.filter((m) =>
+      query === '' ||
+      m.prodotto.toLowerCase().includes(query) ||
+      m.sku.toLowerCase().includes(query)
+    ),
+    sort,
+    compareMovimentiByKey
   );
 
   return (
@@ -69,12 +99,12 @@ export function ActivityTable() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-[#E5EAF2]">
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Prodotto</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Codice SKU</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Tipo Movimento</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Quantità</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Operatore</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Data e Ora</th>
+              <SortableHeader label="Prodotto" sortKey="prodotto" sort={sort} onSort={handleSort} />
+              <SortableHeader label="Codice SKU" sortKey="sku" sort={sort} onSort={handleSort} />
+              <SortableHeader label="Tipo Movimento" sortKey="tipo" sort={sort} onSort={handleSort} />
+              <SortableHeader label="Quantità" sortKey="quantita" sort={sort} onSort={handleSort} />
+              <SortableHeader label="Operatore" sortKey="utente" sort={sort} onSort={handleSort} />
+              <SortableHeader label="Data e Ora" sortKey="created_at" sort={sort} onSort={handleSort} />
             </tr>
           </thead>
           <tbody>

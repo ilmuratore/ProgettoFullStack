@@ -1,0 +1,943 @@
+{
+  "info": {
+    "name": "LogiChain V2 — M10 Spedizioni & DDT",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "admin_email",
+      "value": "admin@logichain.it",
+      "type": "string"
+    },
+    {
+      "key": "admin_password",
+      "value": "Admin123!",
+      "type": "string"
+    },
+    {
+      "key": "test_password",
+      "value": "Test123!",
+      "type": "string"
+    },
+    {
+      "key": "operatore_email",
+      "value": "operatore@test.local",
+      "type": "string"
+    },
+    {
+      "key": "token_admin",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token_operatore",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "suffix",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "utente_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "dipendente_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ruolo_operatore_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "prodotto_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "prodotto_acquisto_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "fornitore_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "magazzino_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ubicazione_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ubicazione_2_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "movimento_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ordine_acquisto_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ricezione_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cliente_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "destinazione_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ordine_vendita_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "riga_ordine_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "spedizione_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "richiesta_acquisto_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "00 - Bootstrap & Auth",
+      "item": [
+        {
+          "name": "00.01 Set suffix runtime",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('suffix', Date.now().toString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00.02 Login Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('token_admin', json.data.token);",
+                  "pm.test('token presente', () => pm.expect(pm.collectionVariables.get('token_admin')).to.be.ok);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "00.03 Login Operatore",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{operatore_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('token_operatore', json.data.token);",
+                  "pm.test('token presente', () => pm.expect(pm.collectionVariables.get('token_operatore')).to.be.ok);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - M09/M10 Vendita, picking, spedizione, DDT",
+      "item": [
+        {
+          "name": "05.01 Crea cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ragione_sociale\": \"Cliente {{suffix}}\",\n  \"piva_cf\": \"CF-{{suffix}}\",\n  \"email\": \"cliente.{{suffix}}@test.local\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('cliente_id', json.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.02 Crea destinazione",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/clienti/{{cliente_id}}/destinazioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clienti",
+                "{{cliente_id}}",
+                "destinazioni"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"etichetta\": \"Sede\",\n  \"indirizzo\": \"Via Test 1\",\n  \"cap\": \"70100\",\n  \"citta\": \"Bari\",\n  \"provincia\": \"BA\",\n  \"paese\": \"Italia\",\n  \"predefinita\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('destinazione_id', json.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.03 Crea ordine vendita",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente_id\": \"{{cliente_id}}\",\n  \"destinazione_id\": \"{{destinazione_id}}\",\n  \"data_consegna_richiesta\": \"2099-12-31\",\n  \"righe\": [\n    {\n      \"prodotto_id\": \"{{prodotto_acquisto_id}}\",\n      \"quantita\": 2\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('ordine_vendita_id', json.data.ordine.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.04 Spedizione prima del picking deve fallire",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/spedizioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "spedizioni"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ordine_id\": \"{{ordine_vendita_id}}\",\n  \"cliente_id\": \"{{cliente_id}}\",\n  \"destinazione_id\": \"{{destinazione_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.05 Conferma ordine vendita",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini/{{ordine_vendita_id}}/stato",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "{{ordine_vendita_id}}",
+                "stato"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato\": \"CONFERMATO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.06 Avvia picking con Operatore",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_operatore}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini/{{ordine_vendita_id}}/picking",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "{{ordine_vendita_id}}",
+                "picking"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato_picking\": \"IN_PICKING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.07 Leggi riga ordine",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini/{{ordine_vendita_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "{{ordine_vendita_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json(); pm.collectionVariables.set('riga_ordine_id', json.data.righe[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.08 Completa picking con scarico",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_operatore}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini/{{ordine_vendita_id}}/picking",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "{{ordine_vendita_id}}",
+                "picking"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato_picking\": \"PICKING_COMPLETATO\",\n  \"prelievi\": [\n    {\n      \"riga_id\": \"{{riga_ordine_id}}\",\n      \"ubicazioni\": [\n        {\n          \"ubicazione_id\": \"{{ubicazione_id}}\",\n          \"quantita\": 2\n        }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.09 PDF ordine vendita",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ordini/{{ordine_vendita_id}}/pdf",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordini",
+                "{{ordine_vendita_id}}",
+                "pdf"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.10 Crea spedizione",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/spedizioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "spedizioni"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ordine_id\": \"{{ordine_vendita_id}}\",\n  \"cliente_id\": \"{{cliente_id}}\",\n  \"destinazione_id\": \"{{destinazione_id}}\",\n  \"tracking_number\": \"TRK-{{suffix}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('spedizione_id', json.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.11 Stato spedita",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/spedizioni/{{spedizione_id}}/stato",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "spedizioni",
+                "{{spedizione_id}}",
+                "stato"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stato\": \"SPEDITA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.12 Crea DDT",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/spedizioni/{{spedizione_id}}/ddt",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "spedizioni",
+                "{{spedizione_id}}",
+                "ddt"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numero_ddt\": \"DDT-{{suffix}}\",\n  \"data_ddt\": \"2099-12-31\",\n  \"trasportatore\": \"Corriere Test\",\n  \"note\": \"DDT Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.13 PDF DDT",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/spedizioni/{{spedizione_id}}/ddt/pdf",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "spedizioni",
+                "{{spedizione_id}}",
+                "ddt",
+                "pdf"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.14 Doppia spedizione bloccata",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/spedizioni",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "spedizioni"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ordine_id\": \"{{ordine_vendita_id}}\",\n  \"cliente_id\": \"{{cliente_id}}\",\n  \"destinazione_id\": \"{{destinazione_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

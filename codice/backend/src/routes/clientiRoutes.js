@@ -5,7 +5,7 @@ const clientiController = require('../controllers/clientiController');
 
 const { auth } = require('../middleware/auth');
 const { requirePermesso } = require('../middleware/rbac');
-const { validate } = require('../middleware/validate');
+const  {validate} = require('../middleware/validate');
 
 // Blueprint CREATE cliente
 const createBlueprint = {

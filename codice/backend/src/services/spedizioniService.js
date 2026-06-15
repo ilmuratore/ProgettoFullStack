@@ -43,58 +43,74 @@ const getById = async (id) => {
 };
 
 const create = async ({ ordine_id, cliente_id, destinazione_id, corriere_id, tracking_number }) => {
-    const ordineRes = await ordiniModel.findById(ordine_id);
-    if (ordineRes.rowCount === 0) {
-        throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato', 404);
-    }
+    const client = await pool.connect();
 
-    const ordine = ordineRes.rows[0];
+    try {
+        await client.query('BEGIN');
 
-    if (!['CONFERMATO', 'SPEDITO'].includes(ordine.stato)) {
-        throwError('STATE_TRANSITION_INVALID', `Impossibile creare spedizione: ordine in stato ${ordine.stato}`, 400);
-    }
-
-    if (Number(ordine.cliente_id) !== Number(cliente_id)) {
-        throwError('VALIDATION_ERROR', 'Il cliente non corrisponde all ordine indicato', 400);
-    }
-    if (Number(ordine.destinazione_id) !== Number(destinazione_id)) {
-        throwError('VALIDATION_ERROR', 'La destinazione non corrisponde all ordine indicato', 400);
-    }
-
-    const clienteRes = await clientiModel.findById(cliente_id);
-    if (clienteRes.rowCount === 0 || clienteRes.rows[0].attivo === false) {
-        throwError('RESOURCE_NOT_FOUND', 'Cliente non trovato', 404);
-    }
-
-    const destinazioneRes = await destinazioniModel.findById(destinazione_id);
-    if (destinazioneRes.rowCount === 0) {
-        throwError('RESOURCE_NOT_FOUND', 'Destinazione non trovata', 404);
-    }
-    if (Number(destinazioneRes.rows[0].cliente_id) !== Number(cliente_id)) {
-        throwError('VALIDATION_ERROR', 'La destinazione non appartiene al cliente indicato', 400);
-    }
-
-    if (corriere_id !== undefined && corriere_id !== null) {
-        const corriereRes = await corrieriModel.findById(corriere_id);
-        if (corriereRes.rowCount === 0 || corriereRes.rows[0].attivo === false) {
-            throwError('RESOURCE_NOT_FOUND', 'Corriere non trovato', 404);
+        const ordineRes = await ordiniModel.findByIdForUpdate(ordine_id, client);
+        if (ordineRes.rowCount === 0) {
+            throwError('RESOURCE_NOT_FOUND', 'Ordine non trovato', 404);
         }
+
+        const ordine = ordineRes.rows[0];
+
+        if (ordine.stato !== 'CONFERMATO') {
+            throwError('STATE_TRANSITION_INVALID', `Impossibile creare spedizione: ordine in stato ${ordine.stato}`, 409);
+        }
+
+        if (ordine.stato_picking !== 'PICKING_COMPLETATO') {
+            throwError('STATE_TRANSITION_INVALID', 'Impossibile creare spedizione: picking non completato', 409);
+        }
+
+        if (Number(ordine.cliente_id) !== Number(cliente_id)) {
+            throwError('VALIDATION_ERROR', 'Il cliente non corrisponde all ordine indicato', 400);
+        }
+        if (Number(ordine.destinazione_id) !== Number(destinazione_id)) {
+            throwError('VALIDATION_ERROR', 'La destinazione non corrisponde all ordine indicato', 400);
+        }
+
+        const clienteRes = await clientiModel.findById(cliente_id);
+        if (clienteRes.rowCount === 0 || clienteRes.rows[0].attivo === false) {
+            throwError('RESOURCE_NOT_FOUND', 'Cliente non trovato', 404);
+        }
+
+        const destinazioneRes = await destinazioniModel.findById(destinazione_id);
+        if (destinazioneRes.rowCount === 0) {
+            throwError('RESOURCE_NOT_FOUND', 'Destinazione non trovata', 404);
+        }
+        if (Number(destinazioneRes.rows[0].cliente_id) !== Number(cliente_id)) {
+            throwError('VALIDATION_ERROR', 'La destinazione non appartiene al cliente indicato', 400);
+        }
+
+        if (corriere_id !== undefined && corriere_id !== null) {
+            const corriereRes = await corrieriModel.findById(corriere_id);
+            if (corriereRes.rowCount === 0 || corriereRes.rows[0].attivo === false) {
+                throwError('RESOURCE_NOT_FOUND', 'Corriere non trovato', 404);
+            }
+        }
+
+        const existingSpedizioniRes = await spedizioniModel.findByOrdineId(ordine_id, client);
+        if (existingSpedizioniRes.rowCount > 0) {
+            throwError('DUPLICATE_ENTRY', 'Esiste gia una spedizione per questo ordine', 409);
+        }
+
+        const result = await spedizioniModel.create({
+            ordine_id,
+            cliente_id,
+            destinazione_id,
+            corriere_id: corriere_id ?? null,
+            tracking_number: tracking_number ?? null
+        }, client);
+
+        await client.query('COMMIT');
+        return result.rows[0];
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
     }
-
-    const existingSpedizioniRes = await spedizioniModel.findByOrdineId(ordine_id);
-    if (existingSpedizioniRes.rowCount > 0) {
-        throwError('DUPLICATE_ENTRY', 'Esiste gia una spedizione per questo ordine', 409);
-    }
-
-    const result = await spedizioniModel.create({
-        ordine_id,
-        cliente_id,
-        destinazione_id,
-        corriere_id: corriere_id ?? null,
-        tracking_number: tracking_number ?? null
-    });
-
-    return result.rows[0];
 };
 
 const updateStato = async (id, stato) => {
@@ -115,7 +131,7 @@ const updateStato = async (id, stato) => {
         const spedizione = spedizioneResult.rows[0];
 
         if (!canTransitionStato(spedizione.stato, stato)) {
-            throwError('STATE_TRANSITION_INVALID', `Transizione ${spedizione.stato} -> ${stato} non consentita`, 400);
+            throwError('STATE_TRANSITION_INVALID', `Transizione ${spedizione.stato} -> ${stato} non consentita`, 409);
         }
 
         const updateResult = await spedizioniModel.updateStato(id, stato, client);
@@ -158,24 +174,85 @@ const updateTracking = async (id, tracking_number) => {
 
 const getDdt = async (spedizione_id) => {
     await getById(spedizione_id);
-    const r = await ddtModel.findBySpedizioneId(spedizione_id);
-    return r.rows[0] || null;
+
+    const result = await ddtModel.findBySpedizioneId(spedizione_id);
+    return result.rows[0] || null;
 };
 
 const createDdt = async (spedizione_id, data) => {
-    await getById(spedizione_id);
-    const existing = await ddtModel.findBySpedizioneId(spedizione_id);
-    if (existing.rowCount > 0) throwError('DUPLICATE_ENTRY', 'DDT già esistente per questa spedizione', 409);
-    const r = await ddtModel.create({ spedizione_id, ...data });
-    return r.rows[0];
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const spedizioneResult = await spedizioniModel.findByIdForUpdate(spedizione_id, client);
+
+        if (spedizioneResult.rowCount === 0) {
+            throwError('RESOURCE_NOT_FOUND', 'Spedizione non trovata', 404);
+        }
+
+        const existing = await ddtModel.findBySpedizioneId(spedizione_id, client);
+
+        if (existing.rowCount > 0) {
+            throwError('DUPLICATE_ENTRY', 'DDT già esistente per questa spedizione', 409);
+        }
+
+        const result = await ddtModel.create(
+            {
+                spedizione_id,
+                data_ddt: data.data_ddt,
+                trasportatore: data.trasportatore,
+                note: data.note
+            },
+            client
+        );
+
+        await client.query('COMMIT');
+        return result.rows[0];
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
 };
 
 const updateDdt = async (spedizione_id, data) => {
-    await getById(spedizione_id);
-    const existing = await ddtModel.findBySpedizioneId(spedizione_id);
-    if (existing.rowCount === 0) throwError('RESOURCE_NOT_FOUND', 'DDT non trovato', 404);
-    const r = await ddtModel.update(existing.rows[0].id, data);
-    return r.rows[0];
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const spedizioneResult = await spedizioniModel.findByIdForUpdate(spedizione_id, client);
+
+        if (spedizioneResult.rowCount === 0) {
+            throwError('RESOURCE_NOT_FOUND', 'Spedizione non trovata', 404);
+        }
+
+        const existing = await ddtModel.findBySpedizioneId(spedizione_id, client);
+
+        if (existing.rowCount === 0) {
+            throwError('RESOURCE_NOT_FOUND', 'DDT non trovato', 404);
+        }
+
+        const result = await ddtModel.update(
+            existing.rows[0].id,
+            {
+                data_ddt: data.data_ddt,
+                trasportatore: data.trasportatore,
+                note: data.note
+            },
+            client
+        );
+
+        await client.query('COMMIT');
+        return result.rows[0];
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
 };
 
 const generaPdfDdt = async (spedizione_id) => {

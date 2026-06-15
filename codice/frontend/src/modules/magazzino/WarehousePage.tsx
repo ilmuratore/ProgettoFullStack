@@ -147,6 +147,8 @@ const EMPTY_MAG: MagazzinoFormState = { codice: '', nome: '', indirizzo: '', cap
 interface UbicazioneFormState { corsia: string; scaffale: string; temperatura_controllata: boolean; }
 const EMPTY_UBIC: UbicazioneFormState = { corsia: '', scaffale: '', temperatura_controllata: false };
 
+const WAREHOUSE_TAB_IDS: WarehouseTab[] = ['prodotti', 'categorie', 'struttura', 'giacenze', 'movimenti', 'picking', 'ricezioni'];
+
 export function WarehousePage() {
   const { hasPermesso } = useAuthStore();
   const [searchParams, setSearchParams] = useSearchParams();

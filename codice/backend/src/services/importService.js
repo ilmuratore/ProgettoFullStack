@@ -1,5 +1,5 @@
-const { parse } = require('csv-parse/sync');
-const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
+const { Readable } = require('stream');
 const pool = require('../config/db');
 const prodottiModel = require('../models/prodottiModel');
 const categorieModel = require('../models/categorieModel');
@@ -36,24 +36,68 @@ const normalizeString = (value) => {
     return String(value).trim();
 };
 
+const normalizeCellValue = (value) => {
+    if (value === undefined || value === null) return '';
+    if (value instanceof Date) return value.toISOString().slice(0, 10);
+    if (typeof value !== 'object') return value;
+    if (Object.prototype.hasOwnProperty.call(value, 'result')) return normalizeCellValue(value.result);
+    if (Object.prototype.hasOwnProperty.call(value, 'text')) return normalizeCellValue(value.text);
+    if (Object.prototype.hasOwnProperty.call(value, 'hyperlink')) return normalizeCellValue(value.hyperlink);
+    if (Array.isArray(value.richText)) return value.richText.map((part) => part.text || '').join('');
+    return String(value);
+};
+
 const isEmptyRow = (row) =>
     Object.values(row).every((value) => normalizeString(value) === '');
 
-const parseCSV = (buffer) =>
-    parse(buffer, {
-        columns: true,
-        skip_empty_lines: true,
-        bom: true,
-        trim: true
+const worksheetToObjects = (worksheet) => {
+    if (!worksheet || worksheet.rowCount === 0) {
+        throwError('VALIDATION_ERROR', 'File vuoto');
+    }
+
+    const headers = [];
+    worksheet.getRow(1).eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        headers[colNumber] = normalizeString(normalizeCellValue(cell.value)).toLowerCase();
     });
 
-const parseXLSX = (buffer) => {
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
-    const firstSheetName = workbook.SheetNames[0];
-    if (!firstSheetName) {
+    if (!headers.some(Boolean)) {
+        throwError('VALIDATION_ERROR', 'Intestazioni mancanti nel file import');
+    }
+
+    const rows = [];
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+        if (rowNumber === 1) return;
+
+        const obj = {};
+        let hasValue = false;
+
+        headers.forEach((header, colNumber) => {
+            if (!header) return;
+            const value = normalizeCellValue(row.getCell(colNumber).value);
+            obj[header] = value;
+            if (normalizeString(value) !== '') hasValue = true;
+        });
+
+        if (hasValue) rows.push(obj);
+    });
+
+    return rows;
+};
+
+const parseCSV = async (buffer) => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = await workbook.csv.read(Readable.from(buffer));
+    return worksheetToObjects(worksheet);
+};
+
+const parseXLSX = async (buffer) => {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) {
         throwError('VALIDATION_ERROR', 'File XLSX vuoto');
     }
-    return XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { defval: '' });
+    return worksheetToObjects(worksheet);
 };
 
 const buildProdottoPayload = async (rawRow, client) => {
@@ -155,13 +199,14 @@ const importProdotti = async (rows) => {
     }
 };
 
-const getTemplateCSVBuffer = () => {
-    const lines = [
-        'sku,nome,descrizione,categoria_id,unita_misura,peso_kg,scorta_minima,prezzo,attivo',
-        'SKU-001,Prodotto demo A,Prodotto esempio,1,pezzo,1.25,10,12.50,true',
-        'SKU-002,Prodotto demo B,Secondo esempio,2,kg,0.75,5,8.90,true'
-    ];
-    return Buffer.from(lines.join('\n'), 'utf8');
+const getTemplateCSVBuffer = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('template-prodotti');
+    worksheet.addRow(['sku', 'nome', 'descrizione', 'categoria_id', 'unita_misura', 'peso_kg', 'scorta_minima', 'prezzo', 'attivo']);
+    worksheet.addRow(['SKU-001', 'Prodotto demo A', 'Prodotto esempio', 1, 'pezzo', 1.25, 10, 12.50, true]);
+    worksheet.addRow(['SKU-002', 'Prodotto demo B', 'Secondo esempio', 2, 'kg', 0.75, 5, 8.90, true]);
+    const buffer = await workbook.csv.writeBuffer();
+    return Buffer.from(buffer);
 };
 
 module.exports = {

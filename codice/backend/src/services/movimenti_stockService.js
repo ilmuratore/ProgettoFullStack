@@ -186,7 +186,7 @@ const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione
 
             const scaricoGiacenzaResult = await giacenzeModel.incrementaQuantita(prodotto_id, ubicazione_da_id, -quantita, client);
             if (scaricoGiacenzaResult.rowCount === 0) {
-                throwError('INSUFFICIENT_STOCK', 'Giacenza insufficiente per completare lo spostamento');
+                throwError('INSUFFICIENT_STOCK', 'Giacenza assente o insufficiente sull ubicazione di partenza per lo spostamento');
             }
 
             await giacenzeModel.incrementaQuantita(prodotto_id, ubicazione_a_id, quantita, client);
@@ -276,7 +276,7 @@ const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione
 
         const giacenzaResult = await giacenzeModel.incrementaQuantita(prodotto_id, ubicazione_id, delta, client);
         if (giacenzaResult.rowCount === 0) {
-            throwError('INSUFFICIENT_STOCK', 'Giacenza insufficiente per completare il movimento');
+            throwError('INSUFFICIENT_STOCK', 'Giacenza assente o insufficiente sull ubicazione per il movimento richiesto');
         }
 
         const result = await movimentiStockModel.create({

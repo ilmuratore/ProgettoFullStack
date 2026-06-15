@@ -30,9 +30,11 @@ import { applySort, compareBoolean, compareDate, compareText, toggleSort, type S
 
 type TabType = 'fornitori' | 'clienti' | 'corrieri' | 'dipendenti';
 
+const TAB_IDS: TabType[] = ['fornitori', 'clienti', 'corrieri', 'dipendenti'];
+
 type FornitoriSortKey = 'ragione_sociale' | 'piva' | 'email' | 'indirizzo' | 'source' | 'attivo';
 type ClientiSortKey = 'ragione_sociale' | 'piva_cf' | 'email' | 'source' | 'attivo';
-type CorrieriSortKey = 'codice' | 'nome' | 'email' | 'telefono' | 'attivo';
+type CorrieriSortKey = 'codice' | 'nome' | 'email' | 'telefono';
 type DipendentiSortKey = 'nominativo' | 'codice_fiscale' | 'ruolo_operativo' | 'data_assunzione';
 
 const compareFornitoriByKey = (left: Fornitore, right: Fornitore, key: FornitoriSortKey) => {
@@ -64,7 +66,6 @@ const compareCorrieriByKey = (left: Corriere, right: Corriere, key: CorrieriSort
     case 'nome': return compareText(left.nome ?? '', right.nome ?? '');
     case 'email': return compareText(left.email ?? '', right.email ?? '');
     case 'telefono': return compareText(left.telefono ?? '', right.telefono ?? '');
-    case 'attivo': return compareBoolean(left.attivo, right.attivo);
     default: return 0;
   }
 };
@@ -89,6 +90,12 @@ interface AnagraficaFiltersState {
 
 const EMPTY_ANAGRAFICA_FILTERS: AnagraficaFiltersState = { ordinamento: 'nessuno', stato: 'tutti' };
 
+interface CorrieriFiltersState {
+  ordinamento: Ordinamento;
+}
+
+const EMPTY_CORRIERI_FILTERS: CorrieriFiltersState = { ordinamento: 'nessuno' };
+
 interface DipendentiFiltersState {
   ordinamento: Ordinamento;
   ruolo: string;
@@ -112,12 +119,13 @@ export function AnagrafichePage() {
   const { hasPermesso } = useAuthStore();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<TabType>('fornitori');
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
 
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [fornitoriFilters, setFornitoriFilters] = useState<AnagraficaFiltersState>(EMPTY_ANAGRAFICA_FILTERS);
   const [clientiFilters, setClientiFilters] = useState<AnagraficaFiltersState>(EMPTY_ANAGRAFICA_FILTERS);
+  const [corrieriFilters, setCorrieriFilters] = useState<CorrieriFiltersState>(EMPTY_CORRIERI_FILTERS);
   const [dipendentiFilters, setDipendentiFilters] = useState<DipendentiFiltersState>(EMPTY_DIPENDENTI_FILTERS);
 
   const [fornitoriSort, setFornitoriSort] = useState<SortConfig<FornitoriSortKey> | null>(null);
@@ -472,9 +480,12 @@ export function AnagrafichePage() {
         return [...data].sort((a, b) => Number(a.attivo === false) - Number(b.attivo === false));
       }
       case 'corrieri': {
-        const data = corrieri.filter(c =>
+        let data = corrieri.filter(c =>
           c.nome.toLowerCase().includes(q) || c.codice.toLowerCase().includes(q)
         );
+        if (corrieriFilters.ordinamento === 'alfabetico') {
+          data = [...data].sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
+        }
         return applySort(data, corrieriSort, compareCorrieriByKey);
       }
       case 'dipendenti': {
@@ -503,7 +514,7 @@ export function AnagrafichePage() {
 
   const tabEntity = activeTab; 
 
-  const canWrite  = (entity: string) => hasPermesso(`${entity}:write`);
+  const canWrite  = (entity: string) => hasPermesso(entity === 'corrieri' ? 'magazzino:write' : `${entity}:write`);
   const canDelete = (entity: string) => hasPermesso(`${entity}:delete`);
 
   const KebabMenu = ({ item, hideEdit }: { item: any; hideEdit?: boolean }) => {
@@ -563,6 +574,8 @@ export function AnagrafichePage() {
     ? (fornitoriFilters.ordinamento !== 'nessuno' ? 1 : 0) + (fornitoriFilters.stato !== 'tutti' ? 1 : 0)
     : activeTab === 'clienti'
     ? (clientiFilters.ordinamento !== 'nessuno' ? 1 : 0) + (clientiFilters.stato !== 'tutti' ? 1 : 0)
+    : activeTab === 'corrieri'
+    ? (corrieriFilters.ordinamento !== 'nessuno' ? 1 : 0)
     : activeTab === 'dipendenti'
     ? (dipendentiFilters.ordinamento !== 'nessuno' ? 1 : 0) + (dipendentiFilters.ruolo !== 'tutti' ? 1 : 0) + (dipendentiFilters.dataAssunzione !== '' ? 1 : 0)
     : 0;
@@ -571,6 +584,7 @@ export function AnagrafichePage() {
     switch (activeTab) {
       case 'fornitori':  setFornitoriFilters(EMPTY_ANAGRAFICA_FILTERS); break;
       case 'clienti':    setClientiFilters(EMPTY_ANAGRAFICA_FILTERS); break;
+      case 'corrieri':   setCorrieriFilters(EMPTY_CORRIERI_FILTERS); break;
       case 'dipendenti': setDipendentiFilters(EMPTY_DIPENDENTI_FILTERS); break;
     }
   };
@@ -609,18 +623,7 @@ export function AnagrafichePage() {
 
         <div className="p-6">
           <div className="mb-6">
-            {activeTab === 'corrieri' ? (
-              <div className="relative">
-                <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder={`Cerca ${activeTab}...`}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-10 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all"
-                />
-              </div>
-            ) : (
+            {(
               <FilterPanel
                 open={filtersOpen}
                 activeFiltersCount={activeFiltersCount}
@@ -666,6 +669,19 @@ export function AnagrafichePage() {
                           <FilterButton label="Tutti" active={clientiFilters.stato === 'tutti'} onClick={() => setClientiFilters(f => ({ ...f, stato: 'tutti' }))} />
                           <FilterButton label="Attivo" active={clientiFilters.stato === 'attivo'} onClick={() => setClientiFilters(f => ({ ...f, stato: 'attivo' }))} />
                           <FilterButton label="Disattivo" active={clientiFilters.stato === 'disattivo'} onClick={() => setClientiFilters(f => ({ ...f, stato: 'disattivo' }))} />
+                        </div>
+                      </div>
+                    </>
+                  ) : activeTab === 'corrieri' ? (
+                    <>
+                      <div>
+                        <p className="text-sm font-medium text-[#2D2D2D] mb-2">Ordinamento</p>
+                        <div className="flex flex-wrap gap-2">
+                          <FilterButton
+                            label="Nome (A → Z)"
+                            active={corrieriFilters.ordinamento === 'alfabetico'}
+                            onClick={() => setCorrieriFilters(f => ({ ...f, ordinamento: f.ordinamento === 'alfabetico' ? 'nessuno' : 'alfabetico' }))}
+                          />
                         </div>
                       </div>
                     </>
@@ -835,13 +851,12 @@ export function AnagrafichePage() {
                     <SortableHeader label="Nome" sortKey="nome" sort={corrieriSort} onSort={handleCorrieriSort} />
                     <SortableHeader label="Email" sortKey="email" sort={corrieriSort} onSort={handleCorrieriSort} />
                     <SortableHeader label="Telefono" sortKey="telefono" sort={corrieriSort} onSort={handleCorrieriSort} />
-                    <SortableHeader label="Stato" sortKey="attivo" sort={corrieriSort} onSort={handleCorrieriSort} />
                     <th className="text-left py-3 px-4 text-sm font-medium text-[#6B7280]">Azioni</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {loadingCorrieri ? <SkeletonRows cols={6} /> : filteredCorrieri.length === 0
-                    ? <EmptyRow cols={6} msg={searchQuery ? 'Nessun corriere corrisponde alla ricerca' : 'Nessun corriere. Clicca "Nuovo Corriere" per iniziare.'} />
+                  {loadingCorrieri ? <SkeletonRows cols={5} /> : filteredCorrieri.length === 0
+                    ? <EmptyRow cols={5} msg={searchQuery ? 'Nessun corriere corrisponde alla ricerca' : 'Nessun corriere. Clicca "Nuovo Corriere" per iniziare.'} />
                     : filteredCorrieri.map((c, i) => (
                       <tr key={c.id} onClick={() => handleView(c)} className={`cursor-pointer border-b border-[#E5EAF2] hover:bg-[#F7F9FC] transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#FAFBFC]'}`}>
                         <td className="py-3 px-4 text-sm font-mono font-semibold text-[#2D2D2D]">{c.codice}</td>
@@ -853,11 +868,6 @@ export function AnagrafichePage() {
                         <td className="py-3 px-4">
                           {c.telefono ? <div className="flex items-center gap-2 text-sm text-[#6B7280]"><Phone className="w-3 h-3 shrink-0" />{c.telefono}</div>
                             : <span className="text-sm italic text-[#9CA3AF]">—</span>}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${getBadgeAttivo(c.attivo)}`}>
-                            {c.attivo ? 'Attivo' : 'Disattivo'}
-                          </span>
                         </td>
                         <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}><KebabMenu item={c} /></td>
                       </tr>

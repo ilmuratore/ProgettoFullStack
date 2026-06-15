@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router";
 import { Search, Filter, ArrowUpDown } from "lucide-react";
 import { giacenzeApi } from "../../../api/giacenzeApi";
 import { magazzinoApi } from "../../../api/magazzinoApi";
@@ -317,6 +318,7 @@ const getNextSortConfig = <T extends string>(
 };
 
 export function StockTable() {
+  const [searchParams] = useSearchParams();
   const [locationRows, setLocationRows] = useState<Giacenza[]>([]);
   const [productSourceRows, setProductSourceRows] = useState<Giacenza[]>([]);
   const [availabilitySourceRows, setAvailabilitySourceRows] = useState<Giacenza[]>([]);
@@ -345,6 +347,13 @@ export function StockTable() {
       .then(setMagazzini)
       .catch(() => setMagazzini([]));
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("scorta") === "sotto") {
+      setFilters((prev) => ({ ...prev, scorta: "sotto" }));
+      setShowFilters(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     setLoading(true);

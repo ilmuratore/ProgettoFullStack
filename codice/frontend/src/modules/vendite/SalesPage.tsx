@@ -23,13 +23,15 @@ type SalesTab = 'ordini' | 'picking' | 'kpi';
 
 const tabs: TabConfig[] = [
   { id: 'ordini', label: 'Ordini', icon: ShoppingBag },
+  { id: 'picking', label: 'Picking', icon: CheckSquare },
   { id: 'kpi', label: 'KPI Vendite', icon: BarChart2 },
 ];
 
-const pickingData: {id:string;ordine:string;cliente:string;dataConsegna:string;righe:{sku:string;prodotto:string;ubicazione:string;qtaRichiesta:number;qtaPrelevata:number;completato:boolean}[];stato:string;operatore:string}[] = [];
-
 const fmtEuro = (n: number): string =>
   `EUR ${n.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const fmtData = (iso: string | null | undefined): string =>
+  iso ? new Date(iso).toLocaleDateString('it-IT') : '-';
 
 const fmtPct = (n: number): string =>
   `${n.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
@@ -46,7 +48,6 @@ export function SalesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<SalesTab>('ordini');
-  const [expandedPicking, setExpandedPicking] = useState<string | null>('PCK-001');
   const [reloadKey, setReloadKey] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [salesOrders, setSalesOrders] = useState<OrdineVendita[]>([]);
@@ -102,13 +103,9 @@ export function SalesPage() {
     if (activeTab !== 'kpi') return;
     let alive = true;
 
-    Promise.all([
-      ordiniApi.list(),
-      clientiApi.list(),
-    ])
-      .then(async ([orders, clients]) => {
+    clientiApi.list()
+      .then(async (clients) => {
         if (!alive) return;
-        setSalesOrders(Array.isArray(orders) ? orders : []);
         setSalesClients(Array.isArray(clients) ? clients : []);
 
         const counts = await Promise.all(
@@ -127,7 +124,6 @@ export function SalesPage() {
       })
       .catch((err: any) => {
         if (!alive) return;
-        setSalesOrders([]);
         setSalesClients([]);
         setDestinazioniByCliente({});
         toast.error('Errore caricamento KPI vendite', { description: err?.message });
@@ -147,6 +143,8 @@ export function SalesPage() {
     const date = new Date(o.data_ordine);
     return date >= previousMonthStart && date < previousMonthEnd;
   });
+
+  const pickingOrders = salesOrders.filter((o) => o.stato_picking !== 'NON_AVVIATO');
 
   const activeOrders = salesOrders.filter((o) => o.stato !== 'SPEDITO' && o.stato !== 'ANNULLATO');
   const activeOrdersPrev = previousMonthOrders.filter((o) => o.stato !== 'SPEDITO' && o.stato !== 'ANNULLATO').length;
@@ -308,7 +306,7 @@ export function SalesPage() {
                 <SalesOrdersTable onOrderClick={handleOpenOrder} reloadKey={reloadKey} />
               </div>
               <div className="lg:col-span-3">
-                <SalesWidgets />
+                <SalesWidgets orders={salesOrders} onOrderClick={setSelectedOrderId} />
               </div>
             </div>
           )}
@@ -316,84 +314,40 @@ export function SalesPage() {
           {activeTab === 'picking' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-[#6B7280]">Lista picking attivi — ordina per ubicazione per ottimizzare il percorso</p>
+                <p className="text-sm text-[#6B7280]">Ordini in lavorazione magazzino</p>
                 <div className="flex items-center gap-2 text-xs">
                   <span className="flex items-center gap-1 text-[#D97706]"><Clock className="w-3 h-3" /> IN_PICKING</span>
                   <span className="flex items-center gap-1 text-[#22C55E]"><CheckSquare className="w-3 h-3" /> PICKING_COMPLETATO</span>
                 </div>
               </div>
 
-              {pickingData.map((pick) => {
-                const completate = pick.righe.filter(r => r.completato).length;
-                const pct = Math.round((completate / pick.righe.length) * 100);
-                const isExpanded = expandedPicking === pick.id;
-                return (
-                  <div key={pick.id} className="border border-[#E5EAF2] rounded-xl overflow-hidden">
+              {pickingOrders.length === 0 ? (
+                <div className="py-12 text-center text-sm text-[#6B7280]">Nessun ordine in picking.</div>
+              ) : (
+                <div className="space-y-2">
+                  {pickingOrders.map((order) => (
                     <button
-                      onClick={() => setExpandedPicking(isExpanded ? null : pick.id)}
-                      className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#F7F9FC] transition-colors"
+                      key={order.id}
+                      onClick={() => setSelectedOrderId(order.id)}
+                      className="w-full flex items-center justify-between px-5 py-4 border border-[#E5EAF2] rounded-xl hover:bg-[#F7F9FC] transition-colors text-left"
                     >
                       <div className="flex items-center gap-4">
-                        <span className="text-sm font-semibold text-[#17E88F]">{pick.id}</span>
-                        <span className="text-sm text-[#374151]">{pick.ordine}</span>
-                        <span className="text-sm text-[#6B7280]">{pick.cliente}</span>
+                        <span className="text-sm font-semibold text-[#17E88F]">SO-{String(order.id).padStart(4, '0')}</span>
+                        <span className="text-sm text-[#374151]">{order.cliente ?? '-'}</span>
                         <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          pick.stato === 'PICKING_COMPLETATO'
+                          order.stato_picking === 'PICKING_COMPLETATO'
                             ? 'bg-[#DCFCE7] text-[#16A34A]'
                             : 'bg-[#FEF3C7] text-[#D97706]'
                         }`}>
-                          {pick.stato === 'PICKING_COMPLETATO' ? <CheckSquare className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                          {pick.stato.replace('_', ' ')}
+                          {order.stato_picking === 'PICKING_COMPLETATO' ? <CheckSquare className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                          {order.stato_picking.replace('_', ' ')}
                         </span>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-24 bg-[#E5EAF2] rounded-full h-1.5">
-                            <div className={`h-1.5 rounded-full ${pct === 100 ? 'bg-[#16A34A]' : 'bg-[#D97706]'}`} style={{ width: `${pct}%` }} />
-                          </div>
-                          <span className="text-xs text-[#6B7280]">{completate}/{pick.righe.length}</span>
-                        </div>
-                        <span className="text-xs text-[#9CA3AF]">Cons. {pick.dataConsegna}</span>
-                      </div>
+                      <span className="text-xs text-[#9CA3AF]">Cons. {fmtData(order.data_consegna_richiesta)}</span>
                     </button>
-
-                    {isExpanded && (
-                      <div className="border-t border-[#E5EAF2]">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="bg-[#F7F9FC]">
-                              <th className="text-left px-5 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Ubicazione</th>
-                              <th className="text-left px-4 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">SKU</th>
-                              <th className="text-left px-4 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Prodotto</th>
-                              <th className="text-center px-4 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Qtà</th>
-                              <th className="text-center px-4 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Prelevato</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[#E5EAF2]">
-                            {pick.righe.map((riga, i) => (
-                              <tr key={i} className={`transition-colors ${riga.completato ? 'bg-[#F0FFF8]' : 'hover:bg-[#FAFAFA]'}`}>
-                                <td className="px-5 py-3 text-sm text-[#374151] flex items-center gap-1.5">
-                                  <MapPin className="w-3.5 h-3.5 text-[#9CA3AF]" />
-                                  {riga.ubicazione}
-                                </td>
-                                <td className="px-4 py-3 text-xs font-mono text-[#6B7280]">{riga.sku}</td>
-                                <td className="px-4 py-3 text-sm text-[#374151]">{riga.prodotto}</td>
-                                <td className="px-4 py-3 text-sm text-center font-medium text-[#2D2D2D]">{riga.qtaRichiesta}</td>
-                                <td className="px-4 py-3 text-center">
-                                  {riga.completato
-                                    ? <CheckSquare className="w-5 h-5 text-[#16A34A] mx-auto" />
-                                    : <span className="text-sm text-[#D97706]">{riga.qtaPrelevata}/{riga.qtaRichiesta}</span>
-                                  }
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

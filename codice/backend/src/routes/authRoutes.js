@@ -3,7 +3,7 @@ const authController = require('../controllers/authController');
 
 const { auth } = require('../middleware/auth');
 const { requirePermesso } = require('../middleware/rbac');
-const { validate } = require('../middleware/validate');
+const{ validate }= require('../middleware/validate');
 
 const router = express.Router();
 

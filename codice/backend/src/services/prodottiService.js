@@ -23,8 +23,8 @@ const create = async (data) => {
     const { sku, prezzo } = data;
 
     const existing = await prodottiModel.findBySku(sku);
-    if (existing.rowCount > 0 && existing.rows[0].attivo === true) {
-        throwError('DUPLICATE_ENTRY', 'SKU già esistente');
+    if (existing.rowCount > 0) {
+        throwError('DUPLICATE_ENTRY', 'SKU già esistente, anche se associato a un prodotto disattivato');
     }
     if (prezzo <= 0) {
         throwError('VALIDATION_ERROR', 'Il prezzo deve essere maggiore di zero');
@@ -44,10 +44,9 @@ const update = async (id, fields) => {
         const skuCheck = await prodottiModel.findBySku(fields.sku);
         if (
             skuCheck.rowCount > 0 &&
-            skuCheck.rows[0].id !== Number(id) &&
-            skuCheck.rows[0].attivo === true
+            skuCheck.rows[0].id !== Number(id)
         ) {
-            throwError('DUPLICATE_ENTRY', 'SKU già utilizzato da un altro prodotto');
+            throwError('DUPLICATE_ENTRY', 'SKU già utilizzato da un altro prodotto, anche se disattivato');
         }
     }
 

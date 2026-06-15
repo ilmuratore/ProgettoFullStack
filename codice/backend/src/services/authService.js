@@ -55,7 +55,9 @@ const login = async (email, password) => {
 };
 
 
-const register = async ({ nome, cognome, email, password, ruolo_id, attivo = true }) => {
+const RUOLI_PRIVILEGIATI = ['Admin', 'Dev'];
+
+const register = async ({ nome, cognome, email, password, ruolo_id, attivo = true }, attore = null) => {
     const emailEsistente = await utentiModel.findByEmail(email);
     if (emailEsistente.rows.length) {
         throwError('EMAIL_GIA_ESISTENTE', 'Email gia esistente');
@@ -65,6 +67,13 @@ const register = async ({ nome, cognome, email, password, ruolo_id, attivo = tru
     const ruolo = ruoloResult.rows[0];
     if (!ruolo) {
         throwError('RUOLO_NON_VALIDO', 'Ruolo non valido');
+    }
+
+    if (RUOLI_PRIVILEGIATI.includes(ruolo.nome)) {
+        const attoreRuolo = attore?.ruolo;
+        if (!attoreRuolo || !RUOLI_PRIVILEGIATI.includes(attoreRuolo)) {
+            throwError('ACCESS_DENIED', 'Solo Admin o Dev possono assegnare il ruolo ' + ruolo.nome);
+        }
     }
 
     const password_hash = await bcrypt.hash(password, 12);

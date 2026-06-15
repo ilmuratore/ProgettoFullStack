@@ -22,14 +22,12 @@ const trackingBlueprint = {
 };
 
 const ddtCreateBlueprint = {
-    numero_ddt:    { required: true,  type: 'string' },
     data_ddt:      { required: false, type: 'string' },
     trasportatore: { required: false, type: 'string' },
     note:          { required: false, type: 'string' }
 };
 
 const ddtUpdateBlueprint = {
-    numero_ddt:    { required: false, type: 'string' },
     data_ddt:      { required: false, type: 'string' },
     trasportatore: { required: false, type: 'string' },
     note:          { required: false, type: 'string' }
