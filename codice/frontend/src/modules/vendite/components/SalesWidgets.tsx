@@ -1,11 +1,10 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { useNavigate } from 'react-router';
-import { AlertTriangle, Clock, Truck, XCircle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, XCircle, RefreshCw } from 'lucide-react';
 import type { OrdineVendita } from '../../../types/ordini';
 
 interface SalesWidgetsProps {
   orders: OrdineVendita[];
-  onOrderClick: (id: number) => void;
 }
 
 const CustomTooltip = ({ active, payload }: any) => {
@@ -20,15 +19,13 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-export function SalesWidgets({ orders, onOrderClick }: SalesWidgetsProps) {
+export function SalesWidgets({ orders }: SalesWidgetsProps) {
   const navigate = useNavigate();
 
   const bozza = orders.filter((o) => o.stato === 'BOZZA');
   const confermati = orders.filter((o) => o.stato === 'CONFERMATO');
   const spediti = orders.filter((o) => o.stato === 'SPEDITO');
   const annullati = orders.filter((o) => o.stato === 'ANNULLATO');
-  const inPicking = orders.filter((o) => o.stato_picking === 'IN_PICKING');
-  const prontiSpedizione = orders.filter((o) => o.stato === 'CONFERMATO' && o.stato_picking === 'PICKING_COMPLETATO');
 
   const donutData = [
     { name: 'Bozza', value: bozza.length, color: '#9CA3AF' },
@@ -40,8 +37,6 @@ export function SalesWidgets({ orders, onOrderClick }: SalesWidgetsProps) {
 
   const alerts = [
     { icon: AlertTriangle, color: 'text-[#EF4444]', bg: 'bg-[#FEE2E2]', label: 'Ordini in bozza', count: bozza.length, onClick: () => navigate('/vendite?stato=BOZZA') },
-    { icon: Clock, color: 'text-[#F59E0B]', bg: 'bg-[#FEF3C7]', label: 'In picking', count: inPicking.length, onClick: () => navigate('/vendite?picking=IN_PICKING') },
-    { icon: Truck, color: 'text-[#8B5CF6]', bg: 'bg-[#EDE9FE]', label: 'Pronti per spedizione', count: prontiSpedizione.length, onClick: () => navigate('/vendite?stato=CONFERMATO&picking=PICKING_COMPLETATO') },
     { icon: XCircle, color: 'text-[#6B7280]', bg: 'bg-[#F3F4F6]', label: 'Annullati', count: annullati.length, onClick: () => navigate('/vendite?stato=ANNULLATO') },
   ];
 
@@ -87,27 +82,6 @@ export function SalesWidgets({ orders, onOrderClick }: SalesWidgetsProps) {
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Picking in Corso */}
-      <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
-        <h3 className="font-semibold text-[#2D2D2D] mb-5">Picking in Corso</h3>
-        {inPicking.length === 0 ? (
-          <p className="text-sm text-[#9CA3AF]">Nessun ordine in picking.</p>
-        ) : (
-          <div className="space-y-2">
-            {inPicking.map((order) => (
-              <button
-                key={order.id}
-                onClick={() => onOrderClick(order.id)}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-[#F7F9FC] hover:bg-[#F0FDF7] transition-colors text-left"
-              >
-                <span className="text-sm font-medium text-[#2D2D2D]">SO-{String(order.id).padStart(4, '0')}</span>
-                <span className="text-xs text-[#9CA3AF] truncate ml-2">{order.cliente ?? '-'}</span>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Alert Operativi */}

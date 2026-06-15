@@ -32,15 +32,6 @@ const getStatoBadge = (stato: StatoOrdineVendita) => {
   }
 };
 
-const getPickingBadge = (stato: string) => {
-  switch (stato) {
-    case 'NON_AVVIATO': return { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', label: 'Non Avviato' };
-    case 'IN_PICKING': return { bg: 'bg-[#FEF3C7]', text: 'text-[#F59E0B]', label: 'In Picking' };
-    case 'PICKING_COMPLETATO': return { bg: 'bg-[#DCFCE7]', text: 'text-[#22C55E]', label: 'Completato' };
-    default: return { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', label: stato };
-  }
-};
-
 export function SalesOrderDrawer({ orderId, isOpen, onClose }: SalesOrderDrawerProps) {
   const hasPermesso = useAuthStore((state) => state.hasPermesso);
   const [detail, setDetail] = useState<OrdineVenditaDettaglio | null>(null);
@@ -90,7 +81,6 @@ export function SalesOrderDrawer({ orderId, isOpen, onClose }: SalesOrderDrawerP
   const order = detail?.ordine;
   const righe = detail?.righe ?? [];
   const badge = order ? getStatoBadge(order.stato) : getStatoBadge('BOZZA');
-  const pickingBadge = order ? getPickingBadge(order.stato_picking) : getPickingBadge('NON_AVVIATO');
   const orderLabel = order ? `SO-${String(order.id).padStart(4, '0')}` : '-';
   const canApprove = !!order && order.stato === 'BOZZA' && hasPermesso('ordini:approve');
 
@@ -196,12 +186,6 @@ export function SalesOrderDrawer({ orderId, isOpen, onClose }: SalesOrderDrawerP
                     <div className="text-xs text-[#9CA3AF] mb-1">Stato Ordine</div>
                     <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${badge.bg} ${badge.text}`}>
                       {badge.label}
-                    </span>
-                  </div>
-                  <div className="bg-white rounded-xl p-3">
-                    <div className="text-xs text-[#9CA3AF] mb-1">Stato Picking</div>
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${pickingBadge.bg} ${pickingBadge.text}`}>
-                      {pickingBadge.label}
                     </span>
                   </div>
                   <div className="bg-white rounded-xl p-3">
