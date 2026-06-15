@@ -115,7 +115,7 @@ export const PERMESSI_PER_RUOLO: Record<number, string[]> = {
 export const PAGINE_PER_RUOLO: Record<number, string[]> = {
   1:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione', 'register'],
   2:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione', 'register'],
-  3:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica'],
+  3:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione'],
   4:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione', 'register'],
   5:  ['dashboard', 'anagrafiche'],
   6:  ['dashboard', 'anagrafiche', 'vendite', 'magazzino'],

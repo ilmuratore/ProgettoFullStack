@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog';
+import type { UtenteAPI } from '../../../types/utenti';
 import type { Dipendente, DipendenteCreateRequest, DipendenteUpdateRequest } from '../../../types/corrieri';
 
 interface EmployeeFormModalProps {
@@ -7,6 +8,8 @@ interface EmployeeFormModalProps {
   onClose: () => void;
   onSave: (data: DipendenteCreateRequest | DipendenteUpdateRequest, id?: number) => Promise<void>;
   initialData?: Dipendente | null;
+  utenti?: UtenteAPI[];
+  dipendenti?: Dipendente[];
   mode: 'create' | 'edit';
 }
 
@@ -16,6 +19,7 @@ interface FormState {
   codice_fiscale: string;
   ruolo_operativo: string;
   data_assunzione: string;
+  utente_id: string;
 }
 
 const EMPTY: FormState = {
@@ -24,9 +28,12 @@ const EMPTY: FormState = {
   codice_fiscale: '',
   ruolo_operativo: '',
   data_assunzione: '',
+  utente_id: '',
 };
 
-export function EmployeeFormModal({ open, onClose, onSave, initialData, mode }: EmployeeFormModalProps) {
+const NON_ASSOCIABLE_ROLE_IDS = [1, 2, 3, 4] as const;
+
+export function EmployeeFormModal({ open, onClose, onSave, initialData, utenti = [], dipendenti = [], mode }: EmployeeFormModalProps) {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [loading, setLoading] = useState(false);
@@ -40,6 +47,7 @@ export function EmployeeFormModal({ open, onClose, onSave, initialData, mode }: 
           codice_fiscale: initialData.codice_fiscale,
           ruolo_operativo: initialData.ruolo_operativo ?? '',
           data_assunzione: initialData.data_assunzione ?? '',
+          utente_id: initialData.utente_id ? String(initialData.utente_id) : '',
         });
       } else {
         setForm(EMPTY);
@@ -61,6 +69,12 @@ export function EmployeeFormModal({ open, onClose, onSave, initialData, mode }: 
     return Object.keys(errs).length === 0;
   };
 
+  const getAssociatedDipendenteLabel = (utente: UtenteAPI): string | null => {
+    if (utente.dipendente) return `${utente.dipendente.nome} ${utente.dipendente.cognome}`;
+    const linked = dipendenti.find((dipendente) => dipendente.utente_id === utente.id);
+    return linked ? `${linked.nome} ${linked.cognome}` : null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -72,6 +86,7 @@ export function EmployeeFormModal({ open, onClose, onSave, initialData, mode }: 
         codice_fiscale: form.codice_fiscale.trim().toUpperCase(),
         ...(form.ruolo_operativo.trim() && { ruolo_operativo: form.ruolo_operativo.trim() }),
         ...(form.data_assunzione && { data_assunzione: form.data_assunzione }),
+        utente_id: form.utente_id ? Number(form.utente_id) : null,
       };
       await onSave(payload, initialData?.id);
       onClose();
@@ -157,6 +172,30 @@ export function EmployeeFormModal({ open, onClose, onSave, initialData, mode }: 
                 placeholder="Magazziniere"
                 className={inputClass('ruolo_operativo')}
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#2D2D2D] mb-1.5">
+                Utente associato
+              </label>
+              <select
+                value={form.utente_id}
+                onChange={(e) => setForm((prev) => ({ ...prev, utente_id: e.target.value }))}
+                className={`${inputClass('utente_id')} bg-white`}
+                disabled={loading}
+              >
+                <option value="">Nessun utente</option>
+                {utenti.filter((utente) => !NON_ASSOCIABLE_ROLE_IDS.includes(utente.ruolo_id as (typeof NON_ASSOCIABLE_ROLE_IDS)[number])).map((utente) => {
+                  const associatedDipendente = getAssociatedDipendenteLabel(utente);
+                  const isCurrent = initialData?.utente_id === utente.id;
+                  const isDisabled = !!associatedDipendente && !isCurrent;
+                  return (
+                    <option key={utente.id} value={utente.id} disabled={isDisabled}>
+                      {`${utente.nome} ${utente.cognome} · ${utente.ruolo_nome ?? utente.ruolo ?? 'Utente'} · ${utente.email}${associatedDipendente ? ` · associato a ${associatedDipendente}` : ''}`}
+                    </option>
+                  );
+                })}
+              </select>
             </div>
 
             <div>

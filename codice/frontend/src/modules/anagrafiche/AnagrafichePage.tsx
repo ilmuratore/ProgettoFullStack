@@ -399,10 +399,12 @@ export function AnagrafichePage() {
       if (editMode === 'create') {
         const created = await dipendentiApi.create(data as DipendenteCreateRequest);
         setDipendenti(prev => [...prev, created]);
+        await fetchUtenti();
         toast.success('Dipendente creato');
       } else if (id !== undefined) {
         const updated = await dipendentiApi.update(id, data as DipendenteUpdateRequest);
         setDipendenti(prev => prev.map(d => d.id === id ? updated : d));
+        await fetchUtenti();
         toast.success('Dipendente aggiornato');
       }
     } catch (err: any) {
@@ -943,7 +945,7 @@ export function AnagrafichePage() {
       <SupplierFormModal open={supplierModalOpen} onClose={() => setSupplierModalOpen(false)} onSave={handleSaveSupplier} initialData={selectedItem} mode={editMode} />
       <ClientFormModal  open={clientModalOpen}   onClose={() => setClientModalOpen(false)}   onSave={handleSaveClient}   initialData={selectedItem} mode={editMode} />
       <CourierFormModal open={courierModalOpen}   onClose={() => setCourierModalOpen(false)}   onSave={handleSaveCourier}  initialData={selectedItem} mode={editMode} />
-      <EmployeeFormModal open={employeeModalOpen} onClose={() => setEmployeeModalOpen(false)} onSave={handleSaveEmployee} initialData={selectedItem} mode={editMode} />
+      <EmployeeFormModal open={employeeModalOpen} onClose={() => setEmployeeModalOpen(false)} onSave={handleSaveEmployee} initialData={selectedItem} utenti={utenti} dipendenti={dipendenti} mode={editMode} />
 
       <AlertDialog open={!!itemToDelete} onOpenChange={(v) => { if (!v) setItemToDelete(null); }}>
         <AlertDialogContent>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { aziendaSettingsApi } from '../../../api/aziendaSettingsApi';
+import { useAuthStore } from '../../../store/authStore';
 import {
   AZIENDA_SETTINGS_FIELDS,
   EMPTY_AZIENDA_SETTINGS,
@@ -9,11 +10,15 @@ import {
   type AziendaSettingsUpdateRequest,
 } from '../../../types/aziendaSettings';
 
+const SETTINGS_EDITOR_ROLE_IDS = [1, 2, 3] as const;
+
 export function FirmSettings() {
+  const { utente } = useAuthStore();
   const formRef = useRef<HTMLFormElement | null>(null);
   const [aziendaSettings, setAziendaSettings] = useState<AziendaSettingsUpdateRequest>(EMPTY_AZIENDA_SETTINGS);
   const [loadingAziendaSettings, setLoadingAziendaSettings] = useState(false);
   const [savingAziendaSettings, setSavingAziendaSettings] = useState(false);
+  const canEditSettings = SETTINGS_EDITOR_ROLE_IDS.includes((utente?.ruolo_id ?? -1) as (typeof SETTINGS_EDITOR_ROLE_IDS)[number]);
 
   useEffect(() => {
     const loadAziendaSettings = async () => {
@@ -53,6 +58,7 @@ export function FirmSettings() {
 
   const handleSaveAziendaSettings = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!canEditSettings) return;
     if (!formRef.current?.reportValidity()) return;
     setSavingAziendaSettings(true);
     try {
@@ -97,7 +103,7 @@ export function FirmSettings() {
                 type={field.type}
                 value={aziendaSettings[field.key] ?? ''}
                 onChange={(e) => handleAziendaSettingsChange(field.key, e.target.value)}
-                disabled={loadingAziendaSettings || savingAziendaSettings}
+                disabled={loadingAziendaSettings || savingAziendaSettings || !canEditSettings}
                 minLength={field.minLength}
                 maxLength={field.maxLength}
                 pattern={field.pattern}
@@ -113,13 +119,17 @@ export function FirmSettings() {
       </div>
 
       <div className="flex justify-end">
-        <button
-          type="submit"
-          disabled={loadingAziendaSettings || savingAziendaSettings}
-          className="px-5 py-2.5 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all font-medium text-sm disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {savingAziendaSettings ? 'Salvataggio...' : 'Salva Impostazioni'}
-        </button>
+        {!canEditSettings ? (
+          <p className="mr-auto text-sm text-[#6B7280]">Contattare il supporto per la modifica.</p>
+        ) : (
+          <button
+            type="submit"
+            disabled={loadingAziendaSettings || savingAziendaSettings}
+            className="px-5 py-2.5 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all font-medium text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {savingAziendaSettings ? 'Salvataggio...' : 'Salva Impostazioni'}
+          </button>
+        )}
       </div>
     </form>
   );
