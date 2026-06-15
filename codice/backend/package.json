@@ -16,6 +16,7 @@
     "migrate:redo": "node-pg-migrate redo",
     "migrate:create": "node-pg-migrate create",
     "db:test:reset": "node scripts/resetTestDb.js",
+    "seed_demo": "node seeds/seed_demo.js",
     "seed:test-users": "node scripts/seed_test_users.js",
     "test": "jest --runInBand",
     "test:smoke": "jest --runInBand tests/e2e/logichain.e2e.test.js --testNamePattern=\"smoke\""
