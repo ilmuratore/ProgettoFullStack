@@ -146,7 +146,7 @@ export function PurchaseOrdersTable({ onOrderClick, reloadKey }: PurchaseOrdersT
               placeholder="Cerca ordine o fornitore..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-64 h-9 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
+              className="w-full h-9 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
             />
           </div>
         </FilterPanel>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { ShoppingCart, Euro, Building2, AlertTriangle, Package, Clock } from 'lucide-react';
 import { acquistiApi } from '../../../api/acquistiApi';
 import { fornitoriApi } from '../../../api/fornitoriApi';
@@ -41,7 +42,15 @@ interface KpiData {
   leadTimeMedio: number | null;
 }
 
-export function PurchaseKPIs() {
+interface PurchaseKPIsProps {
+  onOrdiniAttiviClick: () => void;
+  onValoreApertoClick: () => void;
+  onOrdiniRitardoClick: () => void;
+  onLeadTimeClick: () => void;
+}
+
+export function PurchaseKPIs({ onOrdiniAttiviClick, onValoreApertoClick, onOrdiniRitardoClick, onLeadTimeClick }: PurchaseKPIsProps) {
+  const navigate = useNavigate();
   const [data, setData] = useState<KpiData | null>(null);
 
   useEffect(() => {
@@ -77,6 +86,7 @@ export function PurchaseKPIs() {
       value: data ? String(data.ordiniAttivi) : '…',
       subtitle: 'In bozza, inviati, confermati o in ricezione',
       iconBg: 'bg-gradient-to-br from-[#3B82F6] to-[#2563EB]',
+      onClick: onOrdiniAttiviClick,
     },
     {
       icon: Euro,
@@ -84,6 +94,7 @@ export function PurchaseKPIs() {
       value: data ? formatCurrency(data.valoreOrdiniAperti) : '…',
       subtitle: 'Importo in attesa',
       iconBg: 'bg-gradient-to-br from-[#17E88F] to-[#0FA67A]',
+      onClick: onValoreApertoClick,
     },
     {
       icon: Building2,
@@ -91,6 +102,7 @@ export function PurchaseKPIs() {
       value: data ? String(data.fornitoriAttivi) : '…',
       subtitle: 'Partner attivi in anagrafica',
       iconBg: 'bg-gradient-to-br from-[#8B5CF6] to-[#7C3AED]',
+      onClick: () => navigate('/anagrafiche?tab=fornitori'),
     },
     {
       icon: AlertTriangle,
@@ -99,6 +111,7 @@ export function PurchaseKPIs() {
       subtitle: 'Oltre la data prevista',
       iconBg: 'bg-gradient-to-br from-[#EF4444] to-[#DC2626]',
       isWarning: true,
+      onClick: onOrdiniRitardoClick,
     },
     {
       icon: Package,
@@ -106,6 +119,7 @@ export function PurchaseKPIs() {
       value: data ? String(data.ricezioniOggi) : '…',
       subtitle: 'Consegne registrate oggi',
       iconBg: 'bg-gradient-to-br from-[#F59E0B] to-[#D97706]',
+      onClick: () => navigate('/magazzino?tab=ricezioni'),
     },
     {
       icon: Clock,
@@ -113,6 +127,7 @@ export function PurchaseKPIs() {
       value: data ? (data.leadTimeMedio !== null ? `${data.leadTimeMedio.toFixed(1).replace('.', ',')} giorni` : '—') : '…',
       subtitle: 'Tempo medio fornitori attivi',
       iconBg: 'bg-gradient-to-br from-[#06B6D4] to-[#0891B2]',
+      onClick: onLeadTimeClick,
     },
   ];
 
@@ -124,6 +139,7 @@ export function PurchaseKPIs() {
         return (
           <div
             key={index}
+            onClick={kpi.onClick}
             className="bg-white rounded-2xl p-6 border border-[#E5EAF2] hover:shadow-lg transition-all duration-300 group cursor-pointer"
           >
             <div className="flex items-start justify-between mb-4">

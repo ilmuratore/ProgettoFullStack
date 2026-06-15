@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, TrendingUp, Bell } from 'lucide-react';
+import { AlertTriangle, TrendingUp, PieChart as PieChartIcon } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { acquistiApi } from '../../../api/acquistiApi';
 import { fornitoriApi } from '../../../api/fornitoriApi';
@@ -8,7 +8,6 @@ import type { OrdineAcquistoLista, StatoOrdineAcquisto } from '../../../types/ac
 const formatCurrency = (n: number) =>
   new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 
-const ATTIVI: ReadonlySet<StatoOrdineAcquisto> = new Set(['BOZZA', 'INVIATO', 'CONFERMATO', 'IN_RICEZIONE']);
 const STATI_RITARDO: ReadonlySet<StatoOrdineAcquisto> = new Set(['BOZZA', 'INVIATO', 'CONFERMATO', 'IN_RICEZIONE']);
 
 const STATO_CONFIG: Record<StatoOrdineAcquisto, { label: string; color: string }> = {
@@ -19,9 +18,6 @@ const STATO_CONFIG: Record<StatoOrdineAcquisto, { label: string; color: string }
   COMPLETATO:   { label: 'Completato',   color: '#22C55E' },
   ANNULLATO:    { label: 'Annullato',    color: '#EF4444' },
 };
-
-const sameDay = (a: Date, b: Date) =>
-  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
 const normalizeDateOnly = (value: string) => {
   const date = new Date(value);
@@ -59,9 +55,7 @@ export function PurchaseWidgets() {
     return <div className="text-center py-12 text-sm text-[#6B7280]">Caricamento widget acquisti…</div>;
   }
 
-  const oggi = new Date();
   const oggiDateOnly = getTodayLocalDateOnly();
-  const domani = new Date(oggi.getTime() + 24 * 60 * 60 * 1000);
 
   const ordiniInRitardo = ordini
     .filter((o) => STATI_RITARDO.has(o.stato) && o.data_prevista && normalizeDateOnly(o.data_prevista) < oggiDateOnly)
@@ -82,55 +76,19 @@ export function PurchaseWidgets() {
     .sort((a, b) => b.importo - a.importo)
     .slice(0, 3);
 
-  const ricezioniParziali = ordini.filter((o) => o.stato === 'IN_RICEZIONE').length;
-  const consegneImminenti = ordini.filter((o) => ATTIVI.has(o.stato) && o.data_prevista && sameDay(new Date(o.data_prevista), domani)).length;
-
-  const alerts = [
-    ordiniInRitardo.length > 0 && { tipo: 'PO in ritardo', messaggio: `${ordiniInRitardo.length} ordini oltre la data prevista`, color: 'text-[#EF4444]', bg: 'bg-[#FEE2E2]' },
-    ricezioniParziali > 0 && { tipo: 'In ricezione', messaggio: `${ricezioniParziali} ordini in fase di ricezione`, color: 'text-[#F59E0B]', bg: 'bg-[#FEF3C7]' },
-    consegneImminenti > 0 && { tipo: 'Consegna imminente', messaggio: `${consegneImminenti} ordini previsti domani`, color: 'text-[#3B82F6]', bg: 'bg-[#DBEAFE]' },
-  ].filter((a): a is { tipo: string; messaggio: string; color: string; bg: string } => Boolean(a));
-
   return (
-    <div className="space-y-6">
-      {/* Ordini in Ritardo */}
-      <div className="bg-gradient-to-br from-[#FEF3C7] to-[#FDE68A] rounded-2xl p-6 border border-[#F59E0B]/20">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
-            <AlertTriangle className="w-5 h-5 text-[#F59E0B]" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-[#92400E]">Ordini in Ritardo</h3>
-            <p className="text-xs text-[#92400E]/70">Richiedono azione</p>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          {ordiniInRitardo.length === 0 && (
-            <div className="text-xs text-[#92400E]/60 text-center py-2">Nessun ordine in ritardo</div>
-          )}
-          {ordiniInRitardo.slice(0, 4).map((order) => (
-            <div
-              key={order.id}
-              className="bg-white/80 backdrop-blur-sm rounded-xl p-3 hover:bg-white transition-all cursor-pointer"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="font-medium text-sm text-[#92400E] font-mono">OA-{String(order.id).padStart(4, '0')}</div>
-                  <div className="text-xs text-[#92400E]/70 mt-0.5">{order.fornitore}</div>
-                </div>
-                  <div className="px-2 py-1 bg-[#EF4444] text-white rounded-lg text-xs font-medium">
-                  {giorniRitardo(order.data_prevista!, oggiDateOnly)}gg
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Stato Approvvigionamenti */}
       <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
-        <h3 className="font-semibold text-[#2D2D2D] mb-6">Stato Approvvigionamenti</h3>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 bg-gradient-to-br from-[#3B82F6] to-[#2563EB] rounded-xl flex items-center justify-center">
+            <PieChartIcon className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-[#2D2D2D]">Stato Approvvigionamenti</h3>
+            <p className="text-xs text-[#6B7280]">Distribuzione ordini per stato</p>
+          </div>
+        </div>
 
         {statusData.length === 0 ? (
           <div className="text-center py-8 text-sm text-[#6B7280]">Nessun ordine registrato</div>
@@ -169,6 +127,41 @@ export function PurchaseWidgets() {
         )}
       </div>
 
+      {/* Ordini in Ritardo */}
+      <div className="bg-gradient-to-br from-[#FEF3C7] to-[#FDE68A] rounded-2xl p-6 border border-[#F59E0B]/20">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
+            <AlertTriangle className="w-5 h-5 text-[#F59E0B]" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-[#92400E]">Ordini in Ritardo</h3>
+            <p className="text-xs text-[#92400E]/70">Richiedono azione</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {ordiniInRitardo.length === 0 && (
+            <div className="text-xs text-[#92400E]/60 text-center py-2">Nessun ordine in ritardo</div>
+          )}
+          {ordiniInRitardo.slice(0, 4).map((order) => (
+            <div
+              key={order.id}
+              className="bg-white/80 backdrop-blur-sm rounded-xl p-3"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="font-medium text-sm text-[#92400E] font-mono">OA-{String(order.id).padStart(4, '0')}</div>
+                  <div className="text-xs text-[#92400E]/70 mt-0.5">{order.fornitore}</div>
+                </div>
+                <div className="px-2 py-1 bg-[#EF4444] text-white rounded-lg text-xs font-medium">
+                  {giorniRitardo(order.data_prevista!, oggiDateOnly)}gg
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Top Fornitori */}
       <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
         <div className="flex items-center gap-3 mb-6">
@@ -190,7 +183,7 @@ export function PurchaseWidgets() {
             return (
               <div
                 key={supplier.fornitoreId}
-                className="p-3 bg-[#F7F9FC] rounded-xl hover:bg-[#F0FDF7] transition-all cursor-pointer"
+                className="p-3 bg-[#F7F9FC] rounded-xl"
               >
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 bg-[#17E88F] text-white rounded-lg flex items-center justify-center text-xs font-medium">
@@ -215,39 +208,6 @@ export function PurchaseWidgets() {
               </div>
             );
           })}
-        </div>
-      </div>
-
-      {/* Alert Operativi */}
-      <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-gradient-to-br from-[#8B5CF6] to-[#7C3AED] rounded-xl flex items-center justify-center">
-            <Bell className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-[#2D2D2D]">Alert Operativi</h3>
-            <p className="text-xs text-[#6B7280]">Notifiche attive</p>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          {alerts.length === 0 && (
-            <div className="text-center py-4 text-sm text-[#6B7280]">Nessun alert operativo</div>
-          )}
-          {alerts.map((alert, index) => (
-            <div
-              key={index}
-              className={`p-3 ${alert.bg} rounded-xl`}
-            >
-              <div className="flex items-start gap-2">
-                <Bell className={`w-4 h-4 ${alert.color} mt-0.5`} />
-                <div className="flex-1">
-                  <div className={`font-medium text-sm ${alert.color}`}>{alert.tipo}</div>
-                  <div className="text-xs text-[#6B7280] mt-1">{alert.messaggio}</div>
-                </div>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>
