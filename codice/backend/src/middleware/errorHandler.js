@@ -13,6 +13,9 @@ const errorMessages = {
   INVALID_STATE: "Operazione non consentita nello stato corrente",
   INVALID_TRANSITION: "Transizione di stato non consentita",
   DUPLICATE_ENTRY: "Record già esistente (valore duplicato)",
+  FOREIGN_KEY_VIOLATION: "Operazione non consentita: riferimento a un record inesistente o ancora utilizzato",
+  CHECK_VIOLATION: "Valore non valido per un vincolo del database",
+  NOT_NULL_VIOLATION: "Campo obbligatorio mancante",
   INSUFFICIENT_STOCK: "Giacenza insufficiente per completare il movimento",
   ENDPOINT_DEPRECATED: "Endpoint deprecato",
   CORRIERE_CON_SPEDIZIONI:
@@ -45,6 +48,9 @@ const errorStatusCodes = {
   INVALID_TRANSITION: 409,
   EMAIL_GIA_ESISTENTE: 409,
   DUPLICATE_ENTRY: 409,
+  FOREIGN_KEY_VIOLATION: 409,
+  CHECK_VIOLATION: 422,
+  NOT_NULL_VIOLATION: 400,
   CORRIERE_CON_SPEDIZIONI: 409,
   CATEGORIA_CON_PRODOTTI: 409,
   CATEGORIA_CON_SOTTOCATEGORIE: 409,
@@ -61,15 +67,14 @@ const errorStatusCodes = {
 };
 
 const PG_SQLSTATE = {
-  23505: "DUPLICATE_ENTRY",
+  "23505": "DUPLICATE_ENTRY",
+  "23503": "FOREIGN_KEY_VIOLATION",
+  "23514": "CHECK_VIOLATION",
+  "23502": "NOT_NULL_VIOLATION",
+  "22P02": "VALIDATION_ERROR",
 };
 
 const errorHandler = (err, _req, res, _next) => {
-  let code = PG_SQLSTATE[err.code] || err.code;
-
-  if (!code || !errorStatusCodes[code]) {
-    code = "INTERNAL_SERVER_ERROR";
-  }
   if (err.code === "LIMIT_FILE_SIZE") {
     err.code = "FILE_TOO_LARGE";
     err.message = "File troppo grande";
@@ -80,9 +85,20 @@ const errorHandler = (err, _req, res, _next) => {
     err.message = "Campo file non previsto";
   }
 
-  const statusCode = err.status || errorStatusCodes[code] || 500;
-  const message =
-    err.message || errorMessages[code] || errorMessages.INTERNAL_SERVER_ERROR;
+  let code = PG_SQLSTATE[err.code] || err.code;
+
+  if (!code || !errorStatusCodes[code]) {
+    code = "INTERNAL_SERVER_ERROR";
+  }
+
+  const isMappedPgError = Boolean(PG_SQLSTATE[err.code]);
+  const statusCode = isMappedPgError
+    ? errorStatusCodes[code]
+    : err.status || errorStatusCodes[code] || 500;
+
+  const message = isMappedPgError
+    ? errorMessages[code]
+    : err.message || errorMessages[code] || errorMessages.INTERNAL_SERVER_ERROR;
 
   if (process.env.NODE_ENV !== "production") {
     console.error(

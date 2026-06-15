@@ -66,10 +66,39 @@ const ensureEmailAvailable = async (email, currentUserId) => {
     }
 };
 
-const update = async (id, fields) => {
-    const existing = await utentiModel.findById(id);
-    if (existing.rowCount === 0) {
+const RUOLI_ADMIN_IDS = [1, 2];
+
+const wouldRemoveLastAdmin = async (targetId, fields, existing) => {
+    const eraAdmin = RUOLI_ADMIN_IDS.includes(Number(existing.ruolo_id)) && existing.attivo === true;
+    if (!eraAdmin) return false;
+
+    const restaAdmin =
+        (fields.ruolo_id === undefined || RUOLI_ADMIN_IDS.includes(Number(fields.ruolo_id))) &&
+        (fields.attivo === undefined || fields.attivo === true);
+    if (restaAdmin) return false;
+
+    const countRes = await utentiModel.countAdminAttivi(RUOLI_ADMIN_IDS);
+    return Number(countRes.rows[0].cnt) <= 1;
+};
+
+const update = async (id, fields, attore = null) => {
+    const existingRes = await utentiModel.findById(id);
+    if (existingRes.rowCount === 0) {
         throwError('RESOURCE_NOT_FOUND', 'Utente non trovato');
+    }
+    const existing = existingRes.rows[0];
+
+    if (attore && Number(attore.id) === Number(id)) {
+        if (fields.attivo === false) {
+            throwError('VALIDATION_ERROR', 'Non puoi disattivare il tuo stesso account');
+        }
+        if (fields.ruolo_id !== undefined && Number(fields.ruolo_id) !== Number(existing.ruolo_id)) {
+            throwError('VALIDATION_ERROR', 'Non puoi modificare il ruolo del tuo stesso account');
+        }
+    }
+
+    if (await wouldRemoveLastAdmin(id, fields, existing)) {
+        throwError('VALIDATION_ERROR', 'Operazione non consentita: deve restare almeno un Admin attivo');
     }
 
     const allowedKeys = ['nome', 'cognome', 'email', 'ruolo_id', 'attivo', 'dipendente_id'];
@@ -132,11 +161,24 @@ const resetPassword = async (id, password_nuova) => {
     await utentiModel.updatePassword(id, nuovoHash);
 };
 
-const deleteUtente = async (id) => {
+const deleteUtente = async (id, attore = null) => {
     const result = await utentiModel.findById(id);
     if (result.rowCount === 0 || !result.rows[0].attivo) {
         throwError('RESOURCE_NOT_FOUND', 'Utente non trovato');
     }
+    const existing = result.rows[0];
+
+    if (attore && Number(attore.id) === Number(id)) {
+        throwError('VALIDATION_ERROR', 'Non puoi eliminare il tuo stesso account');
+    }
+
+    if (RUOLI_ADMIN_IDS.includes(Number(existing.ruolo_id))) {
+        const countRes = await utentiModel.countAdminAttivi(RUOLI_ADMIN_IDS);
+        if (Number(countRes.rows[0].cnt) <= 1) {
+            throwError('VALIDATION_ERROR', 'Operazione non consentita: deve restare almeno un Admin attivo');
+        }
+    }
+
     await utentiModel.remove(id);
 };
 

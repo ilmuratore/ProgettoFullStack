@@ -31,7 +31,7 @@ const getById = async (req, res, next) => {
 const update = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
-        const utente = await utentiService.update(id, req.body);
+        const utente = await utentiService.update(id, req.body, req.user);
         return res.status(200).json({ status: 'success', data: utente });
     } catch (err) {
         return next(err);
@@ -52,7 +52,7 @@ const resetPassword = async (req, res, next) => {
 const elimina = async (req, res, next) => {
     try {
         const id = parseInt(req.params.id, 10);
-        await utentiService.deleteUtente(id);
+        await utentiService.deleteUtente(id, req.user);
         return res.status(204).send();
     } catch (err) {
         return next(err);

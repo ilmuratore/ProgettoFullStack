@@ -140,6 +140,15 @@ const assignDipendenteToUtente = (dipendenteId, utenteId, client = pool) =>
         [utenteId, dipendenteId]
     );
 
+const countAdminAttivi = (ruoliAdminIds, client = pool) =>
+    (client || pool).query(
+        `SELECT COUNT(*)::int AS cnt
+         FROM utenti
+         WHERE attivo = true
+           AND ruolo_id = ANY($1::int[])`,
+        [ruoliAdminIds]
+    );
+
 module.exports = {
     findAll,
     findById,
@@ -153,4 +162,5 @@ module.exports = {
     findDipendenteById,
     unlinkDipendenteFromUtente,
     assignDipendenteToUtente,
+    countAdminAttivi,
 };
