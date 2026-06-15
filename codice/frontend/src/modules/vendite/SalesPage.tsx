@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router';
-import { Plus, ShoppingBag, BarChart2, MapPin, CheckSquare, Clock, Download } from 'lucide-react';
+import { Plus, ShoppingBag, BarChart2, CheckSquare, Clock, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { SalesKPIs } from './components/SalesKPIs';
 import { SalesOrdersTable } from './components/SalesOrdersTable';
@@ -44,7 +43,6 @@ const monthLabel = (d: Date): string =>
   d.toLocaleDateString('it-IT', { month: 'short' }).replace('.', '');
 
 export function SalesPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<SalesTab>('ordini');
@@ -55,49 +53,18 @@ export function SalesPage() {
   const [destinazioniByCliente, setDestinazioniByCliente] = useState<Record<number, number>>({});
 
   useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab === 'ordini' || tab === 'kpi') {
-      setActiveTab(tab);
-    }
-
-    const orderId = Number(searchParams.get('orderId'));
-    if (Number.isInteger(orderId) && orderId > 0) {
-      setSelectedOrderId(orderId);
-      if (tab !== 'ordini') setActiveTab('ordini');
-      return;
-    }
-
-    setSelectedOrderId(null);
-  }, [searchParams]);
-
-  const updateUrlParams = (mutate: (params: URLSearchParams) => void) => {
-    const nextParams = new URLSearchParams(searchParams);
-    mutate(nextParams);
-    setSearchParams(nextParams, { replace: true });
-  };
-
-  const handleTabChange = (tab: SalesTab) => {
-    setActiveTab(tab);
-    updateUrlParams((params) => {
-      params.set('tab', tab);
-      if (tab !== 'ordini') params.delete('orderId');
-    });
-  };
-
-  const handleOpenOrder = (orderId: number) => {
-    setSelectedOrderId(orderId);
-    updateUrlParams((params) => {
-      params.set('tab', 'ordini');
-      params.set('orderId', String(orderId));
-    });
-  };
-
-  const handleCloseOrder = () => {
-    setSelectedOrderId(null);
-    updateUrlParams((params) => {
-      params.delete('orderId');
-    });
-  };
+    let alive = true;
+    ordiniApi.list()
+      .then((orders) => {
+        if (alive) setSalesOrders(Array.isArray(orders) ? orders : []);
+      })
+      .catch((err: any) => {
+        if (!alive) return;
+        setSalesOrders([]);
+        toast.error('Errore caricamento ordini vendita', { description: err?.message });
+      });
+    return () => { alive = false; };
+  }, [reloadKey]);
 
   useEffect(() => {
     if (activeTab !== 'kpi') return;
@@ -297,13 +264,13 @@ export function SalesPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-[#E5EAF2] overflow-hidden">
-        <PageTabBar tabs={tabs} activeTab={activeTab} onTabChange={(id) => handleTabChange(id as SalesTab)} />
+        <PageTabBar tabs={tabs} activeTab={activeTab} onTabChange={(id) => setActiveTab(id as SalesTab)} />
 
         <div className="p-6 space-y-6">
           {activeTab === 'ordini' && (
             <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
               <div className="lg:col-span-7">
-                <SalesOrdersTable onOrderClick={handleOpenOrder} reloadKey={reloadKey} />
+                <SalesOrdersTable onOrderClick={setSelectedOrderId} reloadKey={reloadKey} />
               </div>
               <div className="lg:col-span-3">
                 <SalesWidgets orders={salesOrders} onOrderClick={setSelectedOrderId} />
@@ -364,7 +331,7 @@ export function SalesPage() {
       <SalesOrderDrawer
         orderId={selectedOrderId}
         isOpen={!!selectedOrderId}
-        onClose={handleCloseOrder}
+        onClose={() => setSelectedOrderId(null)}
       />
 
       <NewSalesOrderModal

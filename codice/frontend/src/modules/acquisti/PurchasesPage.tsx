@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { useEffect } from 'react';
-import { useSearchParams } from 'react-router';
 import { Plus, ShoppingCart, BarChart2, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { PurchaseKPIs } from './components/PurchaseKPIs';
@@ -20,57 +18,11 @@ const tabs: TabConfig[] = [
 ];
 
 export function PurchasesPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<PurchaseTab>('ordini');
   const [reloadKey, setReloadKey] = useState(0);
   const [exporting, setExporting] = useState(false);
-
-  useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab === 'ordini' || tab === 'kpi') {
-      setActiveTab(tab);
-    }
-
-    const orderId = Number(searchParams.get('orderId'));
-    if (Number.isInteger(orderId) && orderId > 0) {
-      setSelectedOrderId(orderId);
-      if (tab !== 'ordini') setActiveTab('ordini');
-      return;
-    }
-
-    setSelectedOrderId(null);
-  }, [searchParams]);
-
-  const updateUrlParams = (mutate: (params: URLSearchParams) => void) => {
-    const nextParams = new URLSearchParams(searchParams);
-    mutate(nextParams);
-    setSearchParams(nextParams, { replace: true });
-  };
-
-  const handleTabChange = (tab: PurchaseTab) => {
-    setActiveTab(tab);
-    updateUrlParams((params) => {
-      params.set('tab', tab);
-      if (tab !== 'ordini') params.delete('orderId');
-    });
-  };
-
-  const handleOpenOrder = (orderId: number) => {
-    setSelectedOrderId(orderId);
-    updateUrlParams((params) => {
-      params.set('tab', 'ordini');
-      params.set('orderId', String(orderId));
-    });
-  };
-
-  const handleCloseOrder = () => {
-    setSelectedOrderId(null);
-    updateUrlParams((params) => {
-      params.delete('orderId');
-    });
-  };
 
   const handleExport = async () => {
     setExporting(true);
@@ -112,13 +64,13 @@ export function PurchasesPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-[#E5EAF2] overflow-hidden">
-        <PageTabBar tabs={tabs} activeTab={activeTab} onTabChange={(id) => handleTabChange(id as PurchaseTab)} />
+        <PageTabBar tabs={tabs} activeTab={activeTab} onTabChange={(id) => setActiveTab(id as PurchaseTab)} />
 
         <div className="p-6 space-y-6">
           {activeTab === 'ordini' && (
             <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
               <div className="lg:col-span-7">
-                <PurchaseOrdersTable onOrderClick={handleOpenOrder} reloadKey={reloadKey} />
+                <PurchaseOrdersTable onOrderClick={setSelectedOrderId} reloadKey={reloadKey} />
               </div>
               <div className="lg:col-span-3">
                 <PurchaseWidgets />
@@ -138,7 +90,7 @@ export function PurchasesPage() {
       <OrderDetailDrawer
         orderId={selectedOrderId}
         isOpen={selectedOrderId !== null}
-        onClose={handleCloseOrder}
+        onClose={() => setSelectedOrderId(null)}
         onStatusChange={() => setReloadKey((k) => k + 1)}
       />
 

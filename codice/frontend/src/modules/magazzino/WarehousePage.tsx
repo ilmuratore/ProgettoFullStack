@@ -55,11 +55,6 @@ const tabs: TabConfig[] = [
   { id: 'ricezioni', label: 'Ricezioni', icon: PackageCheck },
 ];
 
-const WAREHOUSE_TABS: WarehouseTab[] = ['prodotti', 'categorie', 'struttura', 'giacenze', 'movimenti', 'picking', 'ricezioni'];
-
-const isWarehouseTab = (value: string | null): value is WarehouseTab =>
-  value !== null && WAREHOUSE_TABS.includes(value as WarehouseTab);
-
 type PickingRigaView = {
   sku: string;
   prodotto: string;
@@ -151,8 +146,10 @@ const WAREHOUSE_TAB_IDS: WarehouseTab[] = ['prodotti', 'categorie', 'struttura',
 
 export function WarehousePage() {
   const { hasPermesso } = useAuthStore();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<WarehouseTab>('prodotti');
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const initialTab = WAREHOUSE_TAB_IDS.includes(requestedTab as WarehouseTab) ? (requestedTab as WarehouseTab) : 'prodotti';
+  const [activeTab, setActiveTab] = useState<WarehouseTab>(initialTab);
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
   const [isRicezioneModalOpen, setIsRicezioneModalOpen] = useState(false);
 
@@ -319,31 +316,6 @@ export function WarehousePage() {
 
   useEffect(() => { fetchForTab('struttura'); }, []);
   useEffect(() => { fetchForTab(activeTab); }, [activeTab, fetchForTab]);
-
-  useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (isWarehouseTab(tab) && tab !== activeTab) {
-      setActiveTab(tab);
-    }
-
-    const productSearch = searchParams.get('productSearch') ?? '';
-    const categorySearch = searchParams.get('categorySearch') ?? '';
-    const productId = Number(searchParams.get('productId'));
-
-    setSearchProdotti((current) => current === productSearch ? current : productSearch);
-    setSearchCategorie((current) => current === categorySearch ? current : categorySearch);
-
-    if (Number.isInteger(productId) && productId > 0) {
-      if (selectedProductId !== productId) setSelectedProductId(productId);
-      if (!productDetailOpen) setProductDetailOpen(true);
-      if (activeTab !== 'prodotti') setActiveTab('prodotti');
-      return;
-    }
-
-    if (selectedProductId !== null) setSelectedProductId(null);
-    if (productDetailOpen) setProductDetailOpen(false);
-  }, [activeTab, productDetailOpen, searchParams, selectedProductId]);
-
   useEffect(() => {
     if (activeTab !== 'picking') return;
     void fetchPickingOrders();
@@ -359,43 +331,6 @@ export function WarehousePage() {
       .finally(() => { if (alive) setLoadingRic(false); });
     return () => { alive = false; };
   }, [activeTab, ricezioniReloadKey]);
-
-  const updateUrlParams = (mutate: (params: URLSearchParams) => void) => {
-    const nextParams = new URLSearchParams(searchParams);
-    mutate(nextParams);
-    setSearchParams(nextParams, { replace: true });
-  };
-
-  const handleTabChange = (tab: WarehouseTab) => {
-    setActiveTab(tab);
-    updateUrlParams((params) => {
-      params.set('tab', tab);
-      if (tab !== 'prodotti') {
-        params.delete('productId');
-        params.delete('productSearch');
-      }
-      if (tab !== 'categorie') {
-        params.delete('categorySearch');
-      }
-    });
-  };
-
-  const handleOpenProductDetail = (productId: number) => {
-    setSelectedProductId(productId);
-    setProductDetailOpen(true);
-    updateUrlParams((params) => {
-      params.set('tab', 'prodotti');
-      params.set('productId', String(productId));
-    });
-  };
-
-  const handleCloseProductDetail = () => {
-    setProductDetailOpen(false);
-    setSelectedProductId(null);
-    updateUrlParams((params) => {
-      params.delete('productId');
-    });
-  };
 
   const getActionButton = (): { label: string; action: () => void; show: boolean } => {
     switch (activeTab) {
@@ -910,7 +845,7 @@ export function WarehousePage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-[#E5EAF2] overflow-hidden">
-        <PageTabBar tabs={tabs} activeTab={activeTab} onTabChange={(id) => handleTabChange(id as WarehouseTab)} />
+        <PageTabBar tabs={tabs} activeTab={activeTab} onTabChange={(id) => setActiveTab(id as WarehouseTab)} />
 
         <div className="p-6 space-y-6">
 
@@ -949,15 +884,8 @@ export function WarehousePage() {
               loading={loadingProdotti}
               search={searchProdotti}
               canWriteProdotti={canWriteProdotti}
-              onSearchChange={(value) => {
-                setSearchProdotti(value);
-                updateUrlParams((params) => {
-                  params.set('tab', 'prodotti');
-                  if (value.trim()) params.set('productSearch', value);
-                  else params.delete('productSearch');
-                });
-              }}
-              onView={(item) => handleOpenProductDetail(item.id)}
+              onSearchChange={setSearchProdotti}
+              onView={(item) => { setSelectedProductId(item.id); setProductDetailOpen(true); }}
               onEdit={(item) => { void handleEditProduct(item.id); }}
             />
           )}
@@ -971,14 +899,7 @@ export function WarehousePage() {
               search={searchCategorie}
               canWriteProdotti={canWriteProdotti}
               canDeleteProdotti={hasPermesso('prodotti:delete')}
-              onSearchChange={(value) => {
-                setSearchCategorie(value);
-                updateUrlParams((params) => {
-                  params.set('tab', 'categorie');
-                  if (value.trim()) params.set('categorySearch', value);
-                  else params.delete('categorySearch');
-                });
-              }}
+              onSearchChange={setSearchCategorie}
               onAddSubcategory={handleAddSubcategory}
               onEdit={(item) => { setCategoryModalMode('edit'); setSelectedCategory(item); setInitialParentCategoryId(undefined); setCategoryModalOpen(true); }}
               onDelete={handleDeleteCategory}
@@ -1450,7 +1371,7 @@ export function WarehousePage() {
       <ProductDetailDrawer
         productId={selectedProductId}
         isOpen={productDetailOpen}
-        onClose={handleCloseProductDetail}
+        onClose={() => setProductDetailOpen(false)}
       />
 
       <ProductFormModal
@@ -1628,3 +1549,4 @@ export function WarehousePage() {
     </div>
   );
 }
+
