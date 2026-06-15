@@ -30,7 +30,7 @@ function normalizzaUtente(u: UtenteAPI): UtenteAPI {
   };
 }
 
-const ALL_PERMISSIONS = [
+export const ALL_PERMISSIONS = [
   'utenti:read', 'utenti:write', 'utenti:delete',
   'prodotti:read', 'prodotti:write', 'prodotti:delete',
   'fornitori:read', 'fornitori:write', 'fornitori:delete',
@@ -44,7 +44,7 @@ const ALL_PERMISSIONS = [
   'notifiche:read', 'dashboard:read', 'ecosystem:read',
 ];
 
-const PERMESSI_PER_RUOLO: Record<number, string[]> = {
+export const PERMESSI_PER_RUOLO: Record<number, string[]> = {
   1: ALL_PERMISSIONS,
   2: ALL_PERMISSIONS,
   3: [
