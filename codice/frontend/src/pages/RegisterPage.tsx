@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { authApi } from '../api/authApi';
+import { utentiApi } from '../api/utentiApi';
+import { useAuthStore } from '../store/authStore';
 import type { RegisterData } from '../api/authApi';
 import type { UtenteAPI } from '../types/auth';
 import type { UtenteCreateRequest, UtenteUpdateRequest } from '../types/utenti';
-import type { Dipendente } from '../types/corrieri';
+import type { Ruolo } from '../types/ruoli';
 import { toast } from 'sonner';
 
 interface FieldError {
@@ -12,36 +14,31 @@ interface FieldError {
   message: string;
 }
 
-const REGISTER_ROLE_IDS = [2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 const PROTECTED_ROLE_IDS = [1] as const;
 const NON_DEACTIVATABLE_ROLE_IDS = [1] as const;
-const EMPLOYEE_LOCKED_ROLE_IDS = [1, 2, 3, 4] as const;
-const REGISTER_ROLES = [
-  { id: 2, label: 'Developer' },
-  { id: 3, label: 'Supporto' },
-  { id: 4, label: 'Resp. Azienda' },
-  { id: 5, label: 'Resp. HR' },
-  { id: 6, label: 'Resp. Vendite' },
-  { id: 7, label: 'Resp. Acquisti' },
-  { id: 8, label: 'Resp. Magazzino' },
-  { id: 9, label: 'Operatore' },
-  { id: 10, label: 'Corriere' },
-] as const;
+
+const ROLE_LABELS: Record<string, string> = {
+  Dev: 'Developer',
+};
+
+const DISALLOWED_CREATE_ROLES_BY_ACTOR: Record<number, string[]> = {
+  1: ['Admin', 'Dev'],
+  2: ['Admin', 'Dev'],
+  3: ['Admin', 'Dev', 'Supporto'],
+};
 
 interface RegisterPageProps {
   open?: boolean;
   mode?: 'create' | 'edit';
   initialData?: UtenteAPI | null;
-  dipendenti?: Dipendente[];
   onSuccess?: (utente: UtenteAPI) => void;
   onCancel?: () => void;
-  onSave?: (data: UtenteCreateRequest | UtenteUpdateRequest, options?: { id?: number; passwordReset?: string; dipendenteId?: number | null }) => Promise<void>;
+  onSave?: (data: UtenteCreateRequest | UtenteUpdateRequest, options?: { id?: number; passwordReset?: string }) => Promise<void>;
 }
 
 type RegisterFormState = RegisterData & {
   attivo: boolean;
   confirmPassword: string;
-  dipendente_id: number | '';
 };
 
 const EMPTY_FORM: RegisterFormState = {
@@ -52,11 +49,12 @@ const EMPTY_FORM: RegisterFormState = {
   ruolo_id: 2,
   attivo: true,
   confirmPassword: '',
-  dipendente_id: '',
 };
 
-export function RegisterPage({ open, mode = 'create', initialData, dipendenti = [], onSuccess, onCancel, onSave }: RegisterPageProps) {
+export function RegisterPage({ open, mode = 'create', initialData, onSuccess, onCancel, onSave }: RegisterPageProps) {
+  const { utente } = useAuthStore();
   const [form, setForm] = useState<RegisterFormState>(EMPTY_FORM);
+  const [ruoli, setRuoli] = useState<Ruolo[]>([]);
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldError[]>([]);
   const [globalError, setGlobalError] = useState('');
@@ -64,29 +62,40 @@ export function RegisterPage({ open, mode = 'create', initialData, dipendenti = 
   const isModal = typeof open === 'boolean';
   const isProtectedRoleUser = PROTECTED_ROLE_IDS.includes((initialData?.ruolo_id ?? -1) as (typeof PROTECTED_ROLE_IDS)[number]);
   const isNonDeactivatableUser = NON_DEACTIVATABLE_ROLE_IDS.includes((initialData?.ruolo_id ?? -1) as (typeof NON_DEACTIVATABLE_ROLE_IDS)[number]);
-  const canLinkDipendente = !EMPLOYEE_LOCKED_ROLE_IDS.includes(Number(form.ruolo_id) as (typeof EMPLOYEE_LOCKED_ROLE_IDS)[number]);
 
   const roleOptions = useMemo(() => {
-    const options = [...REGISTER_ROLES];
-    if (
-      mode === 'edit' &&
-      initialData &&
-      !REGISTER_ROLE_IDS.includes(initialData.ruolo_id as (typeof REGISTER_ROLE_IDS)[number])
-    ) {
+    const blockedRoleNames = DISALLOWED_CREATE_ROLES_BY_ACTOR[utente?.ruolo_id ?? -1] ?? [];
+    const options = ruoli
+      .filter((ruolo) => mode === 'edit' || !blockedRoleNames.includes(String(ruolo.nome)))
+      .map((ruolo) => ({
+        id: ruolo.id,
+        label: ROLE_LABELS[String(ruolo.nome)] ?? String(ruolo.nome),
+      }));
+
+    if (mode === 'edit' && initialData && !options.some((option) => option.id === initialData.ruolo_id)) {
       return [
-        { id: initialData.ruolo_id, label: initialData.ruolo_nome ?? initialData.ruolo ?? 'Ruolo attuale' },
+        { id: initialData.ruolo_id, label: ROLE_LABELS[initialData.ruolo_nome ?? initialData.ruolo ?? ''] ?? initialData.ruolo_nome ?? initialData.ruolo ?? 'Ruolo attuale' },
         ...options,
       ];
     }
-    return options;
-  }, [mode, initialData]);
 
-  const dipendenteOptions = useMemo(() => {
-    const currentDipendenteId = initialData?.dipendente?.id ?? null;
-    return dipendenti.filter((dipendente) =>
-      dipendente.utente_id == null || dipendente.id === currentDipendenteId
-    );
-  }, [dipendenti, initialData]);
+    return options;
+  }, [mode, initialData, ruoli, utente]);
+
+  useEffect(() => {
+    utentiApi.getRuoli()
+      .then(setRuoli)
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (mode !== 'create' || !ruoli.length) return;
+    setForm((prev) => (
+      ruoli.some((ruolo) => ruolo.id === Number(prev.ruolo_id))
+        ? prev
+        : { ...prev, ruolo_id: ruoli[0].id }
+    ));
+  }, [mode, ruoli]);
 
   useEffect(() => {
     if (mode === 'edit' && initialData) {
@@ -98,7 +107,6 @@ export function RegisterPage({ open, mode = 'create', initialData, dipendenti = 
         ruolo_id: initialData.ruolo_id ?? 2,
         attivo: initialData.attivo ?? true,
         confirmPassword: '',
-        dipendente_id: initialData.dipendente?.id ?? '',
       });
     } else {
       setForm(EMPTY_FORM);
@@ -111,13 +119,7 @@ export function RegisterPage({ open, mode = 'create', initialData, dipendenti = 
     fieldErrors.find((e) => e.field === field)?.message;
 
   const handleChange = (field: keyof RegisterFormState, value: string | number | boolean) => {
-    setForm((prev) => {
-      const next = { ...prev, [field]: value };
-      if (field === 'ruolo_id' && EMPLOYEE_LOCKED_ROLE_IDS.includes(Number(value) as (typeof EMPLOYEE_LOCKED_ROLE_IDS)[number])) {
-        next.dipendente_id = '';
-      }
-      return next;
-    });
+    setForm((prev) => ({ ...prev, [field]: value }));
     setFieldErrors((prev) => prev.filter((e) => e.field !== field));
     setGlobalError('');
   };
@@ -168,13 +170,11 @@ export function RegisterPage({ open, mode = 'create', initialData, dipendenti = 
         };
 
         if (onSave) {
-          await onSave(payload, {
-            dipendenteId: canLinkDipendente && form.dipendente_id !== '' ? Number(form.dipendente_id) : null,
-          });
+          await onSave(payload);
         } else {
-          const utente = await authApi.register(payload);
-          toast.success(`Utente ${utente.nome} ${utente.cognome} creato con successo`);
-          onSuccess?.(utente);
+          const created = await authApi.register(payload);
+          toast.success(`Utente ${created.nome} ${created.cognome} creato con successo`);
+          onSuccess?.(created);
         }
       } else {
         await onSave?.({
@@ -186,7 +186,6 @@ export function RegisterPage({ open, mode = 'create', initialData, dipendenti = 
         }, {
           id: initialData?.id,
           passwordReset: form.password.trim() ? form.password.trim() : undefined,
-          dipendenteId: canLinkDipendente && form.dipendente_id !== '' ? Number(form.dipendente_id) : null,
         });
       }
     } catch (err: unknown) {
@@ -194,7 +193,7 @@ export function RegisterPage({ open, mode = 'create', initialData, dipendenti = 
       if (e.code === 'VALIDATION_ERROR' && e.details?.length) {
         setFieldErrors(e.details);
       } else if (e.code === 'DUPLICATE_ENTRY' || e.code === 'EMAIL_GIA_ESISTENTE') {
-        setFieldErrors([{ field: 'email', message: 'Email giÃ  registrata nel sistema' }]);
+        setFieldErrors([{ field: 'email', message: 'Email già registrata nel sistema' }]);
       } else {
         setGlobalError(e.message ?? (mode === 'create' ? 'Errore durante la registrazione' : 'Errore durante il salvataggio'));
       }
@@ -281,27 +280,6 @@ export function RegisterPage({ open, mode = 'create', initialData, dipendenti = 
             </label>
           </div>
         </div>
-
-        {canLinkDipendente && (
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-[#374151]">Dipendente collegato</label>
-            <select
-              value={form.dipendente_id}
-              onChange={(e) => handleChange('dipendente_id', e.target.value ? Number(e.target.value) : '')}
-              className={`${inputClass('dipendente_id')} cursor-pointer`}
-              disabled={loading}
-            >
-              <option value="">Nessun collegamento</option>
-              {dipendenteOptions.map((dipendente) => (
-                <option key={dipendente.id} value={dipendente.id}>
-                  {dipendente.cognome} {dipendente.nome} · {dipendente.ruolo_operativo ?? 'Dipendente'}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-[#9CA3AF]">Disponibili solo dipendenti non ancora collegati.</p>
-            {getFieldError('dipendente_id') && <p className="text-xs text-[#DC2626]">{getFieldError('dipendente_id')}</p>}
-          </div>
-        )}
 
         {globalError && (
           <div className="p-3 bg-[#FEF2F2] border border-[#FECACA] rounded-xl">

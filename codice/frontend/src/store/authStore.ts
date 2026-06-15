@@ -2,15 +2,15 @@ import { create } from 'zustand';
 import type { UtenteAPI } from '../types/auth';
 
 export const RUOLO_ID_TO_NOME: Record<number, string> = {
-  1:  'Admin',
-  2:  'Dev',
-  3:  'Supporto',
-  4:  'Resp. Azienda',
-  5:  'Resp. HR',
-  6:  'Resp. Vendite',
-  7:  'Resp. Acquisti',
-  8:  'Resp. Magazzino',
-  9:  'Operatore',
+  1: 'Admin',
+  2: 'Dev',
+  3: 'Supporto',
+  4: 'Resp. Azienda',
+  5: 'Resp. HR',
+  6: 'Resp. Vendite',
+  7: 'Resp. Acquisti',
+  8: 'Resp. Magazzino',
+  9: 'Operatore',
   10: 'Corriere',
 };
 
@@ -113,15 +113,15 @@ export const PERMESSI_PER_RUOLO: Record<number, string[]> = {
 };
 
 export const PAGINE_PER_RUOLO: Record<number, string[]> = {
-  1:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione', 'register'],
-  2:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione', 'register'],
-  3:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione'],
-  4:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione', 'register'],
-  5:  ['dashboard', 'anagrafiche'],
-  6:  ['dashboard', 'anagrafiche', 'vendite', 'magazzino'],
-  7:  ['dashboard', 'anagrafiche', 'acquisti', 'magazzino'],
-  8:  ['dashboard', 'magazzino', 'acquisti', 'logistica'],
-  9:  ['dashboard', 'anagrafiche', 'vendite', 'magazzino', 'logistica'],
+  1: ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione', 'register'],
+  2: ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione', 'register'],
+  3: ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione'],
+  4: ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione', 'register'],
+  5: ['dashboard', 'anagrafiche'],
+  6: ['dashboard', 'anagrafiche', 'vendite', 'magazzino'],
+  7: ['dashboard', 'anagrafiche', 'acquisti', 'magazzino'],
+  8: ['dashboard', 'magazzino', 'acquisti', 'logistica'],
+  9: ['dashboard', 'anagrafiche', 'vendite', 'magazzino', 'logistica'],
   10: ['dashboard', 'logistica'],
 };
 

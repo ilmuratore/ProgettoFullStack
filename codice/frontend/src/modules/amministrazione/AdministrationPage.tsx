@@ -4,10 +4,8 @@ import { Plus, Users, ShieldCheck, Settings } from 'lucide-react';
 import { PageTabBar, type TabConfig } from '../../components/ui/PageTabBar';
 import { toast } from 'sonner';
 import { utentiApi } from '../../api/utentiApi';
-import { dipendentiApi } from '../../api/corrieriApi';
 import { useAuthStore } from '../../store/authStore';
 import type { UtenteAPI, UtenteCreateRequest, UtenteUpdateRequest } from '../../types/utenti';
-import type { Dipendente } from '../../types/corrieri';
 import { RegisterPage } from '../../pages/RegisterPage';
 import { FirmSettings } from './components/FirmSettings';
 import { RolesPermitsTable } from './components/RolesPermitsTable';
@@ -21,8 +19,7 @@ const tabs: TabConfig[] = [
   { id: 'impostazioni', label: 'Impostazioni', icon: Settings },
 ];
 
-const EMPLOYEE_LOCKED_ROLE_IDS = [1, 2, 3, 4] as const;
-const USER_MANAGEMENT_ROLE_IDS = [1, 2, 3] as const;
+const USER_MANAGEMENT_ROLE_IDS = [1, 2] as const;
 
 export function AdministrationPage() {
   const { utente } = useAuthStore();
@@ -33,7 +30,6 @@ export function AdministrationPage() {
   const canManageUsers = USER_MANAGEMENT_ROLE_IDS.includes((utente?.ruolo_id ?? -1) as (typeof USER_MANAGEMENT_ROLE_IDS)[number]);
   const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);
   const [utenti, setUtenti] = useState<UtenteAPI[]>([]);
-  const [dipendenti, setDipendenti] = useState<Dipendente[]>([]);
   const [loadingUtenti, setLoadingUtenti] = useState(false);
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [userModalMode, setUserModalMode] = useState<'create' | 'edit'>('create');
@@ -50,17 +46,8 @@ export function AdministrationPage() {
     }
   };
 
-  const loadDipendenti = async () => {
-    try {
-      setDipendenti(await dipendentiApi.list());
-    } catch (err: any) {
-      toast.error('Errore caricamento dipendenti', { description: err?.message });
-    }
-  };
-
   useEffect(() => {
     loadUtenti();
-    loadDipendenti();
   }, []);
 
   useEffect(() => {
@@ -94,19 +81,14 @@ export function AdministrationPage() {
 
   const handleSaveUser = async (
     payload: UtenteCreateRequest | UtenteUpdateRequest,
-    options?: { id?: number; passwordReset?: string; dipendenteId?: number | null }
+    options?: { id?: number; passwordReset?: string }
   ) => {
     try {
-      const selectedDipendenteId = options?.dipendenteId ?? null;
-      const selectedRoleId = Number(payload.ruolo_id);
-      const shouldLinkDipendente = !EMPLOYEE_LOCKED_ROLE_IDS.includes(selectedRoleId as (typeof EMPLOYEE_LOCKED_ROLE_IDS)[number]);
-      let savedUser: UtenteAPI;
-
       if (userModalMode === 'create') {
-        savedUser = await utentiApi.create(payload as UtenteCreateRequest);
+        await utentiApi.create(payload as UtenteCreateRequest);
         toast.success('Utente creato');
       } else if (options?.id) {
-        savedUser = await utentiApi.update(options.id, payload as UtenteUpdateRequest);
+        await utentiApi.update(options.id, payload as UtenteUpdateRequest);
         if (options.passwordReset) {
           await utentiApi.resetPassword(options.id, options.passwordReset);
         }
@@ -115,19 +97,7 @@ export function AdministrationPage() {
         return;
       }
 
-      const previousDipendenteId = selectedUser?.dipendente?.id ?? null;
-      const nextDipendenteId = shouldLinkDipendente ? selectedDipendenteId : null;
-
-      if (previousDipendenteId && previousDipendenteId !== nextDipendenteId) {
-        await dipendentiApi.update(previousDipendenteId, { utente_id: null });
-      }
-
-      if (nextDipendenteId) {
-        await dipendentiApi.update(nextDipendenteId, { utente_id: savedUser.id });
-      }
-
       await loadUtenti();
-      await loadDipendenti();
       setUserModalOpen(false);
       setSelectedUser(null);
     } catch (err: any) {
@@ -178,7 +148,6 @@ export function AdministrationPage() {
         open={userModalOpen}
         mode={userModalMode}
         initialData={selectedUser}
-        dipendenti={dipendenti}
         onCancel={() => {
           setUserModalOpen(false);
           setSelectedUser(null);
