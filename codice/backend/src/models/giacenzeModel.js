@@ -48,7 +48,7 @@ const findAll = () =>
 
 
 const findAllFiltered = ({ search, magazzino, scorta, ubicazione, q_min, q_max } = {}) => {
-    const conditions = [];
+    const conditions = ['giacenze.quantita > 0'];
     const values = [];
     let i = 1;
 
