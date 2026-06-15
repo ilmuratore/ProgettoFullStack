@@ -1,9 +1,17 @@
-import { Search, Filter, ArrowUpDown, Package, MapPin } from 'lucide-react';
+import { Search, Package, MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import type { Spedizione, StatoSpedizione } from '../../../types/spedizioni';
 import { SortableHeader } from '../../../components/shared/SortableHeader';
 import { applySort, compareDate, compareNumber, compareText, toggleSort, type SortConfig } from '../../../utils/sorting';
+import { FilterButton, FilterPanel } from '../../../components/ui/FilterPanel';
+
+const STATO_OPTIONS: { value: StatoSpedizione; label: string }[] = [
+  { value: 'IN_PREPARAZIONE', label: 'In Preparazione' },
+  { value: 'SPEDITA', label: 'Spedita' },
+  { value: 'CONSEGNATA', label: 'Consegnata' },
+  { value: 'PROBLEMA', label: 'Problema' },
+];
 
 type SortKey = 'id' | 'tracking_number' | 'ordine_id' | 'cliente' | 'corriere' | 'created_at' | 'stato' | 'destinazione' | 'updated_at';
 
@@ -68,24 +76,32 @@ export function ShipmentsTable({ onShipmentClick, shipments, loading }: Shipment
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortConfig<SortKey> | null>(null);
   const [searchParams] = useSearchParams();
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<string>('tutti');
 
   const handleSort = (key: SortKey) => setSort((prev) => toggleSort(prev, key));
 
   useEffect(() => {
     const corriere = searchParams.get('corriere');
     if (corriere) setSearch(corriere);
+    const stato = searchParams.get('stato');
+    if (stato) setFilterStatus(stato);
   }, [searchParams]);
+
+  const activeFiltersCount = filterStatus !== 'tutti' ? 1 : 0;
+  const resetFilters = () => setFilterStatus('tutti');
 
   const filtered = applySort(
     shipments.filter((ship) => {
       const term = search.toLowerCase();
       const label = `SH-${String(ship.id).padStart(4, '0')}`.toLowerCase();
-      return (
+      const matchesSearch =
         label.includes(term) ||
         (ship.tracking_number ?? '').toLowerCase().includes(term) ||
         (ship.cliente ?? '').toLowerCase().includes(term) ||
-        (ship.corriere ?? '').toLowerCase().includes(term)
-      );
+        (ship.corriere ?? '').toLowerCase().includes(term);
+      const matchesStatus = filterStatus === 'tutti' || ship.stato === filterStatus;
+      return matchesSearch && matchesStatus;
     }),
     sort,
     compareShipmentsByKey
@@ -95,7 +111,26 @@ export function ShipmentsTable({ onShipmentClick, shipments, loading }: Shipment
     <div className="bg-white rounded-2xl border border-[#E5EAF2] p-6">
       <div className="flex items-center justify-between mb-5">
         <h3 className="font-semibold text-[#2D2D2D]">Monitoraggio Spedizioni</h3>
-        <div className="flex items-center gap-2">
+      </div>
+
+      <div className="mb-4">
+        <FilterPanel
+          open={filtersOpen}
+          activeFiltersCount={activeFiltersCount}
+          onToggleOpen={() => setFiltersOpen((o) => !o)}
+          onReset={resetFilters}
+          filterGroups={
+            <div>
+              <p className="text-sm font-medium text-[#2D2D2D] mb-2">Stato</p>
+              <div className="flex flex-wrap gap-2">
+                <FilterButton label="Tutti" active={filterStatus === 'tutti'} onClick={() => setFilterStatus('tutti')} />
+                {STATO_OPTIONS.map((opt) => (
+                  <FilterButton key={opt.value} label={opt.label} active={filterStatus === opt.value} onClick={() => setFilterStatus(opt.value)} />
+                ))}
+              </div>
+            </div>
+          }
+        >
           <div className="relative">
             <Search className="w-4 h-4 text-[#9CA3AF] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -106,14 +141,7 @@ export function ShipmentsTable({ onShipmentClick, shipments, loading }: Shipment
               className="h-9 pl-9 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 w-64"
             />
           </div>
-          <button className="h-9 px-3 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl hover:bg-white transition-colors flex items-center gap-2">
-            <Filter className="w-4 h-4 text-[#6B7280]" />
-            <span className="text-sm text-[#6B7280]">Filtri</span>
-          </button>
-          <button className="h-9 px-3 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl hover:bg-white transition-colors flex items-center gap-2">
-            <ArrowUpDown className="w-4 h-4 text-[#6B7280]" />
-          </button>
-        </div>
+        </FilterPanel>
       </div>
 
       <div className="overflow-x-auto">
@@ -136,7 +164,7 @@ export function ShipmentsTable({ onShipmentClick, shipments, loading }: Shipment
             {loading ? (
               <tr><td colSpan={10} className="py-8 text-center text-sm text-[#6B7280]">Caricamento spedizioni...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={10} className="py-8 text-center text-sm text-[#6B7280]">Nessuna spedizione disponibile.</td></tr>
+              <tr><td colSpan={10} className="py-8 text-center text-sm text-[#6B7280]">{search || activeFiltersCount > 0 ? 'Nessuna spedizione corrisponde alla ricerca' : 'Nessuna spedizione disponibile.'}</td></tr>
             ) : filtered.map((ship) => {
               const label = `SH-${String(ship.id).padStart(4, '0')}`;
               const ordineLabel = `SO-${String(ship.ordine_id).padStart(4, '0')}`;

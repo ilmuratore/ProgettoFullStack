@@ -1,11 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { Search, Filter } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { acquistiApi } from '../../../api/acquistiApi';
 import type { OrdineAcquistoLista, StatoOrdineAcquisto } from '../../../types/acquisti';
 import { SortableHeader } from '../../../components/shared/SortableHeader';
 import { applySort, compareDate, compareNumber, compareText, toggleSort, type SortConfig } from '../../../utils/sorting';
+import { FilterButton, FilterPanel } from '../../../components/ui/FilterPanel';
+
+const STATO_OPTIONS: { value: StatoOrdineAcquisto; label: string }[] = [
+  { value: 'BOZZA', label: 'Bozza' },
+  { value: 'INVIATO', label: 'Inviato' },
+  { value: 'CONFERMATO', label: 'Confermato' },
+  { value: 'IN_RICEZIONE', label: 'In Ricezione' },
+  { value: 'COMPLETATO', label: 'Completato' },
+  { value: 'ANNULLATO', label: 'Annullato' },
+];
 
 type SortKey = 'id' | 'fornitore' | 'created_at' | 'data_prevista' | 'importo_totale' | 'stato' | 'numero_righe' | 'utente';
 
@@ -68,24 +78,33 @@ export function PurchaseOrdersTable({ onOrderClick, reloadKey }: PurchaseOrdersT
   const [orders, setOrders] = useState<OrdineAcquistoLista[]>([]);
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<SortConfig<SortKey> | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<string>('tutti');
 
   const handleSort = (key: SortKey) => setSort((prev) => toggleSort(prev, key));
 
   useEffect(() => {
     const fornitore = searchParams.get('fornitore');
     if (fornitore) setSearch(fornitore);
+    const stato = searchParams.get('stato');
+    if (stato) setFilterStatus(stato);
   }, [searchParams]);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
     acquistiApi
-      .list()
+      .list({
+        ...(filterStatus !== 'tutti' ? { stato: filterStatus as StatoOrdineAcquisto } : {}),
+      })
       .then((data) => { if (alive) setOrders(Array.isArray(data) ? data : []); })
       .catch((err: any) => toast.error('Errore caricamento ordini', { description: err?.message }))
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [reloadKey]);
+  }, [filterStatus, reloadKey]);
+
+  const activeFiltersCount = filterStatus !== 'tutti' ? 1 : 0;
+  const resetFilters = () => setFilterStatus('tutti');
 
   const filtered = applySort(
     orders.filter(o =>
@@ -100,7 +119,26 @@ export function PurchaseOrdersTable({ onOrderClick, reloadKey }: PurchaseOrdersT
     <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
       <div className="flex items-center justify-between mb-6">
         <h3 className="font-semibold text-[#2D2D2D]">Ordini di Acquisto</h3>
-        <div className="flex items-center gap-3">
+      </div>
+
+      <div className="mb-4">
+        <FilterPanel
+          open={filtersOpen}
+          activeFiltersCount={activeFiltersCount}
+          onToggleOpen={() => setFiltersOpen((o) => !o)}
+          onReset={resetFilters}
+          filterGroups={
+            <div>
+              <p className="text-sm font-medium text-[#2D2D2D] mb-2">Stato</p>
+              <div className="flex flex-wrap gap-2">
+                <FilterButton label="Tutti" active={filterStatus === 'tutti'} onClick={() => setFilterStatus('tutti')} />
+                {STATO_OPTIONS.map((opt) => (
+                  <FilterButton key={opt.value} label={opt.label} active={filterStatus === opt.value} onClick={() => setFilterStatus(opt.value)} />
+                ))}
+              </div>
+            </div>
+          }
+        >
           <div className="relative">
             <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -111,11 +149,7 @@ export function PurchaseOrdersTable({ onOrderClick, reloadKey }: PurchaseOrdersT
               className="w-64 h-9 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
             />
           </div>
-          <button className="px-3 py-2 bg-[#F7F9FC] border border-[#E5EAF2] text-[#6B7280] rounded-lg hover:bg-white transition-all flex items-center gap-2 text-sm">
-            <Filter className="w-4 h-4" />
-            Filtri
-          </button>
-        </div>
+        </FilterPanel>
       </div>
 
       <div className="overflow-x-auto">
@@ -136,7 +170,7 @@ export function PurchaseOrdersTable({ onOrderClick, reloadKey }: PurchaseOrdersT
             {loading ? (
               <tr><td colSpan={8} className="py-8 text-center text-sm text-[#6B7280]">Caricamento ordini...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={8} className="py-8 text-center text-sm text-[#6B7280]">Nessun ordine di acquisto.</td></tr>
+              <tr><td colSpan={8} className="py-8 text-center text-sm text-[#6B7280]">{search || activeFiltersCount > 0 ? 'Nessun ordine corrisponde alla ricerca' : 'Nessun ordine di acquisto.'}</td></tr>
             ) : filtered.map((order, index) => {
               const badge = getStatusBadge(order.stato);
               return (

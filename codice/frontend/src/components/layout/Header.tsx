@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, ChevronRight, LogOut, User, BellRing, ChevronDown } from 'lucide-react';
+import { Search, ChevronRight, LogOut, User, BellRing, ChevronDown, HelpCircle } from 'lucide-react';
 import { GlobalSearch } from './GlobalSearch';
 import { NotificationsPanel } from './NotificationsPanel';
 import type { UiUser as AuthUser } from '../../types/auth';
@@ -27,6 +27,7 @@ interface HeaderProps {
 const dropdownItems = [
   { icon: User,     label: 'Il Mio Profilo', page: 'profilo', color: 'text-[#3B82F6]', bg: 'bg-[#DBEAFE]' },
   { icon: BellRing, label: 'Notifiche',       page: null,      color: 'text-[#8B5CF6]', bg: 'bg-[#EDE9FE]' },
+  { icon: HelpCircle, label: 'Supporto',      page: 'supporto', color: 'text-[#0369A1]', bg: 'bg-[#E0F2FE]' },
 ];
 
 export function Header({ onNavigate, sidebarCollapsed = false, user, onLogout }: HeaderProps) {

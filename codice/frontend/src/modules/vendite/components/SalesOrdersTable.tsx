@@ -1,11 +1,25 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { Search, Filter, ChevronDown } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { ordiniApi } from '../../../api/ordiniApi';
 import type { OrdineVendita, StatoOrdineVendita, StatoPickingVendita } from '../../../types/ordini';
 import { SortableHeader } from '../../../components/shared/SortableHeader';
 import { applySort, compareDate, compareNumber, compareText, toggleSort, type SortConfig } from '../../../utils/sorting';
+import { FilterButton, FilterPanel } from '../../../components/ui/FilterPanel';
+
+const STATO_ORDINE_OPTIONS: { value: StatoOrdineVendita; label: string }[] = [
+  { value: 'BOZZA', label: 'Bozza' },
+  { value: 'CONFERMATO', label: 'Confermato' },
+  { value: 'SPEDITO', label: 'Spedito' },
+  { value: 'ANNULLATO', label: 'Annullato' },
+];
+
+const STATO_PICKING_OPTIONS: { value: StatoPickingVendita; label: string }[] = [
+  { value: 'NON_AVVIATO', label: 'Non Avviato' },
+  { value: 'IN_PICKING', label: 'In Picking' },
+  { value: 'PICKING_COMPLETATO', label: 'Completato' },
+];
 
 type SortKey = 'id' | 'cliente' | 'data_ordine' | 'destinazione' | 'importo_totale' | 'stato' | 'stato_picking' | 'utente' | 'updated_at';
 
@@ -73,12 +87,20 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
   const [orders, setOrders] = useState<OrdineVendita[]>([]);
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<SortConfig<SortKey> | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const handleSort = (key: SortKey) => setSort((prev) => toggleSort(prev, key));
+
+  const activeFiltersCount = (filterStatus !== 'tutti' ? 1 : 0) + (filterPicking !== 'tutti' ? 1 : 0);
+  const resetFilters = () => { setFilterStatus('tutti'); setFilterPicking('tutti'); };
 
   useEffect(() => {
     const cliente = searchParams.get('cliente');
     if (cliente) setSearch(cliente);
+    const stato = searchParams.get('stato');
+    if (stato) setFilterStatus(stato);
+    const picking = searchParams.get('picking');
+    if (picking) setFilterPicking(picking);
   }, [searchParams]);
 
   useEffect(() => {
@@ -111,7 +133,37 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
     <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
       <div className="flex items-center justify-between mb-5">
         <h3 className="font-semibold text-[#2D2D2D]">Ordini di Vendita</h3>
-        <div className="flex items-center gap-3">
+      </div>
+
+      <div className="mb-4">
+        <FilterPanel
+          open={filtersOpen}
+          activeFiltersCount={activeFiltersCount}
+          onToggleOpen={() => setFiltersOpen((o) => !o)}
+          onReset={resetFilters}
+          filterGroups={
+            <>
+              <div>
+                <p className="text-sm font-medium text-[#2D2D2D] mb-2">Stato Ordine</p>
+                <div className="flex flex-wrap gap-2">
+                  <FilterButton label="Tutti" active={filterStatus === 'tutti'} onClick={() => setFilterStatus('tutti')} />
+                  {STATO_ORDINE_OPTIONS.map((opt) => (
+                    <FilterButton key={opt.value} label={opt.label} active={filterStatus === opt.value} onClick={() => setFilterStatus(opt.value)} />
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-[#2D2D2D] mb-2">Stato Picking</p>
+                <div className="flex flex-wrap gap-2">
+                  <FilterButton label="Tutti" active={filterPicking === 'tutti'} onClick={() => setFilterPicking('tutti')} />
+                  {STATO_PICKING_OPTIONS.map((opt) => (
+                    <FilterButton key={opt.value} label={opt.label} active={filterPicking === opt.value} onClick={() => setFilterPicking(opt.value)} />
+                  ))}
+                </div>
+              </div>
+            </>
+          }
+        >
           <div className="relative">
             <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -119,41 +171,10 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
               placeholder="Cerca ordine o cliente..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-56 h-9 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
+              className="w-full h-9 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
             />
           </div>
-          <div className="relative">
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="h-9 pl-3 pr-8 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 text-sm text-[#6B7280] appearance-none cursor-pointer"
-            >
-              <option value="tutti">Tutti gli stati</option>
-              <option value="BOZZA">Bozza</option>
-              <option value="CONFERMATO">Confermato</option>
-              <option value="SPEDITO">Spedito</option>
-              <option value="ANNULLATO">Annullato</option>
-            </select>
-            <ChevronDown className="w-3 h-3 text-[#6B7280] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-          <div className="relative">
-            <select
-              value={filterPicking}
-              onChange={(e) => setFilterPicking(e.target.value)}
-              className="h-9 pl-3 pr-8 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 text-sm text-[#6B7280] appearance-none cursor-pointer"
-            >
-              <option value="tutti">Tutti i picking</option>
-              <option value="NON_AVVIATO">Non Avviato</option>
-              <option value="IN_PICKING">In Picking</option>
-              <option value="PICKING_COMPLETATO">Completato</option>
-            </select>
-            <ChevronDown className="w-3 h-3 text-[#6B7280] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-          <div className="px-3 py-2 bg-[#F7F9FC] border border-[#E5EAF2] text-[#6B7280] rounded-lg flex items-center gap-2 text-sm">
-            <Filter className="w-4 h-4" />
-            Filtri
-          </div>
-        </div>
+        </FilterPanel>
       </div>
 
       <div className="overflow-x-auto">
@@ -176,7 +197,7 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
             {loading ? (
               <tr><td colSpan={10} className="py-8 text-center text-sm text-[#6B7280]">Caricamento ordini...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={10} className="py-8 text-center text-sm text-[#6B7280]">Nessun ordine di vendita.</td></tr>
+              <tr><td colSpan={10} className="py-8 text-center text-sm text-[#6B7280]">{search || activeFiltersCount > 0 ? 'Nessun ordine corrisponde alla ricerca' : 'Nessun ordine di vendita.'}</td></tr>
             ) : filtered.map((order) => {
               const orderBadge = getOrderStatusBadge(order.stato);
               const pickingBadge = getPickingBadge(order.stato_picking);

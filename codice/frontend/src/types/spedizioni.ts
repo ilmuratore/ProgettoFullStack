@@ -42,14 +42,12 @@ export interface Ddt {
 }
 
 export interface DdtCreateRequest {
-  numero_ddt: string;
   data_ddt?: string;
   trasportatore?: string;
   note?: string;
 }
 
 export interface DdtUpdateRequest {
-  numero_ddt?: string;
   data_ddt?: string;
   trasportatore?: string;
   note?: string;

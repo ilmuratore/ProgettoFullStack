@@ -1,28 +1,40 @@
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { useNavigate } from 'react-router';
 import { Truck, AlertCircle, Clock } from 'lucide-react';
+import type { Spedizione } from '../../../types/spedizioni';
+import type { Corriere } from '../../../types/corrieri';
 
-const fleetData = [
-  { name: 'In Preparazione', value: 28, color: '#9CA3AF' },
-  { name: 'Spedita', value: 124, color: '#3B82F6' },
-  { name: 'Consegnata', value: 1248, color: '#22C55E' },
-  { name: 'Problema', value: 6, color: '#EF4444' },
+interface LogisticsWidgetsProps {
+  shipments: Spedizione[];
+  couriers: Corriere[];
+  onShipmentClick: (id: number) => void;
+}
+
+const FLEET_STATUSES: { key: Spedizione['stato']; name: string; color: string }[] = [
+  { key: 'IN_PREPARAZIONE', name: 'In Preparazione', color: '#9CA3AF' },
+  { key: 'SPEDITA', name: 'Spedita', color: '#3B82F6' },
+  { key: 'CONSEGNATA', name: 'Consegnata', color: '#22C55E' },
+  { key: 'PROBLEMA', name: 'Problema', color: '#EF4444' },
 ];
 
-const corrieri = [
-  { nome: 'BRT Express', consegne: 42, stato: 'online' },
-  { nome: 'SDA', consegne: 38, stato: 'online' },
-  { nome: 'GLS Italy', consegne: 27, stato: 'online' },
-  { nome: 'TNT', consegne: 18, stato: 'online' },
-  { nome: 'Bartolini', consegne: 15, stato: 'offline' },
-];
+export function LogisticsWidgets({ shipments, couriers, onShipmentClick }: LogisticsWidgetsProps) {
+  const navigate = useNavigate();
 
-const alerts = [
-  { tipo: 'Ritardo Consegna', descrizione: 'SH-2026-0838 - Ritardo 2h', urgenza: 'high' },
-  { tipo: 'Tracking Non Aggiornato', descrizione: 'SH-2026-0835 - 12h senza update', urgenza: 'medium' },
-  { tipo: 'Consegna Urgente', descrizione: 'SH-2026-0842 - Priorità Alta', urgenza: 'high' },
-];
+  const fleetData = FLEET_STATUSES.map((s) => ({
+    name: s.name,
+    color: s.color,
+    value: shipments.filter((sp) => sp.stato === s.key).length,
+  }));
 
-export function LogisticsWidgets() {
+  const corrieriData = couriers.map((corriere) => ({
+    id: corriere.id,
+    nome: corriere.nome,
+    consegne: shipments.filter((sp) => sp.corriere_id === corriere.id).length,
+    attivo: corriere.attivo,
+  }));
+
+  const problemShipments = shipments.filter((sp) => sp.stato === 'PROBLEMA');
+
   return (
     <div className="space-y-6">
       {/* Stato Flotta Consegne */}
@@ -64,17 +76,23 @@ export function LogisticsWidgets() {
       <div className="bg-white rounded-2xl border border-[#E5EAF2] p-6">
         <h3 className="font-semibold text-[#2D2D2D] mb-4">Corrieri Attivi</h3>
         <div className="space-y-3">
-          {corrieri.map((corriere, idx) => (
-            <div key={idx} className="flex items-center justify-between p-3 bg-[#F7F9FC] rounded-xl hover:bg-[#F0FDF7] transition-colors">
+          {corrieriData.length === 0 ? (
+            <p className="text-sm text-[#9CA3AF]">Nessun corriere registrato.</p>
+          ) : corrieriData.map((corriere) => (
+            <button
+              key={corriere.id}
+              onClick={() => navigate('/anagrafiche?tab=corrieri')}
+              className="w-full flex items-center justify-between p-3 bg-[#F7F9FC] rounded-xl hover:bg-[#F0FDF7] transition-colors text-left"
+            >
               <div className="flex items-center gap-3">
                 <Truck className="w-4 h-4 text-[#6B7280]" />
                 <div>
                   <p className="text-sm font-medium text-[#2D2D2D]">{corriere.nome}</p>
-                  <p className="text-xs text-[#9CA3AF]">{corriere.consegne} consegne</p>
+                  <p className="text-xs text-[#9CA3AF]">{corriere.consegne} spedizioni</p>
                 </div>
               </div>
-              <div className={`w-2 h-2 rounded-full ${corriere.stato === 'online' ? 'bg-[#22C55E]' : 'bg-[#9CA3AF]'}`} />
-            </div>
+              <div className={`w-2 h-2 rounded-full ${corriere.attivo ? 'bg-[#22C55E]' : 'bg-[#9CA3AF]'}`} />
+            </button>
           ))}
         </div>
       </div>
@@ -83,16 +101,24 @@ export function LogisticsWidgets() {
       <div className="bg-white rounded-2xl border border-[#E5EAF2] p-6">
         <h3 className="font-semibold text-[#2D2D2D] mb-4">Alert Logistici</h3>
         <div className="space-y-3">
-          {alerts.map((alert, idx) => (
-            <div key={idx} className="p-3 bg-[#FEF3C7] border border-[#FCD34D] rounded-xl">
+          {problemShipments.length === 0 ? (
+            <p className="text-sm text-[#9CA3AF]">Nessuna spedizione in stato di problema.</p>
+          ) : problemShipments.map((sp) => (
+            <button
+              key={sp.id}
+              onClick={() => onShipmentClick(sp.id)}
+              className="w-full p-3 bg-[#FEF3C7] border border-[#FCD34D] rounded-xl text-left hover:bg-[#FDE68A] transition-colors"
+            >
               <div className="flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-[#D97706] mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-xs font-medium text-[#92400E]">{alert.tipo}</p>
-                  <p className="text-xs text-[#B45309] mt-0.5">{alert.descrizione}</p>
+                  <p className="text-xs font-medium text-[#92400E]">
+                    SH-{String(sp.id).padStart(4, '0')} — {sp.cliente}
+                  </p>
+                  <p className="text-xs text-[#B45309] mt-0.5">{sp.destinazione ?? 'Destinazione non disponibile'}</p>
                 </div>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -107,10 +133,10 @@ export function LogisticsWidgets() {
           </div>
           <div className="flex items-center gap-2">
             <Clock className="w-3.5 h-3.5 text-[#16A34A]" />
-            <span className="text-xs text-[#16A34A]">08:42:18</span>
+            <span className="text-xs text-[#16A34A]">{new Date().toLocaleTimeString('it-IT')}</span>
           </div>
         </div>
-        <p className="text-xs text-[#9CA3AF] mt-3">Ultimo aggiornamento: 08:42:18</p>
+        <p className="text-xs text-[#9CA3AF] mt-3">Ultimo aggiornamento: {new Date().toLocaleTimeString('it-IT')}</p>
       </div>
     </div>
   );

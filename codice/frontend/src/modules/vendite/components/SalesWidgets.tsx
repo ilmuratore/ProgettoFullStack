@@ -1,25 +1,12 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { useNavigate } from 'react-router';
 import { AlertTriangle, Clock, Truck, XCircle, RefreshCw } from 'lucide-react';
+import type { OrdineVendita } from '../../../types/ordini';
 
-const donutData = [
-  { name: 'Bozza', value: 18, color: '#9CA3AF' },
-  { name: 'Confermato', value: 98, color: '#3B82F6' },
-  { name: 'Spedito', value: 87, color: '#17E88F' },
-  { name: 'Annullato', value: 12, color: '#EF4444' },
-];
-
-const pickingInProgress = [
-  { id: 'SO-2026-003', operatore: 'S. Romano', percentuale: 75 },
-  { id: 'SO-2026-006', operatore: 'F. Marino', percentuale: 40 },
-  { id: 'SO-2026-009', operatore: 'G. Gallo', percentuale: 95 },
-];
-
-const alerts = [
-  { icon: AlertTriangle, color: 'text-[#EF4444]', bg: 'bg-[#FEE2E2]', label: 'Ordini bloccati', count: 3 },
-  { icon: Clock, color: 'text-[#F59E0B]', bg: 'bg-[#FEF3C7]', label: 'Picking in ritardo', count: 5 },
-  { icon: Truck, color: 'text-[#8B5CF6]', bg: 'bg-[#EDE9FE]', label: 'Problemi spedizione', count: 2 },
-  { icon: XCircle, color: 'text-[#6B7280]', bg: 'bg-[#F3F4F6]', label: 'Annullati oggi', count: 1 },
-];
+interface SalesWidgetsProps {
+  orders: OrdineVendita[];
+  onOrderClick: (id: number) => void;
+}
 
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
@@ -33,8 +20,30 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-export function SalesWidgets() {
+export function SalesWidgets({ orders, onOrderClick }: SalesWidgetsProps) {
+  const navigate = useNavigate();
+
+  const bozza = orders.filter((o) => o.stato === 'BOZZA');
+  const confermati = orders.filter((o) => o.stato === 'CONFERMATO');
+  const spediti = orders.filter((o) => o.stato === 'SPEDITO');
+  const annullati = orders.filter((o) => o.stato === 'ANNULLATO');
+  const inPicking = orders.filter((o) => o.stato_picking === 'IN_PICKING');
+  const prontiSpedizione = orders.filter((o) => o.stato === 'CONFERMATO' && o.stato_picking === 'PICKING_COMPLETATO');
+
+  const donutData = [
+    { name: 'Bozza', value: bozza.length, color: '#9CA3AF' },
+    { name: 'Confermato', value: confermati.length, color: '#3B82F6' },
+    { name: 'Spedito', value: spediti.length, color: '#17E88F' },
+    { name: 'Annullato', value: annullati.length, color: '#EF4444' },
+  ];
   const total = donutData.reduce((sum, d) => sum + d.value, 0);
+
+  const alerts = [
+    { icon: AlertTriangle, color: 'text-[#EF4444]', bg: 'bg-[#FEE2E2]', label: 'Ordini in bozza', count: bozza.length, onClick: () => navigate('/vendite?stato=BOZZA') },
+    { icon: Clock, color: 'text-[#F59E0B]', bg: 'bg-[#FEF3C7]', label: 'In picking', count: inPicking.length, onClick: () => navigate('/vendite?picking=IN_PICKING') },
+    { icon: Truck, color: 'text-[#8B5CF6]', bg: 'bg-[#EDE9FE]', label: 'Pronti per spedizione', count: prontiSpedizione.length, onClick: () => navigate('/vendite?stato=CONFERMATO&picking=PICKING_COMPLETATO') },
+    { icon: XCircle, color: 'text-[#6B7280]', bg: 'bg-[#F3F4F6]', label: 'Annullati', count: annullati.length, onClick: () => navigate('/vendite?stato=ANNULLATO') },
+  ];
 
   return (
     <div className="space-y-6">
@@ -83,25 +92,22 @@ export function SalesWidgets() {
       {/* Picking in Corso */}
       <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
         <h3 className="font-semibold text-[#2D2D2D] mb-5">Picking in Corso</h3>
-        <div className="space-y-4">
-          {pickingInProgress.map((p, i) => (
-            <div key={i}>
-              <div className="flex items-center justify-between mb-1.5">
-                <div>
-                  <span className="text-sm font-medium text-[#2D2D2D]">{p.id}</span>
-                  <span className="text-xs text-[#9CA3AF] ml-2">{p.operatore}</span>
-                </div>
-                <span className="text-xs font-semibold text-[#17E88F]">{p.percentuale}%</span>
-              </div>
-              <div className="w-full bg-[#F3F4F6] rounded-full h-2">
-                <div
-                  className="h-2 rounded-full bg-gradient-to-r from-[#17E88F] to-[#0FA67A] transition-all duration-700"
-                  style={{ width: `${p.percentuale}%` }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
+        {inPicking.length === 0 ? (
+          <p className="text-sm text-[#9CA3AF]">Nessun ordine in picking.</p>
+        ) : (
+          <div className="space-y-2">
+            {inPicking.map((order) => (
+              <button
+                key={order.id}
+                onClick={() => onOrderClick(order.id)}
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-[#F7F9FC] hover:bg-[#F0FDF7] transition-colors text-left"
+              >
+                <span className="text-sm font-medium text-[#2D2D2D]">SO-{String(order.id).padStart(4, '0')}</span>
+                <span className="text-xs text-[#9CA3AF] truncate ml-2">{order.cliente ?? '-'}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Alert Operativi */}
@@ -111,7 +117,11 @@ export function SalesWidgets() {
           {alerts.map((alert, i) => {
             const Icon = alert.icon;
             return (
-              <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-[#F7F9FC] hover:bg-[#F0FDF7] transition-colors cursor-pointer">
+              <button
+                key={i}
+                onClick={alert.onClick}
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-[#F7F9FC] hover:bg-[#F0FDF7] transition-colors text-left"
+              >
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 ${alert.bg} rounded-lg flex items-center justify-center`}>
                     <Icon className={`w-4 h-4 ${alert.color}`} />
@@ -119,7 +129,7 @@ export function SalesWidgets() {
                   <span className="text-sm text-[#2D2D2D]">{alert.label}</span>
                 </div>
                 <span className={`text-sm font-semibold ${alert.color}`}>{alert.count}</span>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -133,7 +143,7 @@ export function SalesWidgets() {
           </div>
           <div>
             <div className="text-xs font-medium text-[#2D2D2D]">ERP Sync</div>
-            <div className="text-xs text-[#6B7280]">08:41:32 — Tutti i dati aggiornati</div>
+            <div className="text-xs text-[#6B7280]">{new Date().toLocaleTimeString('it-IT')} — Tutti i dati aggiornati</div>
           </div>
           <div className="ml-auto w-2 h-2 bg-[#22C55E] rounded-full animate-pulse" />
         </div>

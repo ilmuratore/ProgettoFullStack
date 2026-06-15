@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router';
 import {
   Search, Plus, Download, Upload, MoreVertical,
   Edit, Trash2, Mail, Phone, MapPin, Building2,
@@ -28,6 +29,8 @@ import { SortableHeader } from '../../components/shared/SortableHeader';
 import { applySort, compareBoolean, compareDate, compareText, toggleSort, type SortConfig } from '../../utils/sorting';
 
 type TabType = 'fornitori' | 'clienti' | 'corrieri' | 'dipendenti';
+
+const TAB_IDS: TabType[] = ['fornitori', 'clienti', 'corrieri', 'dipendenti'];
 
 type FornitoriSortKey = 'ragione_sociale' | 'piva' | 'email' | 'indirizzo' | 'source' | 'attivo';
 type ClientiSortKey = 'ragione_sociale' | 'piva_cf' | 'email' | 'source' | 'attivo';
@@ -106,8 +109,11 @@ const formatDataBreve = (iso: string | null) =>
 
 export function AnagrafichePage() {
   const { hasPermesso } = useAuthStore();
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const initialTab = TAB_IDS.includes(requestedTab as TabType) ? (requestedTab as TabType) : 'fornitori';
 
-  const [activeTab, setActiveTab] = useState<TabType>('fornitori');
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
 
   const [filtersOpen, setFiltersOpen] = useState(false);
