@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Plus, Truck, FileText, BarChart2, Download, Eye, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { LogisticsKPIs } from '../logistica/components/LogisticsKPIs';
@@ -11,6 +11,7 @@ import { NewShipmentModal } from '../logistica/components/NewShipmentModal';
 import { PageTabBar, type TabConfig } from '../../components/ui/PageTabBar';
 import { spedizioniApi } from '../../api/spedizioniApi';
 import { corrieriApi } from '../../api/corrieriApi';
+import { useAuthStore } from '../../store/authStore';
 import type { Spedizione, Ddt } from '../../types/spedizioni';
 import type { Corriere } from '../../types/corrieri';
 import type { LogisticsKpiItem } from './components/LogisticsKPIs';
@@ -68,9 +69,24 @@ const shippingStateBadge = (stato: string) => {
 };
 
 export function LogisticsPage() {
+  const { hasPermesso } = useAuthStore();
+  const canWriteShipments = hasPermesso('spedizioni:write');
+  const accessibleTabs = useMemo(
+    () => tabs
+      .map((tab) => tab.id as LogisticsTab)
+      .filter((tab) => {
+        switch (tab) {
+          case 'spedizioni': return hasPermesso('spedizioni:read');
+          case 'ddt': return hasPermesso('spedizioni:read');
+          case 'kpi': return hasPermesso('spedizioni:read');
+        }
+      }),
+    [hasPermesso]
+  );
+  const initialTab = accessibleTabs[0] ?? 'spedizioni';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedShipmentId, setSelectedShipmentId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<LogisticsTab>('spedizioni');
+  const [activeTab, setActiveTab] = useState<LogisticsTab>(initialTab);
   const [shipments, setShipments] = useState<Spedizione[]>([]);
   const [loadingShipments, setLoadingShipments] = useState(true);
   const [couriers, setCouriers] = useState<Corriere[]>([]);
@@ -78,6 +94,10 @@ export function LogisticsPage() {
   const [loadingDdts, setLoadingDdts] = useState(false);
   const [exportingDdt, setExportingDdt] = useState(false);
   const [ddtSort, setDdtSort] = useState<SortConfig<DdtSortKey> | null>(null);
+
+  useEffect(() => {
+    setActiveTab((prev) => (prev === initialTab ? prev : initialTab));
+  }, [initialTab]);
 
   const handleDdtSort = (key: DdtSortKey) => setDdtSort((prev) => toggleSort(prev, key));
 
@@ -126,19 +146,33 @@ export function LogisticsPage() {
 
   const loadLogisticsData = () => {
     setLoadingShipments(true);
-    Promise.all([
+    Promise.allSettled([
       spedizioniApi.list(),
       corrieriApi.list(),
     ])
-      .then(([shipmentsData, couriersData]) => {
-        setShipments(Array.isArray(shipmentsData) ? shipmentsData : []);
-        setCouriers(Array.isArray(couriersData) ? couriersData : []);
-      })
-      .catch((err: any) => {
-        setShipments([]);
-        setCouriers([]);
-        if (err?.status !== 404) {
-          toast.error('Errore caricamento logistica', { description: err?.message });
+      .then(([shipmentsResult, couriersResult]) => {
+        const shipmentsData = shipmentsResult.status === 'fulfilled' && Array.isArray(shipmentsResult.value)
+          ? shipmentsResult.value
+          : [];
+        const couriersData = couriersResult.status === 'fulfilled' && Array.isArray(couriersResult.value)
+          ? couriersResult.value
+          : [];
+
+        setShipments(shipmentsData);
+        setCouriers(couriersData);
+
+        if (shipmentsResult.status === 'rejected') {
+          const err: any = shipmentsResult.reason;
+          if (err?.status !== 404) {
+            toast.error('Errore caricamento spedizioni', { description: err?.message });
+          }
+        }
+
+        if (couriersResult.status === 'rejected') {
+          const err: any = couriersResult.reason;
+          if (err?.status !== 403 && err?.status !== 404) {
+            toast.error('Errore caricamento corrieri', { description: err?.message });
+          }
         }
       })
       .finally(() => {
@@ -322,7 +356,7 @@ export function LogisticsPage() {
           <h1 className="text-2xl font-semibold text-[#2D2D2D]">Logistica</h1>
           <p className="text-sm text-[#6B7280] mt-1">Gestione spedizioni, DDT e KPI logistici</p>
         </div>
-        {activeTab === 'spedizioni' && (
+        {activeTab === 'spedizioni' && canWriteShipments && (
           <button
             onClick={() => setIsModalOpen(true)}
             className="px-4 py-2 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2 font-medium"
@@ -334,7 +368,11 @@ export function LogisticsPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-[#E5EAF2] overflow-hidden">
-        <PageTabBar tabs={tabs} activeTab={activeTab} onTabChange={(id) => setActiveTab(id as LogisticsTab)} />
+        <PageTabBar
+          tabs={tabs.map((tab) => ({ ...tab, disabled: !accessibleTabs.includes(tab.id as LogisticsTab) }))}
+          activeTab={activeTab}
+          onTabChange={(id) => setActiveTab(id as LogisticsTab)}
+        />
 
         <div className="p-6 space-y-6">
           {activeTab === 'spedizioni' && (

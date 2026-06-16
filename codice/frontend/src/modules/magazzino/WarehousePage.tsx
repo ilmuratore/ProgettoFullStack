@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 import {
   Plus, GitMerge, Package, ArrowLeftRight,
   Tag, PackageCheck, Download, Upload, ListChecks, MapPin, CheckSquare, Clock, X, ClipboardList, ChevronRight, ArrowRight,
@@ -145,10 +145,28 @@ const EMPTY_UBIC: UbicazioneFormState = { corsia: '', scaffale: '', temperatura_
 const WAREHOUSE_TAB_IDS: WarehouseTab[] = ['prodotti', 'categorie', 'struttura', 'giacenze', 'movimenti', 'picking', 'ricezioni'];
 
 export function WarehousePage() {
+  const navigate = useNavigate();
   const { hasPermesso } = useAuthStore();
   const [searchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
-  const initialTab = WAREHOUSE_TAB_IDS.includes(requestedTab as WarehouseTab) ? (requestedTab as WarehouseTab) : 'prodotti';
+  const accessibleTabs = useMemo(
+    () => WAREHOUSE_TAB_IDS.filter((tab) => {
+      switch (tab) {
+        case 'prodotti': return hasPermesso('prodotti:read');
+        case 'categorie': return hasPermesso('prodotti:read');
+        case 'struttura': return hasPermesso('magazzino:read');
+        case 'giacenze': return hasPermesso('giacenze:read');
+        case 'movimenti': return hasPermesso('giacenze:read');
+        case 'picking': return hasPermesso('ordini:read');
+        case 'ricezioni': return hasPermesso('acquisti:read');
+      }
+    }),
+    [hasPermesso]
+  );
+  const fallbackTab = accessibleTabs[0] ?? 'prodotti';
+  const initialTab = WAREHOUSE_TAB_IDS.includes(requestedTab as WarehouseTab) && accessibleTabs.includes(requestedTab as WarehouseTab)
+    ? (requestedTab as WarehouseTab)
+    : fallbackTab;
   const [activeTab, setActiveTab] = useState<WarehouseTab>(initialTab);
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
   const [isRicezioneModalOpen, setIsRicezioneModalOpen] = useState(false);
@@ -310,12 +328,19 @@ export function WarehousePage() {
     if (fetchedTabs.current.has(tab)) return;
     fetchedTabs.current.add(tab);
     if (tab === 'struttura') fetchMagazzini();
-    if (tab === 'prodotti') { fetchProdotti(); fetchCategorie(); } 
+    if (tab === 'prodotti') { fetchProdotti(); fetchCategorie(); }
     if (tab === 'categorie') fetchCategorie();
   }, [fetchMagazzini, fetchProdotti, fetchCategorie]);
 
   useEffect(() => { fetchForTab('struttura'); }, []);
   useEffect(() => { fetchForTab(activeTab); }, [activeTab, fetchForTab]);
+  useEffect(() => {
+    setActiveTab((prev) => (prev === initialTab ? prev : initialTab));
+  }, [initialTab]);
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab !== initialTab) navigate(`/magazzino?tab=${initialTab}`, { replace: true });
+  }, [initialTab, navigate, searchParams]);
   useEffect(() => {
     if (activeTab !== 'picking') return;
     void fetchPickingOrders();
@@ -350,7 +375,7 @@ export function WarehousePage() {
           action: () => { setCategoryModalMode('create'); setSelectedCategory(null); setInitialParentCategoryId(undefined); setCategoryModalOpen(true); }
         };
       case 'giacenze':
-        return { label: 'Aggiorna Giacenze', show: false, action: () => {} };
+        return { label: 'Aggiorna Giacenze', show: false, action: () => { } };
       case 'movimenti':
         return { label: 'Nuovo Movimento', show: true, action: () => setIsMovementModalOpen(true) };
       case 'picking':
@@ -560,12 +585,12 @@ export function WarehousePage() {
       const updated = await magazzinoApi.toggleUbicazione(ubicId);
       setMagazzini(prev => prev.map(m => m.id === magId
         ? {
-    ...m,
-    ubicazioni: (Array.isArray(m.ubicazioni) ? m.ubicazioni : []).map(u =>
-      u.id === ubicId ? { ...u, ...updated } : u
-    )
-  }
-: m
+          ...m,
+          ubicazioni: (Array.isArray(m.ubicazioni) ? m.ubicazioni : []).map(u =>
+            u.id === ubicId ? { ...u, ...updated } : u
+          )
+        }
+        : m
       ));
       toast.success(`Ubicazione ${updated.attivo ? 'attivata' : 'disattivata'}`);
     } catch (err: any) { toast.error('Operazione fallita', { description: err?.message }); }
@@ -664,22 +689,22 @@ export function WarehousePage() {
         const created = await magazzinoApi.createUbicazione(selectedMagId, payload);
         setMagazzini(prev => prev.map(m => m.id === selectedMagId
           ? {
-    ...m,
-    ubicazioni: [...(Array.isArray(m.ubicazioni) ? m.ubicazioni : []), created]
-  }
-: m
+            ...m,
+            ubicazioni: [...(Array.isArray(m.ubicazioni) ? m.ubicazioni : []), created]
+          }
+          : m
         ));
         toast.success('Ubicazione creata');
       } else if (ubicModalMode === 'edit' && selectedUbic) {
         const updated = await magazzinoApi.updateTemperatura(selectedUbic.id, { temperatura_controllata: ubicForm.temperatura_controllata });
         setMagazzini(prev => prev.map(m => m.id === selectedUbic.magazzino_id
           ? {
-    ...m,
-    ubicazioni: (Array.isArray(m.ubicazioni) ? m.ubicazioni : []).map(u =>
-      u.id === selectedUbic.id ? { ...u, ...updated } : u
-    )
-  }
-: m
+            ...m,
+            ubicazioni: (Array.isArray(m.ubicazioni) ? m.ubicazioni : []).map(u =>
+              u.id === selectedUbic.id ? { ...u, ...updated } : u
+            )
+          }
+          : m
         ));
         toast.success('Ubicazione aggiornata');
       }
@@ -845,7 +870,11 @@ export function WarehousePage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-[#E5EAF2] overflow-hidden">
-        <PageTabBar tabs={tabs} activeTab={activeTab} onTabChange={(id) => setActiveTab(id as WarehouseTab)} />
+        <PageTabBar
+          tabs={tabs.map((tab) => ({ ...tab, disabled: !accessibleTabs.includes(tab.id as WarehouseTab) }))}
+          activeTab={activeTab}
+          onTabChange={(id) => setActiveTab(id as WarehouseTab)}
+        />
 
         <div className="p-6 space-y-6">
 
@@ -959,76 +988,75 @@ export function WarehousePage() {
                   )}
 
                   {activePickingOrders.map((pick) => {
-                const completate = pick.righe.filter(r => r.completato).length;
-                const pct = pick.righe.length > 0 ? Math.round((completate / pick.righe.length) * 100) : 0;
-                const isExpanded = expandedPicking === pick.id;
-                return (
-                  <div key={pick.id} className="border border-[#E5EAF2] rounded-xl overflow-hidden">
-                    <button
-                      onClick={() => setExpandedPicking(isExpanded ? null : pick.id)}
-                      className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#F7F9FC] transition-colors"
-                    >
-                      <div className="flex items-center gap-4">
-                        <span className="text-sm font-semibold text-[#17E88F]">{pick.id}</span>
-                        <span className="text-sm text-[#374151]">{pick.ordine}</span>
-                        <span className="text-sm text-[#6B7280]">{pick.cliente}</span>
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          pick.stato === 'PICKING_COMPLETATO'
-                            ? 'bg-[#DCFCE7] text-[#16A34A]'
-                            : 'bg-[#FEF3C7] text-[#D97706]'
-                        }`}>
-                          {pick.stato === 'PICKING_COMPLETATO' ? <CheckSquare className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                          {getPickingLabel(pick.stato)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-24 bg-[#E5EAF2] rounded-full h-1.5">
-                            <div className={`h-1.5 rounded-full ${pct === 100 ? 'bg-[#16A34A]' : 'bg-[#D97706]'}`} style={{ width: `${pct}%` }} />
+                    const completate = pick.righe.filter(r => r.completato).length;
+                    const pct = pick.righe.length > 0 ? Math.round((completate / pick.righe.length) * 100) : 0;
+                    const isExpanded = expandedPicking === pick.id;
+                    return (
+                      <div key={pick.id} className="border border-[#E5EAF2] rounded-xl overflow-hidden">
+                        <button
+                          onClick={() => setExpandedPicking(isExpanded ? null : pick.id)}
+                          className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#F7F9FC] transition-colors"
+                        >
+                          <div className="flex items-center gap-4">
+                            <span className="text-sm font-semibold text-[#17E88F]">{pick.id}</span>
+                            <span className="text-sm text-[#374151]">{pick.ordine}</span>
+                            <span className="text-sm text-[#6B7280]">{pick.cliente}</span>
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${pick.stato === 'PICKING_COMPLETATO'
+                                ? 'bg-[#DCFCE7] text-[#16A34A]'
+                                : 'bg-[#FEF3C7] text-[#D97706]'
+                              }`}>
+                              {pick.stato === 'PICKING_COMPLETATO' ? <CheckSquare className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                              {getPickingLabel(pick.stato)}
+                            </span>
                           </div>
-                          <span className="text-xs text-[#6B7280]">{completate}/{pick.righe.length}</span>
-                        </div>
-                        <span className="text-xs text-[#9CA3AF]">Cons. {pick.dataConsegna}</span>
-                      </div>
-                    </button>
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 bg-[#E5EAF2] rounded-full h-1.5">
+                                <div className={`h-1.5 rounded-full ${pct === 100 ? 'bg-[#16A34A]' : 'bg-[#D97706]'}`} style={{ width: `${pct}%` }} />
+                              </div>
+                              <span className="text-xs text-[#6B7280]">{completate}/{pick.righe.length}</span>
+                            </div>
+                            <span className="text-xs text-[#9CA3AF]">Cons. {pick.dataConsegna}</span>
+                          </div>
+                        </button>
 
-                    {isExpanded && (
-                      <div className="border-t border-[#E5EAF2]">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="bg-[#F7F9FC]">
-                              <th className="text-left px-5 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Ubicazione</th>
-                              <th className="text-left px-4 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">SKU</th>
-                              <th className="text-left px-4 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Prodotto</th>
-                              <th className="text-center px-4 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Qta</th>
-                              <th className="text-center px-4 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Prelevato</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[#E5EAF2]">
-                            {pick.righe.map((riga, i) => (
-                              <tr key={i} className={`transition-colors ${riga.completato ? 'bg-[#F0FFF8]' : 'hover:bg-[#FAFAFA]'}`}>
-                                <td className="px-5 py-3 text-sm text-[#374151] flex items-center gap-1.5">
-                                  <MapPin className="w-3.5 h-3.5 text-[#9CA3AF]" />
-                                  {riga.ubicazione}
-                                </td>
-                                <td className="px-4 py-3 text-xs font-mono text-[#6B7280]">{riga.sku}</td>
-                                <td className="px-4 py-3 text-sm text-[#374151]">{riga.prodotto}</td>
-                                <td className="px-4 py-3 text-sm text-center font-medium text-[#2D2D2D]">{riga.qtaRichiesta}</td>
-                                <td className="px-4 py-3 text-center">
-                                  {riga.completato
-                                    ? <CheckSquare className="w-5 h-5 text-[#16A34A] mx-auto" />
-                                    : <span className="text-sm text-[#D97706]">{riga.qtaPrelevata}/{riga.qtaRichiesta}</span>
-                                  }
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                        {isExpanded && (
+                          <div className="border-t border-[#E5EAF2]">
+                            <table className="w-full">
+                              <thead>
+                                <tr className="bg-[#F7F9FC]">
+                                  <th className="text-left px-5 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Ubicazione</th>
+                                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">SKU</th>
+                                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Prodotto</th>
+                                  <th className="text-center px-4 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Qta</th>
+                                  <th className="text-center px-4 py-2.5 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Prelevato</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-[#E5EAF2]">
+                                {pick.righe.map((riga, i) => (
+                                  <tr key={i} className={`transition-colors ${riga.completato ? 'bg-[#F0FFF8]' : 'hover:bg-[#FAFAFA]'}`}>
+                                    <td className="px-5 py-3 text-sm text-[#374151] flex items-center gap-1.5">
+                                      <MapPin className="w-3.5 h-3.5 text-[#9CA3AF]" />
+                                      {riga.ubicazione}
+                                    </td>
+                                    <td className="px-4 py-3 text-xs font-mono text-[#6B7280]">{riga.sku}</td>
+                                    <td className="px-4 py-3 text-sm text-[#374151]">{riga.prodotto}</td>
+                                    <td className="px-4 py-3 text-sm text-center font-medium text-[#2D2D2D]">{riga.qtaRichiesta}</td>
+                                    <td className="px-4 py-3 text-center">
+                                      {riga.completato
+                                        ? <CheckSquare className="w-5 h-5 text-[#16A34A] mx-auto" />
+                                        : <span className="text-sm text-[#D97706]">{riga.qtaPrelevata}/{riga.qtaRichiesta}</span>
+                                      }
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+                    );
+                  })}
                 </>
               )}
             </div>
@@ -1111,9 +1139,8 @@ export function WarehousePage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center flex-1">
                   <div className="flex flex-col items-center flex-1">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
-                      startPickingStep > 1 ? 'bg-[#17E88F] text-white' : 'bg-[#F0FDF7] text-[#17E88F] border-2 border-[#17E88F]'
-                    }`}>
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${startPickingStep > 1 ? 'bg-[#17E88F] text-white' : 'bg-[#F0FDF7] text-[#17E88F] border-2 border-[#17E88F]'
+                      }`}>
                       <ClipboardList className="w-5 h-5" />
                     </div>
                     <div className={`text-xs mt-2 font-medium ${startPickingStep === 1 ? 'text-[#17E88F]' : 'text-[#22C55E]'}`}>
@@ -1123,9 +1150,8 @@ export function WarehousePage() {
                   <ChevronRight className={`w-5 h-5 mx-2 ${startPickingStep > 1 ? 'text-[#17E88F]' : 'text-[#E5EAF2]'}`} />
                 </div>
                 <div className="flex flex-col items-center flex-1">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
-                    startPickingStep > 2 ? 'bg-[#17E88F] text-white' : startPickingStep === 2 ? 'bg-[#F0FDF7] text-[#17E88F] border-2 border-[#17E88F]' : 'bg-[#F7F9FC] text-[#6B7280]'
-                  }`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${startPickingStep > 2 ? 'bg-[#17E88F] text-white' : startPickingStep === 2 ? 'bg-[#F0FDF7] text-[#17E88F] border-2 border-[#17E88F]' : 'bg-[#F7F9FC] text-[#6B7280]'
+                    }`}>
                     <Package className="w-5 h-5" />
                   </div>
                   <div className={`text-xs mt-2 font-medium ${startPickingStep === 2 ? 'text-[#17E88F]' : startPickingStep > 2 ? 'text-[#22C55E]' : 'text-[#6B7280]'}`}>
@@ -1135,9 +1161,8 @@ export function WarehousePage() {
                 <div className="flex items-center flex-1">
                   <ChevronRight className={`w-5 h-5 mx-2 ${startPickingStep > 2 ? 'text-[#17E88F]' : 'text-[#E5EAF2]'}`} />
                   <div className="flex flex-col items-center flex-1">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
-                      startPickingStep === 3 ? 'bg-[#F0FDF7] text-[#17E88F] border-2 border-[#17E88F]' : 'bg-[#F7F9FC] text-[#6B7280]'
-                    }`}>
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${startPickingStep === 3 ? 'bg-[#F0FDF7] text-[#17E88F] border-2 border-[#17E88F]' : 'bg-[#F7F9FC] text-[#6B7280]'
+                      }`}>
                       <CheckSquare className="w-5 h-5" />
                     </div>
                     <div className={`text-xs mt-2 font-medium ${startPickingStep === 3 ? 'text-[#17E88F]' : 'text-[#6B7280]'}`}>
@@ -1186,11 +1211,10 @@ export function WarehousePage() {
                                 type="button"
                                 onClick={() => void handleOpenStartPickingDetail(item.ordineId)}
                                 disabled={startingPickingId === item.ordineId}
-                                className={`min-w-[100px] px-3 py-2 rounded-lg text-sm font-medium disabled:opacity-60 ${
-                                  item.stato === 'NON_AVVIATO'
+                                className={`min-w-[100px] px-3 py-2 rounded-lg text-sm font-medium disabled:opacity-60 ${item.stato === 'NON_AVVIATO'
                                     ? 'bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white'
                                     : 'bg-white border border-[#E5EAF2] text-[#D97706] hover:bg-[#F7F9FC]'
-                                }`}
+                                  }`}
                               >
                                 {item.stato === 'NON_AVVIATO' ? 'Avvia' : 'Continua'}
                               </button>
@@ -1404,21 +1428,21 @@ export function WarehousePage() {
 
 
       <AlertDialog open={!!categoryToDelete} onOpenChange={(v) => { if (!v) setCategoryToDelete(null); }}>
-  <AlertDialogContent>
-    <AlertDialogHeader>
-      <AlertDialogTitle>Eliminare la categoria?</AlertDialogTitle>
-      <AlertDialogDescription>
-        La categoria <strong>{categoryToDelete?.nome}</strong> verrà rimossa dall'elenco delle categorie attive.
-      </AlertDialogDescription>
-    </AlertDialogHeader>
-    <AlertDialogFooter>
-      <AlertDialogCancel>Annulla</AlertDialogCancel>
-      <AlertDialogAction onClick={handleConfirmDeleteCategory} className="bg-red-600 hover:bg-red-700 text-white">
-        Elimina
-      </AlertDialogAction>
-    </AlertDialogFooter>
-  </AlertDialogContent>
-</AlertDialog>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare la categoria?</AlertDialogTitle>
+            <AlertDialogDescription>
+              La categoria <strong>{categoryToDelete?.nome}</strong> verrà rimossa dall'elenco delle categorie attive.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDeleteCategory} className="bg-red-600 hover:bg-red-700 text-white">
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
 
       {/* Modal Magazzino */}

@@ -124,7 +124,21 @@ export function AnagrafichePage() {
   const { hasPermesso } = useAuthStore();
   const [searchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
-  const initialTab = TAB_IDS.includes(requestedTab as TabType) ? (requestedTab as TabType) : 'fornitori';
+  const accessibleTabs = useMemo(
+    () => TAB_IDS.filter((tab) => {
+      switch (tab) {
+        case 'fornitori': return hasPermesso('fornitori:read');
+        case 'clienti': return hasPermesso('clienti:read');
+        case 'corrieri': return hasPermesso('magazzino:read');
+        case 'dipendenti': return hasPermesso('dipendenti:read');
+      }
+    }),
+    [hasPermesso]
+  );
+  const fallbackTab = accessibleTabs[0] ?? 'fornitori';
+  const initialTab = TAB_IDS.includes(requestedTab as TabType) && accessibleTabs.includes(requestedTab as TabType)
+    ? (requestedTab as TabType)
+    : fallbackTab;
 
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
@@ -215,21 +229,28 @@ export function AnagrafichePage() {
     }
   }, [fetchFornitori, fetchClienti, fetchCorrieri, fetchDipendenti]);
 
-  useEffect(() => { fetchForTab('fornitori'); }, []);
+  useEffect(() => { fetchForTab(initialTab); }, [fetchForTab, initialTab]);
   useEffect(() => { fetchForTab(activeTab); }, [activeTab, fetchForTab]);
   useEffect(() => {
     if (activeTab === 'dipendenti') fetchUtenti();
   }, [activeTab, fetchUtenti]);
+  useEffect(() => {
+    setActiveTab((prev) => (prev === initialTab ? prev : initialTab));
+  }, [initialTab]);
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab !== initialTab) navigate(`/anagrafiche?tab=${initialTab}`, { replace: true });
+  }, [initialTab, navigate, searchParams]);
 
   useEffect(() => {
     setFiltersOpen(false);
   }, [activeTab]);
 
   const tabs = [
-    { id: 'fornitori' as TabType,  label: 'Fornitori',  icon: Building2, count: fornitori.length },
-    { id: 'clienti' as TabType,    label: 'Clienti',    icon: User,      count: clienti.length },
-    { id: 'corrieri' as TabType,   label: 'Corrieri',   icon: Truck,     count: corrieri.length },
-    { id: 'dipendenti' as TabType, label: 'Dipendenti', icon: Users,     count: dipendenti.length },
+    { id: 'fornitori' as TabType,  label: 'Fornitori',  icon: Building2, count: fornitori.length, disabled: !accessibleTabs.includes('fornitori') },
+    { id: 'clienti' as TabType,    label: 'Clienti',    icon: User,      count: clienti.length, disabled: !accessibleTabs.includes('clienti') },
+    { id: 'corrieri' as TabType,   label: 'Corrieri',   icon: Truck,     count: corrieri.length, disabled: !accessibleTabs.includes('corrieri') },
+    { id: 'dipendenti' as TabType, label: 'Dipendenti', icon: Users,     count: dipendenti.length, disabled: !accessibleTabs.includes('dipendenti') },
   ];
 
   const getTabLabel = () => tabs.find(t => t.id === activeTab)?.label ?? '';
