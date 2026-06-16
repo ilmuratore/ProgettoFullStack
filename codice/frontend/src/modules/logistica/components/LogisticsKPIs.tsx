@@ -7,6 +7,7 @@ export interface LogisticsKpiItem {
   trend?: number;
   iconBg: string;
   alert?: boolean;
+  onClick?: () => void;
 }
 
 interface LogisticsKPIsProps {
@@ -21,7 +22,7 @@ export function LogisticsKPIs({ items }: LogisticsKPIsProps) {
       {items.map((item, index) => {
         const Icon = icons[index] ?? Package;
         return (
-          <div key={index} className="bg-white rounded-2xl p-5 border border-[#E5EAF2] hover:shadow-lg transition-all">
+          <div key={index} onClick={item.onClick} className="bg-white rounded-2xl p-5 border border-[#E5EAF2] hover:shadow-lg transition-all cursor-pointer">
             <div className="flex items-start justify-between mb-3">
               <div className={`w-12 h-12 ${item.iconBg} rounded-xl flex items-center justify-center`}>
                 <Icon className="w-6 h-6 text-white" />

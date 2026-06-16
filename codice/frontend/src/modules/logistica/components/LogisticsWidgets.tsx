@@ -1,6 +1,6 @@
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useNavigate } from 'react-router';
-import { Truck, AlertCircle, Clock } from 'lucide-react';
+import { BarChart2, AlertCircle, Truck, Clock } from 'lucide-react';
 import type { Spedizione } from '../../../types/spedizioni';
 import type { Corriere } from '../../../types/corrieri';
 
@@ -25,118 +25,125 @@ export function LogisticsWidgets({ shipments, couriers, onShipmentClick }: Logis
     color: s.color,
     value: shipments.filter((sp) => sp.stato === s.key).length,
   }));
-
-  const corrieriData = couriers.map((corriere) => ({
-    id: corriere.id,
-    nome: corriere.nome,
-    consegne: shipments.filter((sp) => sp.corriere_id === corriere.id).length,
-    attivo: corriere.attivo,
-  }));
+  const total = fleetData.reduce((sum, d) => sum + d.value, 0);
 
   const problemShipments = shipments.filter((sp) => sp.stato === 'PROBLEMA');
+  const activeCouriers = couriers.filter((c) => c.attivo);
 
   return (
-    <div className="space-y-6">
-      {/* Stato Flotta Consegne */}
-      <div className="bg-white rounded-2xl border border-[#E5EAF2] p-6">
-        <h3 className="font-semibold text-[#2D2D2D] mb-4">Stato Flotta Consegne</h3>
-        <div className="h-56">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={fleetData}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={90}
-                paddingAngle={2}
-                dataKey="value"
-              >
-                {fleetData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* Stato Flotta */}
+      <div className="bg-white rounded-xl p-4 border border-[#E5EAF2]">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-8 h-8 bg-gradient-to-br from-[#3B82F6] to-[#2563EB] rounded-lg flex items-center justify-center">
+            <BarChart2 className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-[#2D2D2D]">Stato Flotta</h3>
+            <p className="text-xs text-[#6B7280]">Distribuzione spedizioni</p>
+          </div>
         </div>
-        <div className="space-y-2 mt-4">
-          {fleetData.map((item, idx) => (
-            <div key={idx} className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                <span className="text-xs text-[#6B7280]">{item.name}</span>
-              </div>
-              <span className="text-xs font-medium text-[#2D2D2D]">{item.value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Corrieri Attivi */}
-      <div className="bg-white rounded-2xl border border-[#E5EAF2] p-6">
-        <h3 className="font-semibold text-[#2D2D2D] mb-4">Corrieri Attivi</h3>
-        <div className="space-y-3">
-          {corrieriData.length === 0 ? (
-            <p className="text-sm text-[#9CA3AF]">Nessun corriere registrato.</p>
-          ) : corrieriData.map((corriere) => (
-            <button
-              key={corriere.id}
-              onClick={() => navigate('/anagrafiche?tab=corrieri')}
-              className="w-full flex items-center justify-between p-3 bg-[#F7F9FC] rounded-xl hover:bg-[#F0FDF7] transition-colors text-left"
-            >
-              <div className="flex items-center gap-3">
-                <Truck className="w-4 h-4 text-[#6B7280]" />
-                <div>
-                  <p className="text-sm font-medium text-[#2D2D2D]">{corriere.nome}</p>
-                  <p className="text-xs text-[#9CA3AF]">{corriere.consegne} spedizioni</p>
+        {total === 0 ? (
+          <div className="text-center py-4 text-xs text-[#6B7280]">Nessuna spedizione registrata</div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <ResponsiveContainer width={80} height={80}>
+              <PieChart>
+                <Pie
+                  data={fleetData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={24}
+                  outerRadius={38}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {fleetData.map((entry, index) => (
+                    <Cell key={index} fill={entry.color} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="flex-1 space-y-1">
+              {fleetData.map((d, i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
+                    <span className="text-xs text-[#6B7280]">{d.name}</span>
+                  </div>
+                  <span className="text-xs font-medium text-[#2D2D2D]">{d.value}</span>
                 </div>
-              </div>
-              <div className={`w-2 h-2 rounded-full ${corriere.attivo ? 'bg-[#22C55E]' : 'bg-[#9CA3AF]'}`} />
-            </button>
-          ))}
-        </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Alert Logistici */}
-      <div className="bg-white rounded-2xl border border-[#E5EAF2] p-6">
-        <h3 className="font-semibold text-[#2D2D2D] mb-4">Alert Logistici</h3>
-        <div className="space-y-3">
+      <div className="bg-gradient-to-br from-[#FEF3C7] to-[#FDE68A] rounded-xl p-4 border border-[#F59E0B]/20">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+            <AlertCircle className="w-4 h-4 text-[#F59E0B]" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-[#92400E]">Alert Logistici</h3>
+            <p className="text-xs text-[#92400E]/70">Richiedono attenzione</p>
+          </div>
+        </div>
+        <div className="space-y-1.5">
           {problemShipments.length === 0 ? (
-            <p className="text-sm text-[#9CA3AF]">Nessuna spedizione in stato di problema.</p>
-          ) : problemShipments.map((sp) => (
+            <div className="text-center py-2 text-xs text-[#92400E]/70">Nessun problema rilevato</div>
+          ) : problemShipments.slice(0, 2).map((sp) => (
             <button
               key={sp.id}
               onClick={() => onShipmentClick(sp.id)}
-              className="w-full p-3 bg-[#FEF3C7] border border-[#FCD34D] rounded-xl text-left hover:bg-[#FDE68A] transition-colors"
+              className="w-full flex items-center justify-between bg-white/80 backdrop-blur-sm rounded-lg px-3 py-2 hover:bg-white transition-colors text-left"
             >
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-[#D97706] mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-xs font-medium text-[#92400E]">
-                    SH-{String(sp.id).padStart(4, '0')} — {sp.cliente}
-                  </p>
-                  <p className="text-xs text-[#B45309] mt-0.5">{sp.destinazione ?? 'Destinazione non disponibile'}</p>
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 bg-[#FEE2E2] rounded-md flex items-center justify-center">
+                  <AlertCircle className="w-3 h-3 text-[#EF4444]" />
                 </div>
+                <span className="text-xs text-[#92400E]">SH-{String(sp.id).padStart(4, '0')}</span>
               </div>
+              <span className="text-xs font-semibold text-[#EF4444] truncate max-w-[80px]">{sp.cliente}</span>
             </button>
           ))}
+          {problemShipments.length > 2 && (
+            <button
+              onClick={() => navigate('/logistica?stato=PROBLEMA')}
+              className="w-full text-xs text-[#92400E] text-center mt-1 hover:underline"
+            >
+              +{problemShipments.length - 2} altri problemi
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Stato Sistema Tracking */}
-      <div className="bg-white rounded-2xl border border-[#E5EAF2] p-6">
-        <h3 className="font-semibold text-[#2D2D2D] mb-4">Stato Sistema Tracking</h3>
-        <div className="flex items-center justify-between p-4 bg-[#DCFCE7] rounded-xl border border-[#BBF7D0]">
-          <div className="flex items-center gap-3">
-            <div className="w-3 h-3 bg-[#22C55E] rounded-full animate-pulse" />
-            <span className="text-sm font-medium text-[#16A34A]">Online</span>
+      {/* Corrieri e Tracking */}
+      <div className="bg-white rounded-xl p-4 border border-[#E5EAF2]">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-8 h-8 bg-[#DCFCE7] rounded-lg flex items-center justify-center">
+            <Truck className="w-4 h-4 text-[#22C55E]" />
           </div>
-          <div className="flex items-center gap-2">
-            <Clock className="w-3.5 h-3.5 text-[#16A34A]" />
-            <span className="text-xs text-[#16A34A]">{new Date().toLocaleTimeString('it-IT')}</span>
+          <div>
+            <h3 className="text-sm font-semibold text-[#2D2D2D]">Corrieri</h3>
+            <p className="text-xs text-[#6B7280]">Stato operativo</p>
           </div>
         </div>
-        <p className="text-xs text-[#9CA3AF] mt-3">Ultimo aggiornamento: {new Date().toLocaleTimeString('it-IT')}</p>
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between px-3 py-2 bg-[#F7F9FC] rounded-lg">
+            <span className="text-xs text-[#6B7280]">Corrieri attivi</span>
+            <span className="text-xs font-medium text-[#2D2D2D]">{activeCouriers.length} / {couriers.length}</span>
+          </div>
+          <div className="flex items-center justify-between px-3 py-2 bg-[#F7F9FC] rounded-lg">
+            <span className="text-xs text-[#6B7280]">Tracking</span>
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 bg-[#22C55E] rounded-full animate-pulse" />
+              <Clock className="w-3 h-3 text-[#22C55E]" />
+              <span className="text-xs font-medium text-[#22C55E]">{new Date().toLocaleTimeString('it-IT')}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

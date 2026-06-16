@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { Plus, Truck, FileText, BarChart2, Download, Eye, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { LogisticsKPIs } from '../logistica/components/LogisticsKPIs';
@@ -68,6 +69,8 @@ const shippingStateBadge = (stato: string) => {
 };
 
 export function LogisticsPage() {
+  const navigate = useNavigate();
+  const tableRef = useRef<HTMLDivElement>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedShipmentId, setSelectedShipmentId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<LogisticsTab>('spedizioni');
@@ -194,6 +197,9 @@ export function LogisticsPage() {
     ? (shipments.filter((s) => s.stato === 'CONSEGNATA').length / shipments.length) * 100
     : 0;
 
+  const scrollToTable = () =>
+    tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
   const logisticsKpis: LogisticsKpiItem[] = [
     {
       title: 'Spedizioni Attive',
@@ -204,18 +210,21 @@ export function LogisticsPage() {
         previousMonthShipments.filter((s) => s.stato === 'IN_PREPARAZIONE' || s.stato === 'SPEDITA').length
       ),
       iconBg: 'bg-gradient-to-br from-[#3B82F6] to-[#2563EB]',
+      onClick: scrollToTable,
     },
     {
       title: 'Consegne Oggi',
       value: String(deliveriesToday.length),
       subtitle: 'Consegnate oggi',
       iconBg: 'bg-gradient-to-br from-[#17E88F] to-[#0FA67A]',
+      onClick: () => navigate('/logistica?stato=CONSEGNATA'),
     },
     {
       title: 'Spedizioni Completate',
       value: String(completedCurrentMonth),
       subtitle: 'Mese corrente',
       iconBg: 'bg-gradient-to-br from-[#22C55E] to-[#16A34A]',
+      onClick: () => navigate('/logistica?stato=CONSEGNATA'),
     },
     {
       title: 'Problemi di Consegna',
@@ -223,18 +232,21 @@ export function LogisticsPage() {
       subtitle: 'Spedizioni in stato problema',
       iconBg: 'bg-gradient-to-br from-[#F59E0B] to-[#D97706]',
       alert: issueCount > 0,
+      onClick: () => navigate('/logistica?stato=PROBLEMA'),
     },
     {
       title: 'Corrieri Operativi',
       value: String(activeCouriers.length),
       subtitle: `${couriers.length} totali`,
       iconBg: 'bg-gradient-to-br from-[#8B5CF6] to-[#7C3AED]',
+      onClick: () => navigate('/anagrafiche?tab=corrieri'),
     },
     {
       title: 'Delivery Success Rate',
       value: `${successRate.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
       subtitle: 'Consegne completate su totale',
       iconBg: 'bg-gradient-to-br from-[#17E88F] to-[#0FA67A]',
+      onClick: () => setActiveTab('kpi'),
     },
   ];
 
@@ -338,19 +350,13 @@ export function LogisticsPage() {
 
         <div className="p-6 space-y-6">
           {activeTab === 'spedizioni' && (
-            <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
-              <div className="lg:col-span-7">
+            <div className="space-y-6">
+              <LogisticsKPIs items={logisticsKpis} />
+              <div ref={tableRef}>
                 <ShipmentsTable
                   onShipmentClick={setSelectedShipmentId}
                   shipments={shipments}
                   loading={loadingShipments}
-                />
-              </div>
-              <div className="lg:col-span-3">
-                <LogisticsWidgets
-                  shipments={shipments}
-                  couriers={couriers}
-                  onShipmentClick={setSelectedShipmentId}
                 />
               </div>
             </div>
@@ -435,7 +441,11 @@ export function LogisticsPage() {
 
           {activeTab === 'kpi' && (
             <div className="space-y-6">
-              <LogisticsKPIs items={logisticsKpis} />
+              <LogisticsWidgets
+                shipments={shipments}
+                couriers={couriers}
+                onShipmentClick={setSelectedShipmentId}
+              />
               <CourierPerformance couriers={courierPerformance} />
               <AdvancedKPIs data={advancedData} />
             </div>
