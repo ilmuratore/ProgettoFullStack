@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Truck, FileText, BarChart2, Download, Eye, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { LogisticsKPIs } from '../logistica/components/LogisticsKPIs';
@@ -71,6 +71,7 @@ const shippingStateBadge = (stato: string) => {
 export function LogisticsPage() {
   const { hasPermesso } = useAuthStore();
   const canWriteShipments = hasPermesso('spedizioni:write');
+  const canReadCouriers = hasPermesso('magazzino:read');
   const accessibleTabs = useMemo(
     () => tabs
       .map((tab) => tab.id as LogisticsTab)
@@ -94,6 +95,7 @@ export function LogisticsPage() {
   const [loadingDdts, setLoadingDdts] = useState(false);
   const [exportingDdt, setExportingDdt] = useState(false);
   const [ddtSort, setDdtSort] = useState<SortConfig<DdtSortKey> | null>(null);
+  const tableRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setActiveTab((prev) => (prev === initialTab ? prev : initialTab));
@@ -148,7 +150,7 @@ export function LogisticsPage() {
     setLoadingShipments(true);
     Promise.allSettled([
       spedizioniApi.list(),
-      corrieriApi.list(),
+      canReadCouriers ? corrieriApi.list() : Promise.resolve([]),
     ])
       .then(([shipmentsResult, couriersResult]) => {
         const shipmentsData = shipmentsResult.status === 'fulfilled' && Array.isArray(shipmentsResult.value)
@@ -182,7 +184,7 @@ export function LogisticsPage() {
 
   useEffect(() => {
     loadLogisticsData();
-  }, []);
+  }, [canReadCouriers]);
 
   useEffect(() => {
     if (activeTab !== 'ddt' || shipments.length === 0) {

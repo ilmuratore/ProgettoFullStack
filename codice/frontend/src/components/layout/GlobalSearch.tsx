@@ -9,6 +9,7 @@ import { ordiniApi } from '../../api/ordiniApi';
 import { spedizioniApi } from '../../api/spedizioniApi';
 import { magazzinoApi } from '../../api/magazzinoApi';
 import { dipendentiApi } from '../../api/corrieriApi';
+import { useAuthStore } from '../../store/authStore';
 
 interface SearchResult {
   id: string;
@@ -47,6 +48,7 @@ const normalize = (value: string): string =>
     .trim();
 
 export function GlobalSearch({ onClose }: GlobalSearchProps) {
+  const { hasPermesso } = useAuthStore();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -80,14 +82,14 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
       setLoadError(null);
 
       const settled = await Promise.allSettled([
-        clientiApi.list(),
-        fornitoriApi.list(),
-        dipendentiApi.list(),
-        prodottiApi.list(),
-        acquistiApi.list(),
-        ordiniApi.list(),
-        spedizioniApi.list(),
-        magazzinoApi.list(),
+        hasPermesso('clienti:read') ? clientiApi.list() : Promise.resolve([]),
+        hasPermesso('fornitori:read') ? fornitoriApi.list() : Promise.resolve([]),
+        hasPermesso('dipendenti:read') ? dipendentiApi.list() : Promise.resolve([]),
+        hasPermesso('prodotti:read') ? prodottiApi.list() : Promise.resolve([]),
+        hasPermesso('acquisti:read') ? acquistiApi.list() : Promise.resolve([]),
+        hasPermesso('ordini:read') ? ordiniApi.list() : Promise.resolve([]),
+        hasPermesso('spedizioni:read') ? spedizioniApi.list() : Promise.resolve([]),
+        hasPermesso('magazzino:read') ? magazzinoApi.list() : Promise.resolve([]),
       ]);
 
       if (cancelled) return;
@@ -224,7 +226,7 @@ export function GlobalSearch({ onClose }: GlobalSearchProps) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [hasPermesso]);
 
   useEffect(() => {
     const trimmed = normalize(query);

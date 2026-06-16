@@ -4,6 +4,7 @@ import { Search, Filter, ArrowUpDown } from "lucide-react";
 import { giacenzeApi } from "../../../api/giacenzeApi";
 import { magazzinoApi } from "../../../api/magazzinoApi";
 import { ordiniApi } from "../../../api/ordiniApi";
+import { useAuthStore } from "../../../store/authStore";
 import type { Giacenza, Magazzino } from "../../../types/magazzino";
 import type { DisponibilitaOrdineVendita } from "../../../types/ordini";
 
@@ -318,6 +319,8 @@ const getNextSortConfig = <T extends string>(
 };
 
 export function StockTable() {
+  const { hasPermesso } = useAuthStore();
+  const canReadOrdini = hasPermesso("ordini:read");
   const [searchParams] = useSearchParams();
   const [locationRows, setLocationRows] = useState<Giacenza[]>([]);
   const [productSourceRows, setProductSourceRows] = useState<Giacenza[]>([]);
@@ -452,6 +455,11 @@ export function StockTable() {
   }, [productSourceRows]);
 
   useEffect(() => {
+    if (!canReadOrdini) {
+      setDisponibilitaByProduct({});
+      return;
+    }
+
     const productIds = Array.from(
       new Set(
         productRows
@@ -492,7 +500,7 @@ export function StockTable() {
     return () => {
       cancelled = true;
     };
-  }, [productRows]);
+  }, [canReadOrdini, productRows]);
 
   const productRowsWithAvailability = useMemo<ProductStockRow[]>(() => {
     return productRows.map((item) => {

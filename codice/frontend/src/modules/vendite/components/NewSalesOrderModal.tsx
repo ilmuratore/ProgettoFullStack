@@ -5,14 +5,18 @@ import { ClientFormModal } from '../../anagrafiche/components/ClientFormModal';
 import { clientiApi } from '../../../api/clientiApi';
 import { prodottiApi } from '../../../api/prodottiApi';
 import { ordiniApi } from '../../../api/ordiniApi';
+import { useAuthStore } from '../../../store/authStore';
 import type { Cliente, ClienteCreateRequest, ClienteUpdateRequest, DestinazioneCliente } from '../../../types/clienti';
 import type { ProdottoListino } from '../../../types/prodotti';
+import type { OrdineVenditaDettaglio } from '../../../types/ordini';
 import { formatDestinazioneLines, formatDestinazioneSnapshot } from '../../../utils/destinazione';
 
 interface NewSalesOrderModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated?: () => void;
+  mode?: 'create' | 'edit';
+  initialOrder?: OrdineVenditaDettaglio | null;
 }
 
 type ClienteOption = Cliente & { destinazioni?: DestinazioneCliente[] };
@@ -38,7 +42,8 @@ interface OrderLine {
   qty: number;
 }
 
-export function NewSalesOrderModal({ isOpen, onClose, onCreated }: NewSalesOrderModalProps) {
+export function NewSalesOrderModal({ isOpen, onClose, onCreated, mode = 'create', initialOrder = null }: NewSalesOrderModalProps) {
+  const hasPermesso = useAuthStore((state) => state.hasPermesso);
   const [step, setStep] = useState(1);
   const [clienti, setClienti] = useState<ClienteOption[]>([]);
   const [loadingClienti, setLoadingClienti] = useState(false);
@@ -53,6 +58,8 @@ export function NewSalesOrderModal({ isOpen, onClose, onCreated }: NewSalesOrder
   const [note, setNote] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const isEditMode = mode === 'edit';
+  const canReplaceDraft = hasPermesso('ordini:write') && hasPermesso('ordini:approve');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -60,11 +67,44 @@ export function NewSalesOrderModal({ isOpen, onClose, onCreated }: NewSalesOrder
     loadProducts();
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen || !isEditMode || !initialOrder) return;
+    const ordine = initialOrder.ordine;
+    setStep(1);
+    setSelectedCliente({
+      id: ordine.cliente_id,
+      ragione_sociale: ordine.cliente ?? `Cliente #${ordine.cliente_id}`,
+      piva_cf: '',
+      email: null,
+      telefono: null,
+      source: 'manual',
+      attivo: true,
+      created_at: '',
+      updated_at: '',
+      destinazioni: [],
+    });
+    setSelectedDest(null);
+    setOrderLines(initialOrder.righe.map((riga) => ({
+      prodotto_id: riga.prodotto_id,
+      sku: riga.sku ?? '',
+      nome: riga.prodotto ?? 'Prodotto',
+      disponibilita: Number(riga.quantita),
+      prezzo: Number(riga.prezzo_unitario),
+      qty: Number(riga.quantita),
+    })));
+  }, [initialOrder, isEditMode, isOpen]);
+
   const loadClienti = async () => {
     setLoadingClienti(true);
     try {
       const data = await clientiApi.list();
       setClienti(data.map((c) => ({ ...c })));
+      if (isEditMode && initialOrder) {
+        const cliente = data.find((item) => item.id === initialOrder.ordine.cliente_id);
+        if (cliente) {
+          await handleSelectCliente(cliente);
+        }
+      }
     } catch (err: any) {
       toast.error('Errore caricamento clienti', { description: err?.message });
     } finally {
@@ -198,7 +238,12 @@ export function NewSalesOrderModal({ isOpen, onClose, onCreated }: NewSalesOrder
         destinazione: formatDestinazioneSnapshot(selectedDest),
         righe,
       });
-      toast.success(`Ordine SO-${String(result.ordine.id).padStart(4, '0')} creato`);
+      if (isEditMode && initialOrder) {
+        await ordiniApi.updateStato(initialOrder.ordine.id, 'ANNULLATO');
+        toast.success(`Ordine ${String(initialOrder.ordine.id).padStart(4, '0')} sostituito con SO-${String(result.ordine.id).padStart(4, '0')}`);
+      } else {
+        toast.success(`Ordine SO-${String(result.ordine.id).padStart(4, '0')} creato`);
+      }
       onCreated?.();
       handleClose();
     } catch (err: any) {
@@ -243,7 +288,7 @@ export function NewSalesOrderModal({ isOpen, onClose, onCreated }: NewSalesOrder
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between p-6 border-b border-[#E5EAF2]">
-          <h2 className="font-semibold text-[#2D2D2D]">Nuovo Ordine Cliente</h2>
+          <h2 className="font-semibold text-[#2D2D2D]">{isEditMode ? 'Modifica Ordine Cliente' : 'Nuovo Ordine Cliente'}</h2>
           <button onClick={handleClose} className="p-2 hover:bg-[#F7F9FC] rounded-xl transition-colors">
             <X className="w-5 h-5 text-[#6B7280]" />
           </button>
@@ -552,8 +597,8 @@ export function NewSalesOrderModal({ isOpen, onClose, onCreated }: NewSalesOrder
                   </div>
                   <div>
                     <h3 className="font-semibold text-[#2D2D2D]">Ordine pronto per la conferma</h3>
-                    <p className="text-sm text-[#6B7280] mt-1">Verifica i dati e procedi con la creazione dell'ordine</p>
-                  </div>
+                  <p className="text-sm text-[#6B7280] mt-1">{isEditMode ? 'Verifica i dati e procedi con la sostituzione della bozza' : 'Verifica i dati e procedi con la creazione dell\'ordine'}</p>
+                </div>
                   <div className="bg-[#F7F9FC] rounded-xl p-4 w-full text-left space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-[#6B7280]">Cliente</span>
@@ -603,11 +648,11 @@ export function NewSalesOrderModal({ isOpen, onClose, onCreated }: NewSalesOrder
           ) : !confirmed ? (
             <button
               onClick={handleConfirm}
-              disabled={submitting}
+              disabled={submitting || (isEditMode && !canReplaceDraft)}
               className="px-5 py-2.5 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all text-sm font-medium flex items-center gap-2 disabled:opacity-40"
             >
               <CheckCircle className="w-4 h-4" />
-              {submitting ? 'Creazione...' : 'Conferma Bozza'}
+              {submitting ? (isEditMode ? 'Salvataggio...' : 'Creazione...') : (isEditMode ? 'Salva Modifiche' : 'Conferma Bozza')}
             </button>
           ) : (
             <button

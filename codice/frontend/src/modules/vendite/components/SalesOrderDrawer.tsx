@@ -3,6 +3,7 @@ import { X, Package, MapPin, User, Calendar, Receipt, Loader2 } from 'lucide-rea
 import { toast } from 'sonner';
 import { ordiniApi } from '../../../api/ordiniApi';
 import { destinazioniApi } from '../../../api/destinazioniApi';
+import { NewSalesOrderModal } from './NewSalesOrderModal';
 import type { OrdineVenditaDettaglio, RigaOrdineVendita, StatoOrdineVendita } from '../../../types/ordini';
 import type { DestinazioneCliente } from '../../../types/destinazioni';
 import { formatDestinazioneLines } from '../../../utils/destinazione';
@@ -12,6 +13,7 @@ interface SalesOrderDrawerProps {
   orderId: number | null;
   isOpen: boolean;
   onClose: () => void;
+  onUpdated?: () => void;
 }
 
 const fmtData = (iso: string | null | undefined): string =>
@@ -32,12 +34,13 @@ const getStatoBadge = (stato: StatoOrdineVendita) => {
   }
 };
 
-export function SalesOrderDrawer({ orderId, isOpen, onClose }: SalesOrderDrawerProps) {
+export function SalesOrderDrawer({ orderId, isOpen, onClose, onUpdated }: SalesOrderDrawerProps) {
   const hasPermesso = useAuthStore((state) => state.hasPermesso);
   const [detail, setDetail] = useState<OrdineVenditaDettaglio | null>(null);
   const [destinazione, setDestinazione] = useState<DestinazioneCliente | null>(null);
   const [loading, setLoading] = useState(false);
   const [updatingStato, setUpdatingStato] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   useEffect(() => {
     if (!isOpen || orderId == null) return;
@@ -83,6 +86,8 @@ export function SalesOrderDrawer({ orderId, isOpen, onClose }: SalesOrderDrawerP
   const badge = order ? getStatoBadge(order.stato) : getStatoBadge('BOZZA');
   const orderLabel = order ? `SO-${String(order.id).padStart(4, '0')}` : '-';
   const canApprove = !!order && order.stato === 'BOZZA' && hasPermesso('ordini:approve');
+  const canCancel = !!order && (order.stato === 'BOZZA' || order.stato === 'CONFERMATO') && hasPermesso('ordini:approve');
+  const canEdit = !!order && order.stato === 'BOZZA' && hasPermesso('ordini:write') && hasPermesso('ordini:approve');
 
   const handleConferma = async () => {
     if (!order) return;
@@ -91,8 +96,24 @@ export function SalesOrderDrawer({ orderId, isOpen, onClose }: SalesOrderDrawerP
       const updated = await ordiniApi.updateStato(order.id, 'CONFERMATO');
       setDetail((prev) => prev ? { ...prev, ordine: { ...prev.ordine, ...updated } } : prev);
       toast.success(`Ordine ${orderLabel} confermato`);
+      onUpdated?.();
     } catch (err: any) {
       toast.error('Errore aggiornamento stato', { description: err?.message });
+    } finally {
+      setUpdatingStato(false);
+    }
+  };
+
+  const handleAnnulla = async () => {
+    if (!order) return;
+    setUpdatingStato(true);
+    try {
+      const updated = await ordiniApi.updateStato(order.id, 'ANNULLATO');
+      setDetail((prev) => prev ? { ...prev, ordine: { ...prev.ordine, ...updated } } : prev);
+      toast.success(`Ordine ${orderLabel} annullato`);
+      onUpdated?.();
+    } catch (err: any) {
+      toast.error('Errore annullamento ordine', { description: err?.message });
     } finally {
       setUpdatingStato(false);
     }
@@ -231,7 +252,25 @@ export function SalesOrderDrawer({ orderId, isOpen, onClose }: SalesOrderDrawerP
         </div>
 
         <div className="p-6 border-t border-[#E5EAF2] flex gap-3">
-          {canApprove ? (
+          {canEdit && (
+            <button
+              onClick={() => setEditModalOpen(true)}
+              disabled={updatingStato}
+              className="flex-1 px-4 py-2.5 bg-[#F7F9FC] border border-[#E5EAF2] text-[#2D2D2D] rounded-xl hover:bg-white transition-all text-sm font-medium disabled:opacity-40"
+            >
+              Modifica Ordine
+            </button>
+          )}
+          {canCancel && (
+            <button
+              onClick={handleAnnulla}
+              disabled={updatingStato}
+              className="flex-1 px-4 py-2.5 bg-[#FEE2E2] border border-[#FECACA] text-[#DC2626] rounded-xl hover:bg-[#FDE2E2] transition-all text-sm font-medium disabled:opacity-40"
+            >
+              {updatingStato ? 'Annulla...' : 'Annulla Ordine'}
+            </button>
+          )}
+          {canApprove && (
             <button
               onClick={handleConferma}
               disabled={updatingStato}
@@ -239,13 +278,22 @@ export function SalesOrderDrawer({ orderId, isOpen, onClose }: SalesOrderDrawerP
             >
               {updatingStato ? 'Conferma...' : 'Conferma Ordine'}
             </button>
-          ) : (
-            <button className="flex-1 px-4 py-2.5 bg-[#F7F9FC] border border-[#E5EAF2] text-[#6B7280] rounded-xl hover:bg-white transition-all text-sm font-medium">
-              Modifica Ordine
-            </button>
           )}
         </div>
       </div>
+      {order && (
+        <NewSalesOrderModal
+          isOpen={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          onCreated={() => {
+            setEditModalOpen(false);
+            onClose();
+            onUpdated?.();
+          }}
+          mode="edit"
+          initialOrder={detail}
+        />
+      )}
     </>
   );
 }

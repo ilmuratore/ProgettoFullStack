@@ -201,9 +201,17 @@ export function NotificationsPanel({ onNavigate }: NotificationsPanelProps) {
                   const title = notificationTitles[notification.tipo];
 
                   return (
-                    <button
+                    <div
                       key={notification.id}
                       onClick={() => handleNotificationClick(notification)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleNotificationClick(notification);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
                       className={`w-full flex items-start gap-3 px-4 py-3 hover:bg-[#F7F9FC] transition-all text-left group ${
                         !notification.letto ? 'bg-[#F0FDF7]/50' : ''
                       }`}
@@ -240,7 +248,7 @@ export function NotificationsPanel({ onNavigate }: NotificationsPanelProps) {
                           )}
                         </div>
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>

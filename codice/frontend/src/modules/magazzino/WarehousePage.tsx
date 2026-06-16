@@ -391,7 +391,7 @@ export function WarehousePage() {
           }
         };
       case 'ricezioni':
-        return { label: 'Registra Ricezione', show: true, action: () => setIsRicezioneModalOpen(true) };
+        return { label: 'Avvia Ricezione', show: true, action: () => setIsRicezioneModalOpen(true) };
     }
   };
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, ShoppingCart, BarChart2, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { PurchaseKPIs } from './components/PurchaseKPIs';
@@ -38,10 +38,28 @@ export function PurchasesPage() {
   const [activeTab, setActiveTab] = useState<PurchaseTab>(initialTab);
   const [reloadKey, setReloadKey] = useState(0);
   const [exporting, setExporting] = useState(false);
+  const ordersTableRef = useRef<HTMLDivElement | null>(null);
+  const overdueRef = useRef<HTMLDivElement | null>(null);
+  const leadTimeRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setActiveTab((prev) => (prev === initialTab ? prev : initialTab));
   }, [initialTab]);
+
+  const scrollToOrdersTable = () => {
+    setActiveTab('ordini');
+    setTimeout(() => ordersTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+  };
+
+  const scrollToOverdue = () => {
+    setActiveTab('kpi');
+    setTimeout(() => overdueRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+  };
+
+  const scrollToLeadTime = () => {
+    setActiveTab('kpi');
+    setTimeout(() => leadTimeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+  };
 
   const handleExport = async () => {
     setExporting(true);

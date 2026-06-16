@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
 import { movimentiStockApi } from '../../api/movimentiStockApi';
+import { useAuthStore } from '../../store/authStore';
 import type { MovimentoStock, MovimentoTipo } from '../../types/magazzino';
 import { SortableHeader } from './SortableHeader';
 import { applySort, compareDate, compareNumber, compareText, toggleSort, type SortConfig } from '../../utils/sorting';
@@ -53,6 +54,8 @@ const SkeletonRows = () => (
 );
 
 export function ActivityTable() {
+  const { hasPermesso } = useAuthStore();
+  const canReadMovimenti = hasPermesso('giacenze:read');
   const [movimenti, setMovimenti] = useState<MovimentoStock[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -61,12 +64,17 @@ export function ActivityTable() {
   const handleSort = (key: SortKey) => setSort((prev) => toggleSort(prev, key));
 
   useEffect(() => {
+    if (!canReadMovimenti) {
+      setMovimenti([]);
+      setLoading(false);
+      return;
+    }
     movimentiStockApi
       .list()
       .then((data) => setMovimenti(data.slice(0, 20)))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [canReadMovimenti]);
 
   const query = search.trim().toLowerCase();
   const filtered = applySort(

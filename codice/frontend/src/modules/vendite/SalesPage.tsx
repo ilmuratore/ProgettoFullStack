@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { Plus, ShoppingBag, BarChart2, CheckSquare, Clock, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { SalesKPIs } from './components/SalesKPIs';
@@ -41,6 +42,7 @@ const monthLabel = (d: Date): string =>
 
 export function SalesPage() {
   const { hasPermesso } = useAuthStore();
+  const canCreateOrders = hasPermesso('ordini:write');
   const accessibleTabs = useMemo(
     () => tabs
       .map((tab) => tab.id as SalesTab)
@@ -255,13 +257,15 @@ export function SalesPage() {
                 {exporting ? 'Export...' : 'Esporta Excel'}
               </button>
             )}
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="px-4 py-2 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2 font-medium"
-            >
-              <Plus className="w-4 h-4" />
-              {getActionLabel()}
-            </button>
+            {canCreateOrders && (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="px-4 py-2 bg-gradient-to-r from-[#17E88F] to-[#0FA67A] text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2 font-medium"
+              >
+                <Plus className="w-4 h-4" />
+                {getActionLabel()}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -297,6 +301,7 @@ export function SalesPage() {
         orderId={selectedOrderId}
         isOpen={!!selectedOrderId}
         onClose={() => setSelectedOrderId(null)}
+        onUpdated={() => setReloadKey((k) => k + 1)}
       />
 
       <NewSalesOrderModal

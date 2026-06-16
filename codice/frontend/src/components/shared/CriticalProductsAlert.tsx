@@ -1,19 +1,27 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, ChevronRight } from 'lucide-react';
 import { giacenzeApi } from '../../api/giacenzeApi';
+import { useAuthStore } from '../../store/authStore';
 import type { Giacenza } from '../../types/magazzino';
 
 export function CriticalProductsAlert() {
+  const { hasPermesso } = useAuthStore();
+  const canReadGiacenze = hasPermesso('giacenze:read');
   const [critici, setCritici] = useState<Giacenza[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!canReadGiacenze) {
+      setCritici([]);
+      setLoading(false);
+      return;
+    }
     giacenzeApi
       .list({ scorta: 'sotto' })
       .then((data) => setCritici(data.slice(0, 3)))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [canReadGiacenze]);
 
   return (
     <div className="bg-gradient-to-br from-[#FEF3C7] to-[#FDE68A] rounded-2xl p-6 border border-[#F59E0B]/20">

@@ -40,8 +40,14 @@ const notifTypeConfig: Record<NotifType, { label: string; bg: string; text: stri
 };
 
 export function DashboardPage() {
-  const { utente } = useAuthStore();
+  const { utente, hasPermesso } = useAuthStore();
   const navigate = useNavigate();
+  const canReadGiacenze = hasPermesso('giacenze:read');
+  const canReadProdotti = hasPermesso('prodotti:read');
+  const canReadAcquisti = hasPermesso('acquisti:read');
+  const canReadOrdini = hasPermesso('ordini:read');
+  const canReadSpedizioni = hasPermesso('spedizioni:read');
+  const canReadMagazzino = hasPermesso('magazzino:read');
 
   const [dashboardTab, setDashboardTab] = useState<DashboardTab>('dashboard');
   const [notificheState, setNotificheState] = useState<Notifica[]>([]);
@@ -76,51 +82,69 @@ export function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    Promise.all([
-      giacenzeApi.list(),
-      prodottiApi.list(),
-      acquistiApi.list(),
-      ordiniApi.list(),
-      spedizioniApi.list(),
-      magazzinoApi.listUbicazioni(),
-    ])
-      .then(([giacenze, prodotti, ordiniAcquisto, ordiniVendita, spedizioni, ubicazioni]) => {
-        const prezzoByProdotto = new Map(prodotti.map((p) => [p.id, Number(p.prezzo ?? 0)]));
-        const totale = giacenze.reduce((sum, g) => sum + g.quantita * (prezzoByProdotto.get(g.prodotto_id) ?? 0), 0);
-        setValoreStock(totale);
-        setSottoScorta(giacenze.filter((g) => g.sotto_scorta).length);
-        setOrdiniAperti(ordiniAcquisto.filter((o) => o.stato !== 'COMPLETATO' && o.stato !== 'ANNULLATO').length);
+    const requests = [
+      canReadGiacenze ? giacenzeApi.list() : Promise.resolve([]),
+      canReadProdotti ? prodottiApi.list() : Promise.resolve([]),
+      canReadAcquisti ? acquistiApi.list() : Promise.resolve([]),
+      canReadOrdini ? ordiniApi.list() : Promise.resolve([]),
+      canReadSpedizioni ? spedizioniApi.list() : Promise.resolve([]),
+      canReadMagazzino ? magazzinoApi.listUbicazioni() : Promise.resolve([]),
+    ] as const;
 
-        const today = new Date().toDateString();
-        setSpedizioniOggi(spedizioni.filter((s) => new Date(s.created_at).toDateString() === today).length);
+    Promise.allSettled(requests).then(([giacenzeRes, prodottiRes, ordiniAcquistoRes, ordiniVenditaRes, spedizioniRes, ubicazioniRes]) => {
+      const giacenze = giacenzeRes.status === 'fulfilled' ? giacenzeRes.value : [];
+      const prodotti = prodottiRes.status === 'fulfilled' ? prodottiRes.value : [];
+      const ordiniAcquisto = ordiniAcquistoRes.status === 'fulfilled' ? ordiniAcquistoRes.value : [];
+      const ordiniVendita = ordiniVenditaRes.status === 'fulfilled' ? ordiniVenditaRes.value : [];
+      const spedizioni = spedizioniRes.status === 'fulfilled' ? spedizioniRes.value : [];
+      const ubicazioni = ubicazioniRes.status === 'fulfilled' ? ubicazioniRes.value : [];
 
-        const last30 = new Date();
-        last30.setDate(last30.getDate() - 30);
-        const ordiniAcquisto30 = ordiniAcquisto.filter((o) => new Date(o.created_at) >= last30);
-        setBarChartData([
-          { name: 'Ricevuti', value: ordiniAcquisto30.filter((o) => o.totale_ricevuto > 0).length, color: '#17E88F' },
-          { name: 'Confermati', value: ordiniAcquisto30.filter((o) => o.stato === 'CONFERMATO').length, color: '#22C55E' },
-          { name: 'In Elaborazione', value: ordiniAcquisto30.filter((o) => o.stato === 'INVIATO' || o.stato === 'IN_RICEZIONE').length, color: '#3B82F6' },
-          { name: 'Completati', value: ordiniAcquisto30.filter((o) => o.stato === 'COMPLETATO').length, color: '#0FA67A' },
-          { name: 'Annullati', value: ordiniAcquisto30.filter((o) => o.stato === 'ANNULLATO').length, color: '#EF4444' },
-        ]);
+      const prezzoByProdotto = new Map(prodotti.map((p) => [p.id, Number(p.prezzo ?? 0)]));
+      const totale = giacenze.reduce((sum, g) => sum + g.quantita * (prezzoByProdotto.get(g.prodotto_id) ?? 0), 0);
+      setValoreStock(canReadGiacenze && canReadProdotti ? totale : null);
+      setSottoScorta(canReadGiacenze ? giacenze.filter((g) => g.sotto_scorta).length : null);
+      setOrdiniAperti(canReadAcquisti ? ordiniAcquisto.filter((o) => o.stato !== 'COMPLETATO' && o.stato !== 'ANNULLATO').length : null);
 
-        setPieChartData([
-          { name: 'Bozza', value: ordiniVendita.filter((o) => o.stato === 'BOZZA').length, color: '#6B7280' },
-          { name: 'In Picking', value: ordiniVendita.filter((o) => o.stato === 'CONFERMATO' && o.stato_picking === 'IN_PICKING').length, color: '#F59E0B' },
-          { name: 'In Preparazione', value: ordiniVendita.filter((o) => o.stato === 'CONFERMATO' && o.stato_picking !== 'IN_PICKING').length, color: '#3B82F6' },
-          { name: 'Spedito', value: ordiniVendita.filter((o) => o.stato === 'SPEDITO').length, color: '#17E88F' },
-        ]);
+      const today = new Date().toDateString();
+      setSpedizioniOggi(canReadSpedizioni ? spedizioni.filter((s) => new Date(s.created_at).toDateString() === today).length : null);
 
-        const occupiedSet = new Set(giacenze.filter((g) => Number(g.quantita) > 0).map((g) => g.ubicazione_id));
-        const totalUbicazioni = ubicazioni.length;
-        const occupied = occupiedSet.size;
-        const available = Math.max(0, totalUbicazioni - occupied);
-        const capacity = totalUbicazioni > 0 ? Math.round((occupied / totalUbicazioni) * 100) : 0;
-        setWarehouseCapacity({ capacity, occupied, available });
-      })
-      .catch(() => {});
-  }, []);
+      const last30 = new Date();
+      last30.setDate(last30.getDate() - 30);
+      const ordiniAcquisto30 = ordiniAcquisto.filter((o) => new Date(o.created_at) >= last30);
+      setBarChartData(canReadAcquisti ? [
+        { name: 'Ricevuti', value: ordiniAcquisto30.filter((o) => o.totale_ricevuto > 0).length, color: '#17E88F' },
+        { name: 'Confermati', value: ordiniAcquisto30.filter((o) => o.stato === 'CONFERMATO').length, color: '#22C55E' },
+        { name: 'In Elaborazione', value: ordiniAcquisto30.filter((o) => o.stato === 'INVIATO' || o.stato === 'IN_RICEZIONE').length, color: '#3B82F6' },
+        { name: 'Completati', value: ordiniAcquisto30.filter((o) => o.stato === 'COMPLETATO').length, color: '#0FA67A' },
+        { name: 'Annullati', value: ordiniAcquisto30.filter((o) => o.stato === 'ANNULLATO').length, color: '#EF4444' },
+      ] : [
+        { name: 'Ricevuti', value: 0, color: '#17E88F' },
+        { name: 'Confermati', value: 0, color: '#22C55E' },
+        { name: 'In Elaborazione', value: 0, color: '#3B82F6' },
+        { name: 'Completati', value: 0, color: '#0FA67A' },
+        { name: 'Annullati', value: 0, color: '#EF4444' },
+      ]);
+
+      setPieChartData(canReadOrdini ? [
+        { name: 'Bozza', value: ordiniVendita.filter((o) => o.stato === 'BOZZA').length, color: '#6B7280' },
+        { name: 'In Picking', value: ordiniVendita.filter((o) => o.stato === 'CONFERMATO' && o.stato_picking === 'IN_PICKING').length, color: '#F59E0B' },
+        { name: 'In Preparazione', value: ordiniVendita.filter((o) => o.stato === 'CONFERMATO' && o.stato_picking !== 'IN_PICKING').length, color: '#3B82F6' },
+        { name: 'Spedito', value: ordiniVendita.filter((o) => o.stato === 'SPEDITO').length, color: '#17E88F' },
+      ] : [
+        { name: 'Bozza', value: 0, color: '#6B7280' },
+        { name: 'In Picking', value: 0, color: '#F59E0B' },
+        { name: 'In Preparazione', value: 0, color: '#3B82F6' },
+        { name: 'Spedito', value: 0, color: '#17E88F' },
+      ]);
+
+      const occupiedSet = new Set(giacenze.filter((g) => Number(g.quantita) > 0).map((g) => g.ubicazione_id));
+      const totalUbicazioni = ubicazioni.length;
+      const occupied = occupiedSet.size;
+      const available = Math.max(0, totalUbicazioni - occupied);
+      const capacity = totalUbicazioni > 0 ? Math.round((occupied / totalUbicazioni) * 100) : 0;
+      setWarehouseCapacity(canReadGiacenze && canReadMagazzino ? { capacity, occupied, available } : { capacity: 0, occupied: 0, available: 0 });
+    });
+  }, [canReadAcquisti, canReadGiacenze, canReadMagazzino, canReadOrdini, canReadProdotti, canReadSpedizioni]);
 
   useEffect(() => {
     let active = true;
