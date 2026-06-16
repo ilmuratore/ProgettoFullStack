@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { Plus, ShoppingBag, BarChart2, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { SalesKPIs } from './components/SalesKPIs';
@@ -47,6 +48,8 @@ export function SalesPage() {
   const [salesOrders, setSalesOrders] = useState<OrdineVendita[]>([]);
   const [salesClients, setSalesClients] = useState<Cliente[]>([]);
   const [destinazioniByCliente, setDestinazioniByCliente] = useState<Record<number, number>>({});
+  const navigate = useNavigate();
+  const tableRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let alive = true;
@@ -126,6 +129,9 @@ export function SalesPage() {
     return ((curr - prev) / prev) * 100;
   };
 
+  const scrollToTable = () =>
+    tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
   const salesKpis: SalesKpiItem[] = [
     {
       title: 'Ordini Attivi',
@@ -133,6 +139,7 @@ export function SalesPage() {
       subtitle: `${activeOrdersCurr} nel mese corrente`,
       trend: trend(activeOrdersCurr, activeOrdersPrev),
       iconBg: 'bg-gradient-to-br from-[#3B82F6] to-[#2563EB]',
+      onClick: scrollToTable,
     },
     {
       title: 'Valore Ordini',
@@ -140,20 +147,23 @@ export function SalesPage() {
       subtitle: 'Valore totale portafoglio',
       trend: trend(valueCurrent, valuePrev),
       iconBg: 'bg-gradient-to-br from-[#17E88F] to-[#0FA67A]',
+      onClick: scrollToTable,
     },
     {
       title: 'Completati Oggi',
       value: String(completedToday),
-      subtitle: 'Ordini spediti oggi',
+      subtitle: 'Ordini consegnati oggi',
       trend: trend(completedToday, completedPrevToday),
       iconBg: 'bg-gradient-to-br from-[#06B6D4] to-[#0891B2]',
+      onClick: () => navigate('/vendite?stato=SPEDITO'),
     },
     {
       title: 'Tasso Evasione',
       value: fmtPct(fulfillmentRate),
-      subtitle: 'Spediti su ordini non annullati',
+      subtitle: 'Consegnati su ordini non annullati',
       trend: trend(fulfillmentRate, prevFulfillmentRate),
       iconBg: 'bg-gradient-to-br from-[#17E88F] to-[#059669]',
+      onClick: () => setActiveTab('kpi'),
     },
   ];
 
@@ -243,19 +253,17 @@ export function SalesPage() {
 
         <div className="p-6 space-y-6">
           {activeTab === 'ordini' && (
-            <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
-              <div className="lg:col-span-7">
+            <div className="space-y-6">
+              <SalesKPIs kpis={salesKpis} />
+              <div ref={tableRef}>
                 <SalesOrdersTable onOrderClick={setSelectedOrderId} reloadKey={reloadKey} />
-              </div>
-              <div className="lg:col-span-3">
-                <SalesWidgets orders={salesOrders} />
               </div>
             </div>
           )}
 
           {activeTab === 'kpi' && (
             <div className="space-y-6">
-              <SalesKPIs kpis={salesKpis} />
+              <SalesWidgets orders={salesOrders} />
               <SalesChart data={salesChartData} />
               <TopClienti clienti={topClienti} />
             </div>

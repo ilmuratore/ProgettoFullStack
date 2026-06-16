@@ -116,7 +116,6 @@ export function PurchasesPage() {
                 onOrdiniRitardoClick={scrollToOverdue}
                 onLeadTimeClick={scrollToLeadTime}
               />
-              <PurchaseWidgets />
               <div ref={ordersTableRef}>
                 <PurchaseOrdersTable onOrderClick={setSelectedOrderId} reloadKey={reloadKey} />
               </div>
@@ -125,6 +124,7 @@ export function PurchasesPage() {
 
           {activeTab === 'kpi' && (
             <div className="space-y-6">
+              <PurchaseWidgets />
               <div ref={overdueRef}>
                 <PurchaseInsights onOrderClick={setSelectedOrderId} />
               </div>

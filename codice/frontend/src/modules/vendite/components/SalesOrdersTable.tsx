@@ -11,7 +11,7 @@ import { FilterButton, FilterPanel } from '../../../components/ui/FilterPanel';
 const STATO_ORDINE_OPTIONS: { value: StatoOrdineVendita; label: string }[] = [
   { value: 'BOZZA', label: 'Bozza' },
   { value: 'CONFERMATO', label: 'Confermato' },
-  { value: 'SPEDITO', label: 'Spedito' },
+  { value: 'SPEDITO', label: 'Consegnato' },
   { value: 'ANNULLATO', label: 'Annullato' },
 ];
 
@@ -44,7 +44,7 @@ const getOrderStatusBadge = (status: StatoOrdineVendita) => {
   switch (status) {
     case 'BOZZA': return { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', label: 'Bozza' };
     case 'CONFERMATO': return { bg: 'bg-[#DBEAFE]', text: 'text-[#3B82F6]', label: 'Confermato' };
-    case 'SPEDITO': return { bg: 'bg-[#DCFCE7]', text: 'text-[#22C55E]', label: 'Spedito' };
+    case 'SPEDITO': return { bg: 'bg-[#DCFCE7]', text: 'text-[#22C55E]', label: 'Consegnato' };
     case 'ANNULLATO': return { bg: 'bg-[#FEE2E2]', text: 'text-[#EF4444]', label: 'Annullato' };
   }
 };
@@ -71,6 +71,8 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<SortConfig<SortKey> | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const handleSort = (key: SortKey) => setSort((prev) => toggleSort(prev, key));
 
@@ -108,6 +110,14 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
     sort,
     compareOrdersByKey
   );
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, filterStatus, sort]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
@@ -166,7 +176,7 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
               <tr><td colSpan={9} className="py-8 text-center text-sm text-[#6B7280]">Caricamento ordini...</td></tr>
             ) : filtered.length === 0 ? (
               <tr><td colSpan={9} className="py-8 text-center text-sm text-[#6B7280]">{search || activeFiltersCount > 0 ? 'Nessun ordine corrisponde alla ricerca' : 'Nessun ordine di vendita.'}</td></tr>
-            ) : filtered.map((order) => {
+            ) : paginated.map((order) => {
               const orderBadge = getOrderStatusBadge(order.stato);
               const orderLabel = `SO-${String(order.id).padStart(4, '0')}`;
               return (
@@ -212,11 +222,19 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
       </div>
 
       <div className="mt-4 flex items-center justify-between text-xs text-[#9CA3AF]">
-        <span>{filtered.length} ordini trovati</span>
+        <span><span className="font-medium text-[#2D2D2D]">{paginated.length}</span> di <span className="font-medium text-[#2D2D2D]">{filtered.length}</span> ordini trovati</span>
         <div className="flex items-center gap-2">
-          <button className="px-3 py-1.5 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg hover:bg-white transition-all">Precedente</button>
-          <span className="px-3 py-1.5 bg-[#17E88F]/10 text-[#17E88F] rounded-lg font-medium">1</span>
-          <button className="px-3 py-1.5 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg hover:bg-white transition-all">Successiva</button>
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage <= 1}
+            className="px-3 py-1.5 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >Precedente</button>
+          <span className="px-3 py-1.5 bg-[#17E88F]/10 text-[#17E88F] rounded-lg font-medium">{currentPage}</span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage >= totalPages}
+            className="px-3 py-1.5 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >Successivo</button>
         </div>
       </div>
     </div>

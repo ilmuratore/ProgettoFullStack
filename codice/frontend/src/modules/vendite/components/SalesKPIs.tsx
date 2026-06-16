@@ -7,6 +7,7 @@ export interface SalesKpiItem {
   trend: number;
   iconBg: string;
   isWarning?: boolean;
+  onClick?: () => void;
 }
 
 interface SalesKPIsProps {
@@ -25,6 +26,7 @@ export function SalesKPIs({ kpis }: SalesKPIsProps) {
         return (
           <div
             key={index}
+            onClick={kpi.onClick}
             className="bg-white rounded-2xl p-6 border border-[#E5EAF2] hover:shadow-lg transition-all duration-300 group cursor-pointer"
           >
             <div className="flex items-start justify-between mb-4">

@@ -70,7 +70,7 @@ export function PurchaseWidgets() {
     .slice(0, 3);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* Stato Approvvigionamenti */}
       <div className="bg-white rounded-xl p-4 border border-[#E5EAF2]">
         <div className="flex items-center gap-2 mb-3">
@@ -118,39 +118,6 @@ export function PurchaseWidgets() {
             </div>
           </div>
         )}
-      </div>
-
-      {/* Ordini in Ritardo */}
-      <div className="bg-gradient-to-br from-[#FEF3C7] to-[#FDE68A] rounded-xl p-4 border border-[#F59E0B]/20">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-            <AlertTriangle className="w-4 h-4 text-[#F59E0B]" />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-[#92400E]">Ordini in Ritardo</h3>
-            <p className="text-xs text-[#92400E]/70">Richiedono azione</p>
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          {ordiniInRitardo.length === 0 && (
-            <div className="text-xs text-[#92400E]/60 text-center py-2">Nessun ordine in ritardo</div>
-          )}
-          {ordiniInRitardo.slice(0, 2).map((order) => (
-            <div
-              key={order.id}
-              className="bg-white/80 backdrop-blur-sm rounded-lg px-3 py-2 flex items-center justify-between"
-            >
-              <div>
-                <div className="font-medium text-xs text-[#92400E] font-mono">OA-{String(order.id).padStart(4, '0')}</div>
-                <div className="text-xs text-[#92400E]/70">{order.fornitore}</div>
-              </div>
-              <div className="px-1.5 py-0.5 bg-[#EF4444] text-white rounded text-xs font-medium">
-                {giorniRitardo(order.data_prevista!, oggiDateOnly)}gg
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Top Fornitori */}
