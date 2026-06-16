@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
-import { Plus, ShoppingBag, BarChart2, Download } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Plus, ShoppingBag, BarChart2, CheckSquare, Clock, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { SalesKPIs } from './components/SalesKPIs';
 import { SalesOrdersTable } from './components/SalesOrdersTable';
@@ -13,6 +12,7 @@ import { PageTabBar, type TabConfig } from '../../components/ui/PageTabBar';
 import { ordiniApi } from '../../api/ordiniApi';
 import { clientiApi } from '../../api/clientiApi';
 import { downloadBlob } from '../../api/client';
+import { useAuthStore } from '../../store/authStore';
 import type { OrdineVendita } from '../../types/ordini';
 import type { Cliente } from '../../types/clienti';
 import type { SalesKpiItem } from './components/SalesKPIs';
@@ -40,9 +40,23 @@ const monthLabel = (d: Date): string =>
   d.toLocaleDateString('it-IT', { month: 'short' }).replace('.', '');
 
 export function SalesPage() {
+  const { hasPermesso } = useAuthStore();
+  const accessibleTabs = useMemo(
+    () => tabs
+      .map((tab) => tab.id as SalesTab)
+      .filter((tab) => {
+        switch (tab) {
+          case 'ordini': return hasPermesso('ordini:read');
+          case 'picking': return hasPermesso('ordini:read');
+          case 'kpi': return hasPermesso('ordini:read');
+        }
+      }),
+    [hasPermesso]
+  );
+  const initialTab = accessibleTabs[0] ?? 'ordini';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<SalesTab>('ordini');
+  const [activeTab, setActiveTab] = useState<SalesTab>(initialTab);
   const [reloadKey, setReloadKey] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [salesOrders, setSalesOrders] = useState<OrdineVendita[]>([]);
@@ -50,6 +64,10 @@ export function SalesPage() {
   const [destinazioniByCliente, setDestinazioniByCliente] = useState<Record<number, number>>({});
   const navigate = useNavigate();
   const tableRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setActiveTab((prev) => (prev === initialTab ? prev : initialTab));
+  }, [initialTab]);
 
   useEffect(() => {
     let alive = true;
@@ -249,7 +267,11 @@ export function SalesPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-[#E5EAF2] overflow-hidden">
-        <PageTabBar tabs={tabs} activeTab={activeTab} onTabChange={(id) => setActiveTab(id as SalesTab)} />
+        <PageTabBar
+          tabs={tabs.map((tab) => ({ ...tab, disabled: !accessibleTabs.includes(tab.id as SalesTab) }))}
+          activeTab={activeTab}
+          onTabChange={(id) => setActiveTab(id as SalesTab)}
+        />
 
         <div className="p-6 space-y-6">
           {activeTab === 'ordini' && (

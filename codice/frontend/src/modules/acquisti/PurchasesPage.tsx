@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Plus, ShoppingCart, BarChart2, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { PurchaseKPIs } from './components/PurchaseKPIs';
@@ -10,6 +10,7 @@ import { OrderDetailDrawer } from './components/OrderDetailDrawer';
 import { NewPurchaseOrderModal } from './components/NewPurchaseOrderModal';
 import { PageTabBar, type TabConfig } from '../../components/ui/PageTabBar';
 import { downloadBlob } from '../../api/client';
+import { useAuthStore } from '../../store/authStore';
 
 type PurchaseTab = 'ordini' | 'kpi';
 
@@ -19,51 +20,28 @@ const tabs: TabConfig[] = [
 ];
 
 export function PurchasesPage() {
+  const { hasPermesso } = useAuthStore();
+  const accessibleTabs = useMemo(
+    () => tabs
+      .map((tab) => tab.id as PurchaseTab)
+      .filter((tab) => {
+        switch (tab) {
+          case 'ordini': return hasPermesso('acquisti:read');
+          case 'kpi': return hasPermesso('acquisti:read');
+        }
+      }),
+    [hasPermesso]
+  );
+  const initialTab = accessibleTabs[0] ?? 'ordini';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<PurchaseTab>('ordini');
+  const [activeTab, setActiveTab] = useState<PurchaseTab>(initialTab);
   const [reloadKey, setReloadKey] = useState(0);
   const [exporting, setExporting] = useState(false);
 
-  const ordersTableRef = useRef<HTMLDivElement>(null);
-  const overdueRef = useRef<HTMLDivElement>(null);
-  const leadTimeRef = useRef<HTMLDivElement>(null);
-  const pendingScrollRef = useRef<'orders' | 'overdue' | 'leadtime' | null>(null);
-
   useEffect(() => {
-    const target = pendingScrollRef.current;
-    if (!target) return;
-    pendingScrollRef.current = null;
-    const ref = target === 'orders' ? ordersTableRef : target === 'overdue' ? overdueRef : leadTimeRef;
-    requestAnimationFrame(() => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-  }, [activeTab]);
-
-  const scrollToOrdersTable = () => {
-    if (activeTab !== 'ordini') {
-      pendingScrollRef.current = 'orders';
-      setActiveTab('ordini');
-    } else {
-      ordersTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
-
-  const scrollToOverdue = () => {
-    if (activeTab !== 'kpi') {
-      pendingScrollRef.current = 'overdue';
-      setActiveTab('kpi');
-    } else {
-      overdueRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
-
-  const scrollToLeadTime = () => {
-    if (activeTab !== 'kpi') {
-      pendingScrollRef.current = 'leadtime';
-      setActiveTab('kpi');
-    } else {
-      leadTimeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
+    setActiveTab((prev) => (prev === initialTab ? prev : initialTab));
+  }, [initialTab]);
 
   const handleExport = async () => {
     setExporting(true);
@@ -105,7 +83,11 @@ export function PurchasesPage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-[#E5EAF2] overflow-hidden">
-        <PageTabBar tabs={tabs} activeTab={activeTab} onTabChange={(id) => setActiveTab(id as PurchaseTab)} />
+        <PageTabBar
+          tabs={tabs.map((tab) => ({ ...tab, disabled: !accessibleTabs.includes(tab.id as PurchaseTab) }))}
+          activeTab={activeTab}
+          onTabChange={(id) => setActiveTab(id as PurchaseTab)}
+        />
 
         <div className="p-6 space-y-6">
           {activeTab === 'ordini' && (

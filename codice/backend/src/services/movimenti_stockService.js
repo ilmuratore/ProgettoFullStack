@@ -184,6 +184,11 @@ const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione
                 await giacenzeModel.lockByProdottoIdAndUbicazioneId(prodotto_id, secondUbicazioneId, client);
             }
 
+            const targetOccupata = await giacenzeModel.findAltroProdottoConGiacenzaByUbicazione(prodotto_id, ubicazione_a_id, client);
+            if (targetOccupata.rowCount > 0) {
+                throwError('STATE_TRANSITION_INVALID', 'Ubicazione di arrivo occupata da altro prodotto con giacenza attiva');
+            }
+
             const scaricoGiacenzaResult = await giacenzeModel.incrementaQuantita(prodotto_id, ubicazione_da_id, -quantita, client);
             if (scaricoGiacenzaResult.rowCount === 0) {
                 throwError('INSUFFICIENT_STOCK', 'Giacenza assente o insufficiente sull ubicazione di partenza per lo spostamento');
@@ -272,6 +277,13 @@ const create = async ({ prodotto_id, ubicazione_id, ubicazione_da_id, ubicazione
         const giacenza = await giacenzeModel.findByProdottoIdAndUbicazioneId(prodotto_id, ubicazione_id, client);
         if (giacenza.rowCount > 0) {
             await giacenzeModel.lockByProdottoIdAndUbicazioneId(prodotto_id, ubicazione_id, client);
+        }
+
+        if (delta > 0) {
+            const occupata = await giacenzeModel.findAltroProdottoConGiacenzaByUbicazione(prodotto_id, ubicazione_id, client);
+            if (occupata.rowCount > 0) {
+                throwError('STATE_TRANSITION_INVALID', 'Ubicazione occupata da altro prodotto con giacenza attiva');
+            }
         }
 
         const giacenzaResult = await giacenzeModel.incrementaQuantita(prodotto_id, ubicazione_id, delta, client);

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Edit, ToggleLeft, ToggleRight } from 'lucide-react';
 import type { UtenteAPI } from '../../../types/utenti';
 
@@ -21,13 +22,14 @@ type UsersTableRow = {
   email: string;
   ruolo: string;
   ruoloColor: string;
-  ultimoAccesso: string;
   attivo: boolean;
 };
 
 type UsersTableProps = {
   utenti: UtenteAPI[];
   loading: boolean;
+  highlightedUserId?: number | null;
+  canManageUsers: boolean;
   onEdit: (utente: UtenteAPI) => void;
   onToggleAttivo: (utente: UtenteAPI) => void;
 };
@@ -41,13 +43,18 @@ const mapUtenteToRow = (utente: UtenteAPI): UsersTableRow => {
     email: utente.email,
     ruolo,
     ruoloColor: ruoloColorMap[ruolo] ?? '#6B7280',
-    ultimoAccesso: '-',
     attivo: utente.attivo ?? false,
   };
 };
 
-export function UsersTable({ utenti, loading, onEdit, onToggleAttivo }: UsersTableProps) {
+export function UsersTable({ utenti, loading, highlightedUserId, canManageUsers, onEdit, onToggleAttivo }: UsersTableProps) {
   const rows = utenti.map(mapUtenteToRow);
+  const highlightedRowRef = useRef<HTMLTableRowElement | null>(null);
+
+  useEffect(() => {
+    if (!highlightedUserId || loading) return;
+    highlightedRowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlightedUserId, loading]);
 
   return (
     <div className="overflow-x-auto">
@@ -57,24 +64,27 @@ export function UsersTable({ utenti, loading, onEdit, onToggleAttivo }: UsersTab
             <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Utente</th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Email</th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Ruolo</th>
-            <th className="text-left px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Ultimo Accesso</th>
             <th className="text-center px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Stato</th>
-            <th className="text-center px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Azioni</th>
+            {canManageUsers && <th className="text-center px-4 py-3 text-xs font-semibold text-[#6B7280] uppercase tracking-wider">Azioni</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-[#E5EAF2]">
           {loading && (
             <tr>
-              <td colSpan={6} className="px-4 py-8 text-center text-sm text-[#6B7280]">Caricamento utenti...</td>
+              <td colSpan={canManageUsers ? 5 : 4} className="px-4 py-8 text-center text-sm text-[#6B7280]">Caricamento utenti...</td>
             </tr>
           )}
           {!loading && rows.length === 0 && (
             <tr>
-              <td colSpan={6} className="px-4 py-8 text-center text-sm text-[#6B7280]">Nessun utente trovato</td>
+              <td colSpan={canManageUsers ? 5 : 4} className="px-4 py-8 text-center text-sm text-[#6B7280]">Nessun utente trovato</td>
             </tr>
           )}
           {rows.map((u) => (
-            <tr key={u.id} className="hover:bg-[#F7F9FC] transition-colors">
+            <tr
+              key={u.id}
+              ref={u.id === highlightedUserId ? highlightedRowRef : null}
+              className={`transition-colors ${u.id === highlightedUserId ? 'bg-[#ECFDF5]' : 'hover:bg-[#F7F9FC]'}`}
+            >
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <div
@@ -95,41 +105,42 @@ export function UsersTable({ utenti, loading, onEdit, onToggleAttivo }: UsersTab
                   {u.ruolo}
                 </span>
               </td>
-              <td className="px-4 py-3 text-sm text-[#6B7280]">{u.ultimoAccesso}</td>
               <td className="px-4 py-3 text-center">
                 <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${u.attivo ? 'bg-[#DCFCE7] text-[#16A34A]' : 'bg-[#F3F4F6] text-[#6B7280]'}`}>
                   {u.attivo ? 'Attivo' : 'Disabilitato'}
                 </span>
               </td>
-              <td className="px-4 py-3">
-                <div className="flex items-center justify-center gap-1.5">
-                  {(() => {
-                    const isAdmin = u.utente.ruolo_id === 1 || u.utente.ruolo === 'Admin' || u.utente.ruolo_nome === 'Admin';
-                    return (
-                      <>
-                  <button
-                    className="p-1.5 hover:bg-[#E5EAF2] rounded-lg transition-colors"
-                    title="Modifica"
-                    onClick={() => onEdit(u.utente)}
-                  >
-                    <Edit className="w-4 h-4 text-[#6B7280]" />
-                  </button>
-                  <button
-                    className={`p-1.5 rounded-lg transition-colors ${isAdmin ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[#E5EAF2]'}`}
-                    title={isAdmin ? 'Admin non disattivabile' : u.attivo ? 'Disabilita' : 'Abilita'}
-                    disabled={isAdmin}
-                    onClick={() => !isAdmin && onToggleAttivo(u.utente)}
-                  >
-                    {u.attivo
-                      ? <ToggleRight className="w-4 h-4 text-[#16A34A]" />
-                      : <ToggleLeft className="w-4 h-4 text-[#9CA3AF]" />
-                    }
-                  </button>
-                      </>
-                    );
-                  })()}
-                </div>
-              </td>
+              {canManageUsers && (
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-center gap-1.5">
+                    {(() => {
+                      const isAdmin = u.utente.ruolo_id === 1 || u.utente.ruolo === 'Admin' || u.utente.ruolo_nome === 'Admin';
+                      return (
+                        <>
+                    <button
+                      className="p-1.5 hover:bg-[#E5EAF2] rounded-lg transition-colors"
+                      title="Modifica"
+                      onClick={() => onEdit(u.utente)}
+                    >
+                      <Edit className="w-4 h-4 text-[#6B7280]" />
+                    </button>
+                    <button
+                      className={`p-1.5 rounded-lg transition-colors ${isAdmin ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[#E5EAF2]'}`}
+                      title={isAdmin ? 'Admin non disattivabile' : u.attivo ? 'Disabilita' : 'Abilita'}
+                      disabled={isAdmin}
+                      onClick={() => !isAdmin && onToggleAttivo(u.utente)}
+                    >
+                      {u.attivo
+                        ? <ToggleRight className="w-4 h-4 text-[#16A34A]" />
+                        : <ToggleLeft className="w-4 h-4 text-[#9CA3AF]" />
+                      }
+                    </button>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

@@ -48,7 +48,7 @@ const findAll = () =>
 
 
 const findAllFiltered = ({ search, magazzino, scorta, ubicazione, q_min, q_max } = {}) => {
-    const conditions = [];
+    const conditions = ['giacenze.quantita > 0'];
     const values = [];
     let i = 1;
 
@@ -219,6 +219,17 @@ const incrementaQuantita = (prodotto_id, ubicazione_id, quantita, client) =>
         [prodotto_id, ubicazione_id, quantita]
     );
 
+const findAltroProdottoConGiacenzaByUbicazione = (prodotto_id, ubicazione_id, client) =>
+    (client || pool).query(
+        `SELECT prodotto_id, quantita
+     FROM giacenze
+     WHERE ubicazione_id = $2
+       AND prodotto_id <> $1
+       AND quantita > 0
+     LIMIT 1`,
+        [prodotto_id, ubicazione_id]
+    );
+
 const remove = (id) =>
     pool.query('DELETE FROM giacenze WHERE id = $1 RETURNING id', [id]);
 
@@ -232,6 +243,7 @@ module.exports = {
     findByUbicazioneId,
     findByProdottoIdAndUbicazioneId,
     lockByProdottoIdAndUbicazioneId,
+    findAltroProdottoConGiacenzaByUbicazione,
     create,
     update,
     incrementaQuantita,

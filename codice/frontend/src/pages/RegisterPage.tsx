@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { authApi } from '../api/authApi';
+import { utentiApi } from '../api/utentiApi';
+import { useAuthStore } from '../store/authStore';
 import type { RegisterData } from '../api/authApi';
 import type { UtenteAPI } from '../types/auth';
 import type { UtenteCreateRequest, UtenteUpdateRequest } from '../types/utenti';
+import type { Ruolo } from '../types/ruoli';
 import { toast } from 'sonner';
 
 interface FieldError {
@@ -11,20 +14,18 @@ interface FieldError {
   message: string;
 }
 
-const REGISTER_ROLE_IDS = [2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 const PROTECTED_ROLE_IDS = [1] as const;
 const NON_DEACTIVATABLE_ROLE_IDS = [1] as const;
-const REGISTER_ROLES = [
-  { id: 2, label: 'Developer' },
-  { id: 3, label: 'Supporto' },
-  { id: 4, label: 'Resp. Azienda' },
-  { id: 5, label: 'Resp. HR' },
-  { id: 6, label: 'Resp. Vendite' },
-  { id: 7, label: 'Resp. Acquisti' },
-  { id: 8, label: 'Resp. Magazzino' },
-  { id: 9, label: 'Operatore' },
-  { id: 10, label: 'Corriere' },
-] as const;
+
+const ROLE_LABELS: Record<string, string> = {
+  Dev: 'Developer',
+};
+
+const DISALLOWED_CREATE_ROLES_BY_ACTOR: Record<number, string[]> = {
+  1: ['Admin', 'Dev'],
+  2: ['Admin', 'Dev'],
+  3: ['Admin', 'Dev', 'Supporto'],
+};
 
 interface RegisterPageProps {
   open?: boolean;
@@ -32,7 +33,7 @@ interface RegisterPageProps {
   initialData?: UtenteAPI | null;
   onSuccess?: (utente: UtenteAPI) => void;
   onCancel?: () => void;
-  onSave?: (data: UtenteCreateRequest | UtenteUpdateRequest, id?: number, passwordReset?: string) => Promise<void>;
+  onSave?: (data: UtenteCreateRequest | UtenteUpdateRequest, options?: { id?: number; passwordReset?: string }) => Promise<void>;
 }
 
 type RegisterFormState = RegisterData & {
@@ -51,7 +52,9 @@ const EMPTY_FORM: RegisterFormState = {
 };
 
 export function RegisterPage({ open, mode = 'create', initialData, onSuccess, onCancel, onSave }: RegisterPageProps) {
+  const { utente } = useAuthStore();
   const [form, setForm] = useState<RegisterFormState>(EMPTY_FORM);
+  const [ruoli, setRuoli] = useState<Ruolo[]>([]);
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldError[]>([]);
   const [globalError, setGlobalError] = useState('');
@@ -61,19 +64,38 @@ export function RegisterPage({ open, mode = 'create', initialData, onSuccess, on
   const isNonDeactivatableUser = NON_DEACTIVATABLE_ROLE_IDS.includes((initialData?.ruolo_id ?? -1) as (typeof NON_DEACTIVATABLE_ROLE_IDS)[number]);
 
   const roleOptions = useMemo(() => {
-    const options = [...REGISTER_ROLES];
-    if (
-      mode === 'edit' &&
-      initialData &&
-      !REGISTER_ROLE_IDS.includes(initialData.ruolo_id as (typeof REGISTER_ROLE_IDS)[number])
-    ) {
+    const blockedRoleNames = DISALLOWED_CREATE_ROLES_BY_ACTOR[utente?.ruolo_id ?? -1] ?? [];
+    const options = ruoli
+      .filter((ruolo) => mode === 'edit' || !blockedRoleNames.includes(String(ruolo.nome)))
+      .map((ruolo) => ({
+        id: ruolo.id,
+        label: ROLE_LABELS[String(ruolo.nome)] ?? String(ruolo.nome),
+      }));
+
+    if (mode === 'edit' && initialData && !options.some((option) => option.id === initialData.ruolo_id)) {
       return [
-        { id: initialData.ruolo_id, label: initialData.ruolo_nome ?? initialData.ruolo ?? 'Ruolo attuale' },
+        { id: initialData.ruolo_id, label: ROLE_LABELS[initialData.ruolo_nome ?? initialData.ruolo ?? ''] ?? initialData.ruolo_nome ?? initialData.ruolo ?? 'Ruolo attuale' },
         ...options,
       ];
     }
+
     return options;
-  }, [mode, initialData]);
+  }, [mode, initialData, ruoli, utente]);
+
+  useEffect(() => {
+    utentiApi.getRuoli()
+      .then(setRuoli)
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (mode !== 'create' || !ruoli.length) return;
+    setForm((prev) => (
+      ruoli.some((ruolo) => ruolo.id === Number(prev.ruolo_id))
+        ? prev
+        : { ...prev, ruolo_id: ruoli[0].id }
+    ));
+  }, [mode, ruoli]);
 
   useEffect(() => {
     if (mode === 'edit' && initialData) {
@@ -150,9 +172,9 @@ export function RegisterPage({ open, mode = 'create', initialData, onSuccess, on
         if (onSave) {
           await onSave(payload);
         } else {
-          const utente = await authApi.register(payload);
-          toast.success(`Utente ${utente.nome} ${utente.cognome} creato con successo`);
-          onSuccess?.(utente);
+          const created = await authApi.register(payload);
+          toast.success(`Utente ${created.nome} ${created.cognome} creato con successo`);
+          onSuccess?.(created);
         }
       } else {
         await onSave?.({
@@ -161,14 +183,17 @@ export function RegisterPage({ open, mode = 'create', initialData, onSuccess, on
           email: form.email.trim(),
           ruolo_id: isProtectedRoleUser ? initialData?.ruolo_id : Number(form.ruolo_id),
           attivo: isNonDeactivatableUser ? true : form.attivo,
-        }, initialData?.id, form.password.trim() ? form.password.trim() : undefined);
+        }, {
+          id: initialData?.id,
+          passwordReset: form.password.trim() ? form.password.trim() : undefined,
+        });
       }
     } catch (err: unknown) {
       const e = err as { code?: string; details?: FieldError[]; message?: string };
       if (e.code === 'VALIDATION_ERROR' && e.details?.length) {
         setFieldErrors(e.details);
       } else if (e.code === 'DUPLICATE_ENTRY' || e.code === 'EMAIL_GIA_ESISTENTE') {
-        setFieldErrors([{ field: 'email', message: 'Email giÃ  registrata nel sistema' }]);
+        setFieldErrors([{ field: 'email', message: 'Email già registrata nel sistema' }]);
       } else {
         setGlobalError(e.message ?? (mode === 'create' ? 'Errore durante la registrazione' : 'Errore durante il salvataggio'));
       }

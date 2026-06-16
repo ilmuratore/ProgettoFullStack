@@ -1,12 +1,22 @@
-import { useState, useEffect, useRef } from 'react';
-import { Search, Users, Building2, Package, ShoppingCart, Truck, Warehouse, ChevronRight, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
+import { Search, Users, Building2, Package, ShoppingCart, Truck, Warehouse, ChevronRight, X, Loader2 } from 'lucide-react';
+import { clientiApi } from '../../api/clientiApi';
+import { fornitoriApi } from '../../api/fornitoriApi';
+import { prodottiApi } from '../../api/prodottiApi';
+import { acquistiApi } from '../../api/acquistiApi';
+import { ordiniApi } from '../../api/ordiniApi';
+import { spedizioniApi } from '../../api/spedizioniApi';
+import { magazzinoApi } from '../../api/magazzinoApi';
+import { dipendentiApi } from '../../api/corrieriApi';
 
 interface SearchResult {
   id: string;
   title: string;
   subtitle: string;
-  category: 'Clienti' | 'Fornitori' | 'Prodotti' | 'Ordini' | 'Spedizioni' | 'Magazzini';
-  page: string;
+  category: 'Clienti' | 'Fornitori' | 'Dipendenti' | 'Prodotti' | 'Ordini' | 'Spedizioni' | 'Magazzini';
+  href: string;
+  tokens: string;
 }
 
 interface GlobalSearchProps {
@@ -14,81 +24,237 @@ interface GlobalSearchProps {
   onClose?: () => void;
 }
 
-const mockData: SearchResult[] = [
-  { id: '1', title: 'Logistica Express S.r.l.', subtitle: 'CLI-001 · Milano', category: 'Clienti', page: 'clienti' },
-  { id: '2', title: 'Transport Solutions S.p.A.', subtitle: 'CLI-002 · Roma', category: 'Clienti', page: 'clienti' },
-  { id: '3', title: 'Packaging Solutions Italia S.p.A.', subtitle: 'FOR-001 · Milano', category: 'Fornitori', page: 'fornitori' },
-  { id: '4', title: 'Materiali Logistica Pro S.r.l.', subtitle: 'FOR-002 · Bergamo', category: 'Fornitori', page: 'fornitori' },
-  { id: '5', title: 'Pallet Standard EUR 1200x800', subtitle: 'PLT-EUR-001 · Disponibile', category: 'Prodotti', page: 'prodotti' },
-  { id: '6', title: 'Scatola Cartone Ondulato 40x30x30', subtitle: 'SCT-OND-045 · Disponibile', category: 'Prodotti', page: 'prodotti' },
-  { id: '7', title: 'PO-2024-001', subtitle: 'In Lavorazione · € 45.000', category: 'Ordini', page: 'acquisti' },
-  { id: '8', title: 'SO-2024-123', subtitle: 'Confermato · € 78.500', category: 'Ordini', page: 'vendite' },
-  { id: '9', title: 'SHIP-2024-456', subtitle: 'In Transito · BRT Express', category: 'Spedizioni', page: 'logistica' },
-  { id: '10', title: 'Magazzino Centrale Milano', subtitle: 'WH-001 · 85% occupato', category: 'Magazzini', page: 'magazzino' },
-];
-
 const categoryIcons = {
   Clienti: Users,
   Fornitori: Building2,
+  Dipendenti: Users,
   Prodotti: Package,
   Ordini: ShoppingCart,
   Spedizioni: Truck,
   Magazzini: Warehouse,
 };
 
-export function GlobalSearch({ onNavigate, onClose }: GlobalSearchProps) {
+const formatCurrency = (value: number | null | undefined): string =>
+  value == null
+    ? '-'
+    : new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(value);
+
+const normalize = (value: string): string =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+export function GlobalSearch({ onClose }: GlobalSearchProps) {
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [allResults, setAllResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && onClose) {
-        onClose();
-      }
+      if (e.key === 'Escape' && onClose) onClose();
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
   }, []);
 
   useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
+    if (hasLoadedRef.current) return;
+
+    let cancelled = false;
+
+    const loadResults = async () => {
+      setLoading(true);
+      setLoadError(null);
+
+      const settled = await Promise.allSettled([
+        clientiApi.list(),
+        fornitoriApi.list(),
+        dipendentiApi.list(),
+        prodottiApi.list(),
+        acquistiApi.list(),
+        ordiniApi.list(),
+        spedizioniApi.list(),
+        magazzinoApi.list(),
+      ]);
+
+      if (cancelled) return;
+
+      const [
+        clientiRes,
+        fornitoriRes,
+        dipendentiRes,
+        prodottiRes,
+        ordiniAcquistoRes,
+        ordiniVenditaRes,
+        spedizioniRes,
+        magazziniRes,
+      ] = settled;
+
+      const nextResults: SearchResult[] = [];
+
+      if (clientiRes.status === 'fulfilled') {
+        nextResults.push(
+          ...clientiRes.value.map((cliente) => ({
+            id: `cliente-${cliente.id}`,
+            title: cliente.ragione_sociale,
+            subtitle: [cliente.piva_cf, cliente.email, cliente.telefono].filter(Boolean).join(' · ') || 'Cliente',
+            category: 'Clienti' as const,
+            href: '/anagrafiche?tab=clienti',
+            tokens: normalize([cliente.ragione_sociale, cliente.piva_cf, cliente.email, cliente.telefono].filter(Boolean).join(' ')),
+          }))
+        );
+      }
+
+      if (fornitoriRes.status === 'fulfilled') {
+        nextResults.push(
+          ...fornitoriRes.value.map((fornitore) => ({
+            id: `fornitore-${fornitore.id}`,
+            title: fornitore.ragione_sociale,
+            subtitle: [fornitore.piva, fornitore.indirizzo, fornitore.email].filter(Boolean).join(' · ') || 'Fornitore',
+            category: 'Fornitori' as const,
+            href: '/anagrafiche?tab=fornitori',
+            tokens: normalize([fornitore.ragione_sociale, fornitore.piva, fornitore.indirizzo, fornitore.email, fornitore.telefono].filter(Boolean).join(' ')),
+          }))
+        );
+      }
+
+      if (dipendentiRes.status === 'fulfilled') {
+        nextResults.push(
+          ...dipendentiRes.value.map((dipendente) => ({
+            id: `dipendente-${dipendente.id}`,
+            title: [dipendente.nome, dipendente.cognome].filter(Boolean).join(' '),
+            subtitle: [dipendente.codice_fiscale, dipendente.ruolo_operativo, dipendente.utente_id ? `Utente #${dipendente.utente_id}` : null].filter(Boolean).join(' · ') || 'Dipendente',
+            category: 'Dipendenti' as const,
+            href: '/anagrafiche?tab=dipendenti',
+            tokens: normalize([dipendente.nome, dipendente.cognome, dipendente.codice_fiscale, dipendente.ruolo_operativo].filter(Boolean).join(' ')),
+          }))
+        );
+      }
+
+      if (prodottiRes.status === 'fulfilled') {
+        nextResults.push(
+          ...prodottiRes.value.map((prodotto) => ({
+            id: `prodotto-${prodotto.id}`,
+            title: prodotto.nome,
+            subtitle: [prodotto.sku, prodotto.categoria, prodotto.attivo ? 'Attivo' : 'Disattivo'].filter(Boolean).join(' · '),
+            category: 'Prodotti' as const,
+            href: '/magazzino?tab=prodotti',
+            tokens: normalize([prodotto.nome, prodotto.sku, prodotto.categoria].filter(Boolean).join(' ')),
+          }))
+        );
+      }
+
+      if (ordiniAcquistoRes.status === 'fulfilled') {
+        nextResults.push(
+          ...ordiniAcquistoRes.value.map((ordine) => ({
+            id: `ordine-acquisto-${ordine.id}`,
+            title: `PO-${String(ordine.id).padStart(4, '0')}`,
+            subtitle: [ordine.fornitore, ordine.stato, formatCurrency(ordine.importo_totale)].filter(Boolean).join(' · '),
+            category: 'Ordini' as const,
+            href: '/acquisti',
+            tokens: normalize([ordine.id, ordine.fornitore, ordine.stato].filter(Boolean).join(' ')),
+          }))
+        );
+      }
+
+      if (ordiniVenditaRes.status === 'fulfilled') {
+        nextResults.push(
+          ...ordiniVenditaRes.value.map((ordine) => ({
+            id: `ordine-vendita-${ordine.id}`,
+            title: `SO-${String(ordine.id).padStart(4, '0')}`,
+            subtitle: [ordine.cliente, ordine.stato, formatCurrency(ordine.importo_totale)].filter(Boolean).join(' · '),
+            category: 'Ordini' as const,
+            href: '/vendite',
+            tokens: normalize([ordine.id, ordine.cliente, ordine.destinazione, ordine.stato, ordine.stato_picking].filter(Boolean).join(' ')),
+          }))
+        );
+      }
+
+      if (spedizioniRes.status === 'fulfilled') {
+        nextResults.push(
+          ...spedizioniRes.value.map((spedizione) => ({
+            id: `spedizione-${spedizione.id}`,
+            title: `SH-${String(spedizione.id).padStart(4, '0')}`,
+            subtitle: [spedizione.cliente, spedizione.corriere, spedizione.stato, spedizione.tracking_number].filter(Boolean).join(' · '),
+            category: 'Spedizioni' as const,
+            href: '/logistica',
+            tokens: normalize([spedizione.id, spedizione.cliente, spedizione.corriere, spedizione.stato, spedizione.tracking_number].filter(Boolean).join(' ')),
+          }))
+        );
+      }
+
+      if (magazziniRes.status === 'fulfilled') {
+        nextResults.push(
+          ...magazziniRes.value.map((magazzino) => ({
+            id: `magazzino-${magazzino.id}`,
+            title: magazzino.nome,
+            subtitle: [magazzino.codice, magazzino.citta, magazzino.provincia].filter(Boolean).join(' · ') || 'Magazzino',
+            category: 'Magazzini' as const,
+            href: '/magazzino?tab=struttura',
+            tokens: normalize([magazzino.nome, magazzino.codice, magazzino.indirizzo, magazzino.citta, magazzino.provincia].filter(Boolean).join(' ')),
+          }))
+        );
+      }
+
+      const hasAnySuccess = settled.some((item) => item.status === 'fulfilled');
+      const hasAnyError = settled.some((item) => item.status === 'rejected');
+
+      setAllResults(nextResults);
+      if (!hasAnySuccess) setLoadError('Impossibile caricare i dati di ricerca');
+      else if (hasAnyError) setLoadError('Alcuni risultati potrebbero mancare');
+      setLoading(false);
+      hasLoadedRef.current = true;
+    };
+
+    loadResults();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    if (query.trim() === '') {
+    const trimmed = normalize(query);
+    if (!trimmed) {
       setResults([]);
       return;
     }
 
-    const filtered = mockData.filter(item =>
-      item.title.toLowerCase().includes(query.toLowerCase()) ||
-      item.subtitle.toLowerCase().includes(query.toLowerCase())
-    );
+    const filtered = allResults
+      .filter((item) => item.tokens.includes(trimmed))
+      .slice(0, 30);
+
     setResults(filtered);
-  }, [query]);
+  }, [allResults, query]);
 
   const handleSelect = (result: SearchResult) => {
-    if (onNavigate) onNavigate(result.page);
-    if (onClose) onClose();
+    navigate(result.href);
+    onClose?.();
     setQuery('');
     setResults([]);
   };
 
   const handleClose = () => {
-    if (onClose) onClose();
+    onClose?.();
     setQuery('');
     setResults([]);
   };
 
   const groupedResults = results.reduce((acc, result) => {
-    if (!acc[result.category]) {
-      acc[result.category] = [];
-    }
+    if (!acc[result.category]) acc[result.category] = [];
     acc[result.category].push(result);
     return acc;
   }, {} as Record<string, SearchResult[]>);
@@ -107,7 +273,7 @@ export function GlobalSearch({ onNavigate, onClose }: GlobalSearchProps) {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Cerca clienti, fornitori, prodotti, ordini..."
+            placeholder="Cerca clienti, fornitori, dipendenti, prodotti, ordini..."
             className="flex-1 text-base outline-none placeholder:text-[#9CA3AF]"
           />
           <div className="flex items-center gap-2">
@@ -124,7 +290,20 @@ export function GlobalSearch({ onNavigate, onClose }: GlobalSearchProps) {
         </div>
 
         <div className="max-h-[60vh] overflow-y-auto p-2">
-          {query && results.length === 0 && (
+          {loading && !query && (
+            <div className="py-12 text-center">
+              <Loader2 className="w-10 h-10 text-[#17E88F] mx-auto mb-3 animate-spin" />
+              <p className="text-sm text-[#6B7280]">Caricamento dati reali...</p>
+            </div>
+          )}
+
+          {loadError && !query && !loading && (
+            <div className="py-12 text-center">
+              <p className="text-sm text-[#6B7280]">{loadError}</p>
+            </div>
+          )}
+
+          {query && results.length === 0 && !loading && (
             <div className="py-12 text-center">
               <p className="text-[#6B7280]">Nessun risultato trovato per "{query}"</p>
             </div>
@@ -161,7 +340,7 @@ export function GlobalSearch({ onNavigate, onClose }: GlobalSearchProps) {
             </div>
           )}
 
-          {!query && (
+          {!query && !loading && !loadError && (
             <div className="py-12 text-center">
               <Search className="w-12 h-12 text-[#E5EAF2] mx-auto mb-3" />
               <p className="text-sm text-[#6B7280]">Inizia a digitare per cercare...</p>

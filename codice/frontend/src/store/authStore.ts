@@ -2,15 +2,15 @@ import { create } from 'zustand';
 import type { UtenteAPI } from '../types/auth';
 
 export const RUOLO_ID_TO_NOME: Record<number, string> = {
-  1:  'Admin',
-  2:  'Dev',
-  3:  'Supporto',
-  4:  'Resp. Azienda',
-  5:  'Resp. HR',
-  6:  'Resp. Vendite',
-  7:  'Resp. Acquisti',
-  8:  'Resp. Magazzino',
-  9:  'Operatore',
+  1: 'Admin',
+  2: 'Dev',
+  3: 'Supporto',
+  4: 'Resp. Azienda',
+  5: 'Resp. HR',
+  6: 'Resp. Vendite',
+  7: 'Resp. Acquisti',
+  8: 'Resp. Magazzino',
+  9: 'Operatore',
   10: 'Corriere',
 };
 
@@ -49,10 +49,17 @@ export const PERMESSI_PER_RUOLO: Record<number, string[]> = {
   2: ALL_PERMISSIONS,
   3: [
     'utenti:read',
-    'prodotti:read', 'fornitori:read', 'clienti:read',
-    'magazzino:read', 'giacenze:read',
-    'acquisti:read', 'ordini:read', 'spedizioni:read',
-    'notifiche:read', 'dashboard:read', 'ecosystem:read',
+    'prodotti:read',
+    'fornitori:read',
+    'clienti:read',
+    'magazzino:read',
+    'giacenze:read',
+    'acquisti:read',
+    'ordini:read',
+    'spedizioni:read',
+    'notifiche:read',
+    'dashboard:read',
+    'ecosystem:read',
   ],
   4: [
     'utenti:read',
@@ -75,7 +82,7 @@ export const PERMESSI_PER_RUOLO: Record<number, string[]> = {
   6: [
     'prodotti:read',
     'clienti:read', 'clienti:write', 'clienti:delete',
-    'giacenze:read', 'giacenze:write',
+    'giacenze:read', 'giacenze:write', 'magazzino:read',
     'ordini:read', 'ordini:write', 'ordini:approve',
     'notifiche:read', 'dashboard:read',
   ],
@@ -102,26 +109,26 @@ export const PERMESSI_PER_RUOLO: Record<number, string[]> = {
     'prodotti:read', 'fornitori:read', 'clienti:read',
     'magazzino:read',
     'giacenze:read', 'giacenze:write',
-    'ordini:read', 'ordini:write', 'ordini:approve',
+    'ordini:read',
     'spedizioni:read',
     'notifiche:read', 'dashboard:read',
   ],
   10: [
-    'spedizioni:read', 'spedizioni:write',
+    'spedizioni:read',
     'notifiche:read', 'dashboard:read',
   ],
 };
 
 export const PAGINE_PER_RUOLO: Record<number, string[]> = {
-  1:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione', 'register'],
-  2:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione', 'register'],
-  3:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica'],
-  4:  ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione', 'register'],
-  5:  ['dashboard', 'anagrafiche'],
-  6:  ['dashboard', 'anagrafiche', 'vendite', 'magazzino'],
-  7:  ['dashboard', 'anagrafiche', 'acquisti', 'magazzino'],
-  8:  ['dashboard', 'magazzino', 'acquisti', 'logistica'],
-  9:  ['dashboard', 'anagrafiche', 'vendite', 'magazzino', 'logistica'],
+  1: ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione', 'register'],
+  2: ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione', 'register'],
+  3: ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione'],
+  4: ['dashboard', 'anagrafiche', 'magazzino', 'acquisti', 'vendite', 'logistica', 'amministrazione', 'register'],
+  5: ['dashboard', 'anagrafiche'],
+  6: ['dashboard', 'anagrafiche', 'vendite', 'magazzino'],
+  7: ['dashboard', 'anagrafiche', 'acquisti', 'magazzino'],
+  8: ['dashboard', 'magazzino', 'acquisti', 'logistica'],
+  9: ['dashboard', 'anagrafiche', 'vendite', 'magazzino', 'logistica'],
   10: ['dashboard', 'logistica'],
 };
 
