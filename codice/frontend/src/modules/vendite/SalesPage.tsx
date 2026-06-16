@@ -19,19 +19,15 @@ import type { SalesKpiItem } from './components/SalesKPIs';
 import type { SalesChartPoint } from './components/SalesChart';
 import type { TopClienteItem } from './components/TopClienti';
 
-type SalesTab = 'ordini' | 'picking' | 'kpi';
+type SalesTab = 'ordini' | 'kpi';
 
 const tabs: TabConfig[] = [
   { id: 'ordini', label: 'Ordini', icon: ShoppingBag },
-  { id: 'picking', label: 'Picking', icon: CheckSquare },
   { id: 'kpi', label: 'KPI Vendite', icon: BarChart2 },
 ];
 
 const fmtEuro = (n: number): string =>
   `EUR ${n.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-const fmtData = (iso: string | null | undefined): string =>
-  iso ? new Date(iso).toLocaleDateString('it-IT') : '-';
 
 const fmtPct = (n: number): string =>
   `${n.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
@@ -66,6 +62,8 @@ export function SalesPage() {
   const [salesOrders, setSalesOrders] = useState<OrdineVendita[]>([]);
   const [salesClients, setSalesClients] = useState<Cliente[]>([]);
   const [destinazioniByCliente, setDestinazioniByCliente] = useState<Record<number, number>>({});
+  const navigate = useNavigate();
+  const tableRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setActiveTab((prev) => (prev === initialTab ? prev : initialTab));
@@ -130,17 +128,11 @@ export function SalesPage() {
     return date >= previousMonthStart && date < previousMonthEnd;
   });
 
-  const pickingOrders = salesOrders.filter((o) => o.stato_picking !== 'NON_AVVIATO');
-
   const activeOrders = salesOrders.filter((o) => o.stato !== 'SPEDITO' && o.stato !== 'ANNULLATO');
   const activeOrdersPrev = previousMonthOrders.filter((o) => o.stato !== 'SPEDITO' && o.stato !== 'ANNULLATO').length;
   const activeOrdersCurr = currentMonthOrders.filter((o) => o.stato !== 'SPEDITO' && o.stato !== 'ANNULLATO').length;
   const valueCurrent = currentMonthOrders.reduce((sum, o) => sum + Number(o.importo_totale ?? 0), 0);
   const valuePrev = previousMonthOrders.reduce((sum, o) => sum + Number(o.importo_totale ?? 0), 0);
-  const toShip = salesOrders.filter((o) => o.stato === 'CONFERMATO' && o.stato_picking === 'PICKING_COMPLETATO').length;
-  const toShipPrev = previousMonthOrders.filter((o) => o.stato === 'CONFERMATO' && o.stato_picking === 'PICKING_COMPLETATO').length;
-  const inPicking = salesOrders.filter((o) => o.stato === 'CONFERMATO' && o.stato_picking === 'IN_PICKING').length;
-  const inPickingPrev = previousMonthOrders.filter((o) => o.stato === 'CONFERMATO' && o.stato_picking === 'IN_PICKING').length;
   const completedToday = salesOrders.filter((o) => o.stato === 'SPEDITO' && new Date(o.updated_at).toDateString() === todayKey).length;
   const completedPrevToday = previousMonthOrders.filter((o) => o.stato === 'SPEDITO').length;
   const fulfilled = salesOrders.filter((o) => o.stato === 'SPEDITO').length;
@@ -155,6 +147,9 @@ export function SalesPage() {
     return ((curr - prev) / prev) * 100;
   };
 
+  const scrollToTable = () =>
+    tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
   const salesKpis: SalesKpiItem[] = [
     {
       title: 'Ordini Attivi',
@@ -162,6 +157,7 @@ export function SalesPage() {
       subtitle: `${activeOrdersCurr} nel mese corrente`,
       trend: trend(activeOrdersCurr, activeOrdersPrev),
       iconBg: 'bg-gradient-to-br from-[#3B82F6] to-[#2563EB]',
+      onClick: scrollToTable,
     },
     {
       title: 'Valore Ordini',
@@ -169,35 +165,23 @@ export function SalesPage() {
       subtitle: 'Valore totale portafoglio',
       trend: trend(valueCurrent, valuePrev),
       iconBg: 'bg-gradient-to-br from-[#17E88F] to-[#0FA67A]',
-    },
-    {
-      title: 'Ordini da Spedire',
-      value: String(toShip),
-      subtitle: 'Picking completato, pronti spedizione',
-      trend: trend(toShip, toShipPrev),
-      iconBg: 'bg-gradient-to-br from-[#F59E0B] to-[#D97706]',
-      isWarning: toShip > 0,
-    },
-    {
-      title: 'Ordini in Picking',
-      value: String(inPicking),
-      subtitle: 'In lavorazione magazzino',
-      trend: trend(inPicking, inPickingPrev),
-      iconBg: 'bg-gradient-to-br from-[#8B5CF6] to-[#7C3AED]',
+      onClick: scrollToTable,
     },
     {
       title: 'Completati Oggi',
       value: String(completedToday),
-      subtitle: 'Ordini spediti oggi',
+      subtitle: 'Ordini consegnati oggi',
       trend: trend(completedToday, completedPrevToday),
       iconBg: 'bg-gradient-to-br from-[#06B6D4] to-[#0891B2]',
+      onClick: () => navigate('/vendite?stato=SPEDITO'),
     },
     {
       title: 'Tasso Evasione',
       value: fmtPct(fulfillmentRate),
-      subtitle: 'Spediti su ordini non annullati',
+      subtitle: 'Consegnati su ordini non annullati',
       trend: trend(fulfillmentRate, prevFulfillmentRate),
       iconBg: 'bg-gradient-to-br from-[#17E88F] to-[#059669]',
+      onClick: () => setActiveTab('kpi'),
     },
   ];
 
@@ -257,7 +241,7 @@ export function SalesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-[#2D2D2D]">Vendite</h1>
-          <p className="text-sm text-[#6B7280] mt-1">Gestione ordini clienti, picking e KPI vendite</p>
+          <p className="text-sm text-[#6B7280] mt-1">Gestione ordini clienti e KPI vendite</p>
         </div>
         {activeTab !== 'kpi' && (
           <div className="flex items-center gap-3">
@@ -291,59 +275,17 @@ export function SalesPage() {
 
         <div className="p-6 space-y-6">
           {activeTab === 'ordini' && (
-            <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
-              <div className="lg:col-span-7">
+            <div className="space-y-6">
+              <SalesKPIs kpis={salesKpis} />
+              <div ref={tableRef}>
                 <SalesOrdersTable onOrderClick={setSelectedOrderId} reloadKey={reloadKey} />
               </div>
-              <div className="lg:col-span-3">
-                <SalesWidgets orders={salesOrders} onOrderClick={setSelectedOrderId} />
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'picking' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-[#6B7280]">Ordini in lavorazione magazzino</p>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="flex items-center gap-1 text-[#D97706]"><Clock className="w-3 h-3" /> IN_PICKING</span>
-                  <span className="flex items-center gap-1 text-[#22C55E]"><CheckSquare className="w-3 h-3" /> PICKING_COMPLETATO</span>
-                </div>
-              </div>
-
-              {pickingOrders.length === 0 ? (
-                <div className="py-12 text-center text-sm text-[#6B7280]">Nessun ordine in picking.</div>
-              ) : (
-                <div className="space-y-2">
-                  {pickingOrders.map((order) => (
-                    <button
-                      key={order.id}
-                      onClick={() => setSelectedOrderId(order.id)}
-                      className="w-full flex items-center justify-between px-5 py-4 border border-[#E5EAF2] rounded-xl hover:bg-[#F7F9FC] transition-colors text-left"
-                    >
-                      <div className="flex items-center gap-4">
-                        <span className="text-sm font-semibold text-[#17E88F]">SO-{String(order.id).padStart(4, '0')}</span>
-                        <span className="text-sm text-[#374151]">{order.cliente ?? '-'}</span>
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          order.stato_picking === 'PICKING_COMPLETATO'
-                            ? 'bg-[#DCFCE7] text-[#16A34A]'
-                            : 'bg-[#FEF3C7] text-[#D97706]'
-                        }`}>
-                          {order.stato_picking === 'PICKING_COMPLETATO' ? <CheckSquare className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                          {order.stato_picking.replace('_', ' ')}
-                        </span>
-                      </div>
-                      <span className="text-xs text-[#9CA3AF]">Cons. {fmtData(order.data_consegna_richiesta)}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           )}
 
           {activeTab === 'kpi' && (
             <div className="space-y-6">
-              <SalesKPIs kpis={salesKpis} />
+              <SalesWidgets orders={salesOrders} />
               <SalesChart data={salesChartData} />
               <TopClienti clienti={topClienti} />
             </div>

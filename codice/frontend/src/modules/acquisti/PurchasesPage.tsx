@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { PurchaseKPIs } from './components/PurchaseKPIs';
 import { PurchaseOrdersTable } from './components/PurchaseOrdersTable';
 import { PurchaseWidgets } from './components/PurchaseWidgets';
+import { PurchaseInsights } from './components/PurchaseInsights';
 import { SuppliersPerformance } from './components/SuppliersPerformance';
 import { OrderDetailDrawer } from './components/OrderDetailDrawer';
 import { NewPurchaseOrderModal } from './components/NewPurchaseOrderModal';
@@ -90,20 +91,28 @@ export function PurchasesPage() {
 
         <div className="p-6 space-y-6">
           {activeTab === 'ordini' && (
-            <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
-              <div className="lg:col-span-7">
+            <div className="space-y-6">
+              <PurchaseKPIs
+                onOrdiniAttiviClick={scrollToOrdersTable}
+                onValoreApertoClick={scrollToOrdersTable}
+                onOrdiniRitardoClick={scrollToOverdue}
+                onLeadTimeClick={scrollToLeadTime}
+              />
+              <div ref={ordersTableRef}>
                 <PurchaseOrdersTable onOrderClick={setSelectedOrderId} reloadKey={reloadKey} />
-              </div>
-              <div className="lg:col-span-3">
-                <PurchaseWidgets />
               </div>
             </div>
           )}
 
           {activeTab === 'kpi' && (
             <div className="space-y-6">
-              <PurchaseKPIs />
-              <SuppliersPerformance />
+              <PurchaseWidgets />
+              <div ref={overdueRef}>
+                <PurchaseInsights onOrderClick={setSelectedOrderId} />
+              </div>
+              <div ref={leadTimeRef}>
+                <SuppliersPerformance />
+              </div>
             </div>
           )}
         </div>

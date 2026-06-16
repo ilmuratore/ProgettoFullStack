@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Building2 } from 'lucide-react';
 import { acquistiApi } from '../../../api/acquistiApi';
 import { fornitoriApi } from '../../../api/fornitoriApi';
 import type { OrdineAcquistoLista } from '../../../types/acquisti';
@@ -93,8 +94,14 @@ export function SuppliersPerformance() {
 
   return (
     <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="font-semibold text-[#2D2D2D]">Performance Fornitori</h3>
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 bg-gradient-to-br from-[#17E88F] to-[#0FA67A] rounded-xl flex items-center justify-center">
+          <Building2 className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-[#2D2D2D]">Performance Fornitori</h3>
+          <p className="text-xs text-[#6B7280]">Affidabilità, tempistiche e volumi d'acquisto</p>
+        </div>
       </div>
 
       <div className="overflow-x-auto">

@@ -80,6 +80,8 @@ export function PurchaseOrdersTable({ onOrderClick, reloadKey }: PurchaseOrdersT
   const [sort, setSort] = useState<SortConfig<SortKey> | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('tutti');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const handleSort = (key: SortKey) => setSort((prev) => toggleSort(prev, key));
 
@@ -115,6 +117,14 @@ export function PurchaseOrdersTable({ onOrderClick, reloadKey }: PurchaseOrdersT
     compareOrdersByKey
   );
 
+  useEffect(() => {
+    setPage(1);
+  }, [search, filterStatus, sort]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   return (
     <div className="bg-white rounded-2xl p-6 border border-[#E5EAF2]">
       <div className="flex items-center justify-between mb-6">
@@ -146,7 +156,7 @@ export function PurchaseOrdersTable({ onOrderClick, reloadKey }: PurchaseOrdersT
               placeholder="Cerca ordine o fornitore..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-64 h-9 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
+              className="w-full h-9 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
             />
           </div>
         </FilterPanel>
@@ -171,7 +181,7 @@ export function PurchaseOrdersTable({ onOrderClick, reloadKey }: PurchaseOrdersT
               <tr><td colSpan={8} className="py-8 text-center text-sm text-[#6B7280]">Caricamento ordini...</td></tr>
             ) : filtered.length === 0 ? (
               <tr><td colSpan={8} className="py-8 text-center text-sm text-[#6B7280]">{search || activeFiltersCount > 0 ? 'Nessun ordine corrisponde alla ricerca' : 'Nessun ordine di acquisto.'}</td></tr>
-            ) : filtered.map((order, index) => {
+            ) : paginated.map((order, index) => {
               const badge = getStatusBadge(order.stato);
               return (
                 <tr
@@ -202,15 +212,23 @@ export function PurchaseOrdersTable({ onOrderClick, reloadKey }: PurchaseOrdersT
 
       <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#E5EAF2]">
         <div className="text-sm text-[#6B7280]">
-          Mostrando <span className="font-medium text-[#2D2D2D]">{filtered.length}</span> di{' '}
-          <span className="font-medium text-[#2D2D2D]">{orders.length}</span> ordini
+          Mostrando <span className="font-medium text-[#2D2D2D]">{paginated.length}</span> di{' '}
+          <span className="font-medium text-[#2D2D2D]">{filtered.length}</span> ordini
         </div>
         <div className="flex items-center gap-2">
-          <button className="px-3 py-1.5 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-lg hover:bg-[#F7F9FC] transition-all text-sm">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage <= 1}
+            className="px-3 py-1.5 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-lg hover:bg-[#F7F9FC] transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
             Precedente
           </button>
-          <button className="px-3 py-1.5 bg-[#17E88F] text-white rounded-lg font-medium text-sm">1</button>
-          <button className="px-3 py-1.5 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-lg hover:bg-[#F7F9FC] transition-all text-sm">
+          <span className="px-3 py-1.5 bg-[#17E88F] text-white rounded-lg font-medium text-sm">{currentPage}</span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage >= totalPages}
+            className="px-3 py-1.5 bg-white border border-[#E5EAF2] text-[#6B7280] rounded-lg hover:bg-[#F7F9FC] transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
             Successivo
           </button>
         </div>

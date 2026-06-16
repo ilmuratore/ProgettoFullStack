@@ -942,15 +942,6 @@ export function WarehousePage() {
 
           {activeTab === 'picking' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-[#6B7280]">Preparazioni spedizione attive: prelievo merce da magazzino/ubicazione e passaggio a logistica</p>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="flex items-center gap-1 text-[#6B7280]"><ListChecks className="w-3 h-3" /> NON_AVVIATO</span>
-                  <span className="flex items-center gap-1 text-[#D97706]"><Clock className="w-3 h-3" /> IN PREPARAZIONE</span>
-                  <span className="flex items-center gap-1 text-[#22C55E]"><CheckSquare className="w-3 h-3" /> COMPLETATA</span>
-                </div>
-              </div>
-
               {loadingPicking ? (
                 <div className="border border-[#E5EAF2] rounded-xl px-5 py-8 text-sm text-[#6B7280] text-center">
                   Caricamento preparazioni...

@@ -88,6 +88,11 @@ export function ShipmentsTable({ onShipmentClick, shipments, loading }: Shipment
     if (stato) setFilterStatus(stato);
   }, [searchParams]);
 
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
+
+  useEffect(() => { setPage(1); }, [search, filterStatus, sort]);
+
   const activeFiltersCount = filterStatus !== 'tutti' ? 1 : 0;
   const resetFilters = () => setFilterStatus('tutti');
 
@@ -106,6 +111,10 @@ export function ShipmentsTable({ onShipmentClick, shipments, loading }: Shipment
     sort,
     compareShipmentsByKey
   );
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div className="bg-white rounded-2xl border border-[#E5EAF2] p-6">
@@ -138,7 +147,7 @@ export function ShipmentsTable({ onShipmentClick, shipments, loading }: Shipment
               placeholder="Cerca spedizione o tracking..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-9 pl-9 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 w-64"
+              className="w-full h-9 pl-9 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20"
             />
           </div>
         </FilterPanel>
@@ -165,7 +174,7 @@ export function ShipmentsTable({ onShipmentClick, shipments, loading }: Shipment
               <tr><td colSpan={10} className="py-8 text-center text-sm text-[#6B7280]">Caricamento spedizioni...</td></tr>
             ) : filtered.length === 0 ? (
               <tr><td colSpan={10} className="py-8 text-center text-sm text-[#6B7280]">{search || activeFiltersCount > 0 ? 'Nessuna spedizione corrisponde alla ricerca' : 'Nessuna spedizione disponibile.'}</td></tr>
-            ) : filtered.map((ship) => {
+            ) : paginated.map((ship) => {
               const label = `SH-${String(ship.id).padStart(4, '0')}`;
               const ordineLabel = `SO-${String(ship.ordine_id).padStart(4, '0')}`;
               return (
@@ -214,6 +223,30 @@ export function ShipmentsTable({ onShipmentClick, shipments, loading }: Shipment
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#E5EAF2]">
+          <span className="text-xs text-[#9CA3AF]">
+            {filtered.length} spedizioni — pagina {currentPage} di {totalPages}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+              className="px-3 py-1.5 text-xs border border-[#E5EAF2] rounded-lg hover:bg-[#F7F9FC] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Precedente
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+              className="px-3 py-1.5 text-xs border border-[#E5EAF2] rounded-lg hover:bg-[#F7F9FC] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Successivo
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
