@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Plus, ShoppingBag, BarChart2, CheckSquare, Clock, Download } from 'lucide-react';
+import { Plus, ShoppingBag, BarChart2, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { SalesKPIs } from './components/SalesKPIs';
 import { SalesOrdersTable } from './components/SalesOrdersTable';
@@ -12,10 +12,12 @@ import { NewSalesOrderModal } from './components/NewSalesOrderModal';
 import { PageTabBar, type TabConfig } from '../../components/ui/PageTabBar';
 import { ordiniApi } from '../../api/ordiniApi';
 import { clientiApi } from '../../api/clientiApi';
+import { spedizioniApi } from '../../api/spedizioniApi';
 import { downloadBlob } from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
 import type { OrdineVendita } from '../../types/ordini';
 import type { Cliente } from '../../types/clienti';
+import type { Spedizione } from '../../types/spedizioni';
 import type { SalesKpiItem } from './components/SalesKPIs';
 import type { SalesChartPoint } from './components/SalesChart';
 import type { TopClienteItem } from './components/TopClienti';
@@ -43,13 +45,13 @@ const monthLabel = (d: Date): string =>
 export function SalesPage() {
   const { hasPermesso } = useAuthStore();
   const canCreateOrders = hasPermesso('ordini:write');
+  const canReadShipments = hasPermesso('spedizioni:read');
   const accessibleTabs = useMemo(
     () => tabs
       .map((tab) => tab.id as SalesTab)
       .filter((tab) => {
         switch (tab) {
           case 'ordini': return hasPermesso('ordini:read');
-          case 'picking': return hasPermesso('ordini:read');
           case 'kpi': return hasPermesso('ordini:read');
         }
       }),
@@ -62,6 +64,7 @@ export function SalesPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [salesOrders, setSalesOrders] = useState<OrdineVendita[]>([]);
+  const [shipmentsByOrderId, setShipmentsByOrderId] = useState<Record<number, Spedizione | null>>({});
   const [salesClients, setSalesClients] = useState<Cliente[]>([]);
   const [destinazioniByCliente, setDestinazioniByCliente] = useState<Record<number, number>>({});
   const navigate = useNavigate();
@@ -73,17 +76,22 @@ export function SalesPage() {
 
   useEffect(() => {
     let alive = true;
-    ordiniApi.list()
-      .then((orders) => {
-        if (alive) setSalesOrders(Array.isArray(orders) ? orders : []);
+    Promise.allSettled([ordiniApi.list(), canReadShipments ? spedizioniApi.list() : Promise.resolve([])])
+      .then(([ordersResult, shipmentsResult]) => {
+        if (!alive) return;
+        const orders = ordersResult.status === 'fulfilled' && Array.isArray(ordersResult.value) ? ordersResult.value : [];
+        const shipments = shipmentsResult.status === 'fulfilled' && Array.isArray(shipmentsResult.value) ? shipmentsResult.value : [];
+        setSalesOrders(orders);
+        setShipmentsByOrderId(Object.fromEntries(shipments.map((shipment) => [shipment.ordine_id, shipment] as const)));
       })
       .catch((err: any) => {
         if (!alive) return;
         setSalesOrders([]);
+        setShipmentsByOrderId({});
         toast.error('Errore caricamento ordini vendita', { description: err?.message });
       });
     return () => { alive = false; };
-  }, [reloadKey]);
+  }, [canReadShipments, reloadKey]);
 
   useEffect(() => {
     if (activeTab !== 'kpi') return;
@@ -282,7 +290,7 @@ export function SalesPage() {
             <div className="space-y-6">
               <SalesKPIs kpis={salesKpis} />
               <div ref={tableRef}>
-                <SalesOrdersTable onOrderClick={setSelectedOrderId} reloadKey={reloadKey} />
+                <SalesOrdersTable onOrderClick={setSelectedOrderId} reloadKey={reloadKey} shipmentsByOrderId={shipmentsByOrderId} />
               </div>
             </div>
           )}

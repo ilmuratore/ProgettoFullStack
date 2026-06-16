@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { Plus, Truck, FileText, BarChart2, Download, Eye, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { LogisticsKPIs } from '../logistica/components/LogisticsKPIs';
@@ -70,6 +71,7 @@ const shippingStateBadge = (stato: string) => {
 
 export function LogisticsPage() {
   const { hasPermesso } = useAuthStore();
+  const navigate = useNavigate();
   const canWriteShipments = hasPermesso('spedizioni:write');
   const canReadCouriers = hasPermesso('magazzino:read');
   const accessibleTabs = useMemo(

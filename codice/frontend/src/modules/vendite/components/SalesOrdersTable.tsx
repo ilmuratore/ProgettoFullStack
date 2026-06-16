@@ -4,6 +4,7 @@ import { Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { ordiniApi } from '../../../api/ordiniApi';
 import type { OrdineVendita, StatoOrdineVendita } from '../../../types/ordini';
+import type { Spedizione } from '../../../types/spedizioni';
 import { SortableHeader } from '../../../components/shared/SortableHeader';
 import { applySort, compareDate, compareNumber, compareText, toggleSort, type SortConfig } from '../../../utils/sorting';
 import { FilterButton, FilterPanel } from '../../../components/ui/FilterPanel';
@@ -49,11 +50,31 @@ const getOrderStatusBadge = (status: StatoOrdineVendita) => {
   }
 };
 
+const getPickingStatusBadge = (status: OrdineVendita['stato_picking']) => {
+  switch (status) {
+    case 'NON_AVVIATO': return { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', label: 'Non avviato' };
+    case 'IN_PICKING': return { bg: 'bg-[#FEF3C7]', text: 'text-[#D97706]', label: 'In preparazione' };
+    case 'PICKING_COMPLETATO': return { bg: 'bg-[#DCFCE7]', text: 'text-[#16A34A]', label: 'Preparato' };
+    default: return { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', label: '-' };
+  }
+};
+
+const getShippingStatusBadge = (shipment: Spedizione | null | undefined) => {
+  if (!shipment) return { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', label: 'Non assegnata' };
+  switch (shipment.stato) {
+    case 'IN_PREPARAZIONE': return { bg: 'bg-[#E2E8F0]', text: 'text-[#64748B]', label: 'In preparazione' };
+    case 'SPEDITA': return { bg: 'bg-[#DBEAFE]', text: 'text-[#3B82F6]', label: 'Spedita' };
+    case 'CONSEGNATA': return { bg: 'bg-[#DCFCE7]', text: 'text-[#16A34A]', label: 'Consegnata' };
+    case 'PROBLEMA': return { bg: 'bg-[#FEE2E2]', text: 'text-[#DC2626]', label: 'Problema' };
+    default: return { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', label: '-' };
+  }
+};
+
 const fmtData = (iso: string | null | undefined): string =>
-  iso ? new Date(iso).toLocaleDateString('it-IT') : '—';
+  iso ? new Date(iso).toLocaleDateString('it-IT') : '-';
 
 const fmtDateTime = (iso: string | null | undefined): string =>
-  iso ? new Date(iso).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+  iso ? new Date(iso).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
 
 const fmtEuro = (n: number | null | undefined): string =>
   `EUR ${Number(n ?? 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -61,9 +82,10 @@ const fmtEuro = (n: number | null | undefined): string =>
 interface SalesOrdersTableProps {
   onOrderClick: (orderId: number) => void;
   reloadKey?: number;
+  shipmentsByOrderId?: Record<number, Spedizione | null>;
 }
 
-export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTableProps) {
+export function SalesOrdersTable({ onOrderClick, reloadKey, shipmentsByOrderId = {} }: SalesOrdersTableProps) {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('tutti');
   const [searchParams] = useSearchParams();
@@ -75,7 +97,6 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
   const PAGE_SIZE = 10;
 
   const handleSort = (key: SortKey) => setSort((prev) => toggleSort(prev, key));
-
   const activeFiltersCount = filterStatus !== 'tutti' ? 1 : 0;
   const resetFilters = () => { setFilterStatus('tutti'); };
 
@@ -100,11 +121,11 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
   }, [filterStatus, reloadKey]);
 
   const filtered = applySort(
-    orders.filter((o) => {
+    orders.filter((order) => {
       const term = search.toLowerCase();
       return (
-        `so-${String(o.id).padStart(4, '0')}`.toLowerCase().includes(term) ||
-        (o.cliente ?? '').toLowerCase().includes(term)
+        `so-${String(order.id).padStart(4, '0')}`.toLowerCase().includes(term) ||
+        (order.cliente ?? '').toLowerCase().includes(term)
       );
     }),
     sort,
@@ -129,19 +150,19 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
         <FilterPanel
           open={filtersOpen}
           activeFiltersCount={activeFiltersCount}
-          onToggleOpen={() => setFiltersOpen((o) => !o)}
+          onToggleOpen={() => setFiltersOpen((open) => !open)}
           onReset={resetFilters}
-          filterGroups={
+          filterGroups={(
             <div>
               <p className="text-sm font-medium text-[#2D2D2D] mb-2">Stato Ordine</p>
               <div className="flex flex-wrap gap-2">
                 <FilterButton label="Tutti" active={filterStatus === 'tutti'} onClick={() => setFilterStatus('tutti')} />
-                {STATO_ORDINE_OPTIONS.map((opt) => (
-                  <FilterButton key={opt.value} label={opt.label} active={filterStatus === opt.value} onClick={() => setFilterStatus(opt.value)} />
+                {STATO_ORDINE_OPTIONS.map((option) => (
+                  <FilterButton key={option.value} label={option.label} active={filterStatus === option.value} onClick={() => setFilterStatus(option.value)} />
                 ))}
               </div>
             </div>
-          }
+          )}
         >
           <div className="relative">
             <Search className="w-4 h-4 text-[#6B7280] absolute left-3 top-1/2 -translate-y-1/2" />
@@ -149,7 +170,7 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
               type="text"
               placeholder="Cerca ordine o cliente..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(event) => setSearch(event.target.value)}
               className="w-full h-9 pl-10 pr-4 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17E88F]/20 focus:border-[#17E88F] transition-all text-sm"
             />
           </div>
@@ -166,6 +187,7 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
               <SortableHeader label="Destinazione" sortKey="destinazione" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap" />
               <SortableHeader label="Importo" sortKey="importo_totale" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap" />
               <SortableHeader label="Stato Ordine" sortKey="stato" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap" />
+              <th className="text-left py-3 px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap">Preparazione</th>
               <th className="text-left py-3 px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap">Spedizione</th>
               <SortableHeader label="Responsabile" sortKey="utente" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap" />
               <SortableHeader label="Agg." sortKey="updated_at" sort={sort} onSort={handleSort} thClassName="text-left py-3 px-3 text-xs font-medium text-[#6B7280] whitespace-nowrap" />
@@ -173,12 +195,19 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={9} className="py-8 text-center text-sm text-[#6B7280]">Caricamento ordini...</td></tr>
+              <tr>
+                <td colSpan={10} className="py-8 text-center text-sm text-[#6B7280]">Caricamento ordini...</td>
+              </tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={9} className="py-8 text-center text-sm text-[#6B7280]">{search || activeFiltersCount > 0 ? 'Nessun ordine corrisponde alla ricerca' : 'Nessun ordine di vendita.'}</td></tr>
+              <tr>
+                <td colSpan={10} className="py-8 text-center text-sm text-[#6B7280]">
+                  {search || activeFiltersCount > 0 ? 'Nessun ordine corrisponde alla ricerca' : 'Nessun ordine di vendita.'}
+                </td>
+              </tr>
             ) : paginated.map((order) => {
               const orderBadge = getOrderStatusBadge(order.stato);
-              const orderLabel = `SO-${String(order.id).padStart(4, '0')}`;
+              const pickingBadge = getPickingStatusBadge(order.stato_picking);
+              const shipmentBadge = getShippingStatusBadge(shipmentsByOrderId[order.id]);
               return (
                 <tr
                   key={order.id}
@@ -186,16 +215,16 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
                   onClick={() => onOrderClick(order.id)}
                 >
                   <td className="py-3.5 px-3">
-                    <span className="font-medium text-[#17E88F] text-sm">{orderLabel}</span>
+                    <span className="font-medium text-[#17E88F] text-sm">{`SO-${String(order.id).padStart(4, '0')}`}</span>
                   </td>
                   <td className="py-3.5 px-3">
-                    <span className="text-sm text-[#2D2D2D] font-medium whitespace-nowrap">{order.cliente ?? '—'}</span>
+                    <span className="text-sm text-[#2D2D2D] font-medium whitespace-nowrap">{order.cliente ?? '-'}</span>
                   </td>
                   <td className="py-3.5 px-3">
                     <span className="text-sm text-[#6B7280] whitespace-nowrap">{fmtData(order.data_ordine)}</span>
                   </td>
                   <td className="py-3.5 px-3">
-                    <span className="text-sm text-[#6B7280] whitespace-nowrap">{order.destinazione ?? '—'}</span>
+                    <span className="text-sm text-[#6B7280] whitespace-nowrap">{order.destinazione ?? '-'}</span>
                   </td>
                   <td className="py-3.5 px-3">
                     <span className="text-sm font-semibold text-[#2D2D2D] whitespace-nowrap">{fmtEuro(order.importo_totale)}</span>
@@ -206,10 +235,17 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
                     </span>
                   </td>
                   <td className="py-3.5 px-3">
-                    <span className="text-sm text-[#6B7280]">—</span>
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${pickingBadge.bg} ${pickingBadge.text} whitespace-nowrap`}>
+                      {pickingBadge.label}
+                    </span>
                   </td>
                   <td className="py-3.5 px-3">
-                    <span className="text-sm text-[#6B7280] whitespace-nowrap">{order.utente ?? '—'}</span>
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${shipmentBadge.bg} ${shipmentBadge.text} whitespace-nowrap`}>
+                      {shipmentBadge.label}
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-3">
+                    <span className="text-sm text-[#6B7280] whitespace-nowrap">{order.utente ?? '-'}</span>
                   </td>
                   <td className="py-3.5 px-3">
                     <span className="text-xs text-[#9CA3AF] whitespace-nowrap">{fmtDateTime(order.updated_at)}</span>
@@ -225,16 +261,20 @@ export function SalesOrdersTable({ onOrderClick, reloadKey }: SalesOrdersTablePr
         <span><span className="font-medium text-[#2D2D2D]">{paginated.length}</span> di <span className="font-medium text-[#2D2D2D]">{filtered.length}</span> ordini trovati</span>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
             disabled={currentPage <= 1}
             className="px-3 py-1.5 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-          >Precedente</button>
+          >
+            Precedente
+          </button>
           <span className="px-3 py-1.5 bg-[#17E88F]/10 text-[#17E88F] rounded-lg font-medium">{currentPage}</span>
           <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
             disabled={currentPage >= totalPages}
             className="px-3 py-1.5 bg-[#F7F9FC] border border-[#E5EAF2] rounded-lg hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-          >Successivo</button>
+          >
+            Successivo
+          </button>
         </div>
       </div>
     </div>
